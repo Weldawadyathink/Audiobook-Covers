@@ -1,0 +1,14 @@
+name = "audiobookcovers-api"
+main = "index.js"
+
+workers_dev = true
+compatibility_date = "2021-11-02"
+
+[build]
+command = "npm run build"
+
+[[ d1_databases ]]
+binding = "DB" # i.e. available in your Worker on env.DB
+database_name = "audiobook-covers"
+database_id = "c91d3871-1002-446e-a18f-e8c71454ed3a"
+preview_database_id = "67a7650e-0226-4f3d-a1aa-af7ac10ece2f"
