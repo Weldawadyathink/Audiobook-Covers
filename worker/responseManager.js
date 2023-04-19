@@ -17,7 +17,7 @@ export class ResponseManager {
   async getCoversByText(searchText) {
     const es_results = await this._es.searchCloudVision(searchText)
     const results = es_results.map(item => ({
-      source: `https://redd.it/${item._source.redditPostId}`,
+      source: `https://redd.it/${item._source.reddit_post_id}`,
       filename: `https://r2.audiobookcovers.com/covers/${item._source.filename}`
     }))
     await this.logSearchInfo(searchText, results.length)
