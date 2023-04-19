@@ -52,3 +52,8 @@ Use the Makefile to perform various tasks:
 ## License
 
 This project is licensed under the GNU General Public License v3.
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=Weldawadyathink/Audiobook-Covers&type=Date)](https://star-history.com/#Weldawadyathink/Audiobook-Covers&Date)
+
