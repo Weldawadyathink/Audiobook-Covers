@@ -4,7 +4,7 @@ Audiobook-Covers is a project that downloads and archives audiobook covers from 
 
 The purpose of this project is to create a centralized and searchable archive of audiobook covers for enthusiasts, researchers, and developers.
 
-The official host for this project is at [audiobookcovers.com](audiobookcovers.com)
+The official host for this project is at [audiobookcovers.com](https://audiobookcovers.com)
 
 ## Prerequisites
 
