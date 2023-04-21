@@ -1,7 +1,7 @@
 
 export class database {
   constructor(env) {
-    this.index = 'covers';
+    this.index = 'covers'
     this.baseURL = new URL(env.ELASTIC_SEARCH_URL)
   }
 
@@ -16,15 +16,29 @@ export class database {
         }
       }
     }
-    const hits = await this.search(this.index, query);
-    return hits;
+    const hits = await this.search(this.index, query)
+    return hits
+  }
+
+  async getByRedditPostId(reddit_post_id){
+    const query = {
+      query: {
+        term: {
+          "reddit_post_id.keyword": {
+            value: reddit_post_id
+          }
+        }
+      }
+    }
+    const hits = await this.search(this.index, query)
+    return hits
   }
 
   async search(index, query) {
-    const url = new URL(this.baseURL);
-    const username = url.username;
-    const password = url.password;
-    const auth = `${username}:${password}`;
+    const url = new URL(this.baseURL)
+    const username = url.username
+    const password = url.password
+    const auth = `${username}:${password}`
     const options = {
       method: 'POST',
       headers: {
@@ -32,10 +46,10 @@ export class database {
         'Authorization': 'Basic ' + btoa(auth)
       },
       body: JSON.stringify(query)
-    };
-    const response = await fetch(`${this.baseURL}/${index}/_search`, options);
-    const { hits } = await response.json();
-    return hits.hits;
+    }
+    const response = await fetch(`${this.baseURL}/${index}/_search`, options)
+    const { hits } = await response.json()
+    return hits.hits
   }
   
 }

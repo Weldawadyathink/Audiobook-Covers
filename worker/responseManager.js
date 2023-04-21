@@ -24,6 +24,16 @@ export class ResponseManager {
     return results
   }
 
+  async getCoversByRedditId(reddit_post_id) {
+    const es_results = await this._es.getByRedditPostId(reddit_post_id)
+    const results = es_results.map(item => ({
+      source: `https://redd.it/${item._source.reddit_post_id}`,
+      filename: `https://r2.audiobookcovers.com/covers/${item._source.filename}`
+    }))
+    await this.logSearchInfo(`Reddit Post ID: ${reddit_post_id}`, results.length)
+    return results
+  }
+
   _addUrlPrefix(input) {
     return input.map((entry) => {
       return {
