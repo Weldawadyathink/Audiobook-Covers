@@ -1,20 +1,34 @@
 const searchInput = document.getElementById("search-input")
 const searchBtn = document.getElementById("search-btn")
 const resultsContainer = document.getElementById("results-container")
+const searchTypeInputs = document.querySelectorAll(".search-type-input")
 
-searchInput.addEventListener("keydown", event => {
+searchBtn.addEventListener("click", search)
+searchInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
     event.preventDefault()
     search()
   }
 })
 
-searchBtn.addEventListener("click", search)
-
 async function search() {
-  const query = searchInput.value
+  let query = searchInput.value
+  const selectedSearchType = Array.from(searchTypeInputs).find(
+    (input) => input.checked
+  ).value
+  if (selectedSearchType === "reddit") {
+    query = getRedditPostId(query)
+  }
+
+  let apiUrl = ""
+  if (selectedSearchType === "text") {
+    apiUrl = `https://api.audiobookcovers.com/cover/bytext/?q=${encodeURIComponent(query)}`
+  } else {
+    apiUrl = `https://api.audiobookcovers.com/cover/byredditpostid/?q=${encodeURIComponent(query)}`
+  }
+
   try {
-    const response = await fetch(`https://api.audiobookcovers.com/cover/bytext/?q=${encodeURIComponent(query)}`)
+    const response = await fetch(apiUrl)
     if (!response.ok) {
       throw new Error(response.status)
     }
@@ -25,6 +39,12 @@ async function search() {
   }
 
   searchInput.blur() // Remove the focus from the input element
+}
+
+function getRedditPostId(url) {
+  const regex = /(?:^https?:\/\/(?:www\.|old\.)?reddit\.com\/(?:r\/[^/]+\/comments|gallery)\/([^/?]+).*|^redd\.it\/([^/?]+))/i
+  const match = url.match(regex)
+  return match && (match[1] || match[2])
 }
 
 function displayResults(results) {

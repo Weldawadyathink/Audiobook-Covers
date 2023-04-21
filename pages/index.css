@@ -33,14 +33,23 @@ main {
 
 .search-container {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   margin-bottom: 2rem;
 }
 
+.search-field-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1rem;
+  width: 80%;
+  max-width: 500px;
+}
+
 #search-input {
   width: 100%;
-  max-width: 400px;
   padding: 0.5rem 1.5rem;
   font-size: 1.2rem;
   border: none;
@@ -154,3 +163,36 @@ main {
   }
 }
 
+.search-type-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.search-type-label {
+  margin: 0.5rem;
+}
+
+.search-type-input {
+  display: none;
+}
+
+.search-type-pill {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border-radius: 25px;
+  background-color: #333;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.search-type-input:checked + .search-type-pill {
+  background-color: #4caf50;
+  transform: scale(1.1);
+}
+
+/* Add the following rule to remove the outline when the input is focused */
+.search-type-input:focus + .search-type-pill {
+  outline: none;
+}

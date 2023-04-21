@@ -7,7 +7,7 @@ deploy-worker:
 	@cd worker && wrangler publish
 
 deploy-pages:
-	@wrangler pages publish pages --project-name=audiobook-covers
+	@wrangler pages publish pages --project-name=audiobook-covers --branch=production
 
 deploy-elasticsearch:
 	@./venv/bin/python ./deploy/to_elasticsearch.py
