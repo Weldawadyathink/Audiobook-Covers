@@ -34,13 +34,4 @@ export class ResponseManager {
     return results
   }
 
-  _addUrlPrefix(input) {
-    return input.map((entry) => {
-      return {
-        "source": `https://redd.it/${entry.source}`,
-        "cover": `https://r2.audiobookcovers.com/covers/${entry.cover}`
-      }
-    })
-  }
-
 }
