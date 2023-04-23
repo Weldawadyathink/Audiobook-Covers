@@ -172,4 +172,6 @@ google.json
 *.sql
 *.bak
 
+keys.py
+
 !worker/schema.sql
