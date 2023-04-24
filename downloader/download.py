@@ -9,11 +9,11 @@ if __name__ == "__main__":
     # Step 1: Download as much as possible with bdfr
     download_bdfr()
     
-    # Step 2: Download failed BDFR posts
-    
     # Step 2: Refresh comments in database
-    # comments = CommentDownloader(database_file)
-    # comments.download_all_comments()
+    comments = CommentDownloader(database_file)
+    comments.download_all_comments()
     
-    # Step 3: Download from links in database
+    # Step 3: Extract URLs from comments
+    
+    # Step 4: Download from links in database
     # download_from_comments()
