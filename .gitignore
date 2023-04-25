@@ -171,6 +171,9 @@ google.json
 *.db
 *.sql
 *.bak
+temp
+*.db-journal
+backup
 
 keys.py
 

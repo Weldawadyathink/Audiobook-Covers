@@ -18,4 +18,8 @@ deploy-files:
 curate-overview:
 	@./venv/bin/python ./downloader/curate_overview_images.py
 
-.PHONY: download-reddit add-to-db deploy deploy-worker deploy-pages deploy-elasticsearch deploy-files curate-overview
+database-backup:
+	@mkdir -p backup
+	@sqlite3 covers.db ".backup backup/covers-`date +'%Y-%m-%d_%H-%M-%S'`.db"
+
+.PHONY: download-reddit add-to-db deploy deploy-worker deploy-pages deploy-elasticsearch deploy-files curate-overview database-backup
