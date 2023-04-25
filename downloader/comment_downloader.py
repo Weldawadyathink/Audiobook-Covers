@@ -5,13 +5,13 @@ from keys import reddit as reddit_keys
 
 class CommentDownloader:
     def __init__(self, database_file):
-        self.reddit = praw.Reddit(client_id=reddit_keys.client_id,
-                                  client_secret=reddit_keys.client_secret,
+        self.reddit = praw.Reddit(client_id=reddit_keys['client_id'],
+                                  client_secret=reddit_keys['client_secret'],
                                   user_agent="comment_scraper")
         self.db = sqlite3.connect(database_file)
     
-    def __del__(self):
-        self.db.close()
+    # def __del__(self):
+    #     self.db.close()
     
     def insert_comment(self, comment, post_id):
         cursor = self.db.cursor()

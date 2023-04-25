@@ -1,6 +1,7 @@
 from download_bdfr import main as download_bdfr
 from comment_downloader import CommentDownloader
 from extract_link_urls import ExtractLinkUrls
+from download import main as download
 
 if __name__ == "__main__":
     
@@ -18,3 +19,4 @@ if __name__ == "__main__":
     extractor.extract_all()
     
     # Step 4: Download from links in database
+    download(database_file)

@@ -48,7 +48,7 @@ class ImageProcessor:
         returnval = re.sub(r'\n', ' ', returnval)
         return returnval
 
-    def process_image(self, image, extension, reddit_post_id):
+    def process_image(self, image, extension, reddit_post_id, reddit_comment_id=None):
         """
         Processes an image and saves it to the database.
         :param image: PIL image
@@ -56,11 +56,19 @@ class ImageProcessor:
         :param reddit_post_id: reddit post id
         :return:
         """
+        print(f'Processing image {image}')
         image_hash = self._image_hash(image)
         self._check_hash_match(image_hash)
         cloud_vision_text = self._detect_text(image)
         new_file_name = f'{uuid.uuid4()}.{extension}'
-        self._save_image_to_db(reddit_post_id, image_hash, image.tobytes(), cloud_vision_text, new_file_name)
+
+        # Save the image data in the same format as the original image
+        with BytesIO() as output:
+            image.save(output, image.format)
+            image_bytes = output.getvalue()
+
+        self._save_image_to_db(reddit_post_id, image_hash, image_bytes, cloud_vision_text, new_file_name, reddit_comment_id)
+
     
     @staticmethod
     def _image_hash(image):
@@ -73,10 +81,11 @@ class ImageProcessor:
         if matching_images:
             raise ImageHashMatch(f'Image already in database.')
     
-    def _save_image_to_db(self,  reddit_post_id, image_hash, image_bytes, cloud_vision_text, filename):
+    def _save_image_to_db(self,  reddit_post_id, image_hash, image_bytes, cloud_vision_text, filename, reddit_comment_id):
         cursor = self.conn.cursor()
+        print(f'Adding image to database {filename}')
         cursor.execute('INSERT OR IGNORE INTO reddit_post(reddit_post_id, post_type) VALUES (?, ?)',
                        (reddit_post_id, 'image'))
-        cursor.execute("INSERT INTO reddit_image (reddit_post_id, hash, image_data, cloud_vision_text, filename) VALUES (?, ?, ?, ?, ?)",
-                       (reddit_post_id, image_hash, image_bytes, cloud_vision_text, filename))
+        cursor.execute("INSERT INTO reddit_image (reddit_post_id, hash, image_data, cloud_vision_text, filename, reddit_comment_id) VALUES (?, ?, ?, ?, ?, ?)",
+                       (reddit_post_id, image_hash, image_bytes, cloud_vision_text, filename, reddit_comment_id))
         self.conn.commit()

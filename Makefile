@@ -1,5 +1,5 @@
-download-reddit:
-	@./venv/bin/python ./downloader/download.py
+download:
+	@./venv/bin/python ./downloader/download_all.py
 
 deploy: deploy-worker deploy-pages deploy-elasticsearch deploy-files
 
@@ -22,4 +22,4 @@ database-backup:
 	@mkdir -p backup
 	@sqlite3 covers.db ".backup backup/covers-`date +'%Y-%m-%d_%H-%M-%S'`.db"
 
-.PHONY: download-reddit add-to-db deploy deploy-worker deploy-pages deploy-elasticsearch deploy-files curate-overview database-backup
+.PHONY: download add-to-db deploy deploy-worker deploy-pages deploy-elasticsearch deploy-files curate-overview database-backup
