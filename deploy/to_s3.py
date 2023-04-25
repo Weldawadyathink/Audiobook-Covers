@@ -3,19 +3,17 @@ import os
 import sqlite3
 import hashlib
 import io
-from dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor
-
-load_dotenv()
+from keys import r2
 
 save_bucket_name = "audiobookcovers"
 save_folder = "covers"
 
 database_file = './covers.db'
 
-s3 = boto3.resource('s3', endpoint_url=os.getenv("ENDPOINT_URL"),
-                    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-                    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"))
+s3 = boto3.resource('s3', endpoint_url=r2['endpoint_url'],
+                    aws_access_key_id=r2['aws_access_key_id'],
+                    aws_secret_access_key=r2['aws_secret_access_key'])
 
 def fetch_images_from_db(conn):
     cursor = conn.cursor()

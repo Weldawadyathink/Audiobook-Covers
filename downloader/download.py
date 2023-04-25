@@ -15,8 +15,13 @@ def main(db_file = './covers.db'):
     
     for domain, provider  in domains:
         cursor.execute('select url, reddit_comment_id, reddit_post_id from reddit_link where domain = ?', (domain,))
-        for url, reddit_comment_id, reddit_post_id in cursor.fetchall():
+        results = cursor.fetchall()
+        i = 0
+        max = len(results)
+        for url, reddit_comment_id, reddit_post_id in results:
             # print(f'Fetching {url} from {domain}...')
+            i += 1
+            print(f'Fetching {i}/{max} from {domain}...')
             try:
                 images = provider.download(url)
             except Exception as e:

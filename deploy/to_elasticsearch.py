@@ -1,12 +1,10 @@
 from elasticsearch import Elasticsearch, helpers
-from dotenv import load_dotenv
 import os
 import re
 import sqlite3
+from keys import elastic_url
 
-load_dotenv()
-
-bonsai = os.environ['ELASTIC_URL']
+bonsai = elastic_url
 auth = re.search('https\:\/\/(.*)\@', bonsai).group(1).split(':')
 host = bonsai.replace('https://%s:%s@' % (auth[0], auth[1]), '')
 
