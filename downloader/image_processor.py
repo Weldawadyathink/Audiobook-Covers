@@ -47,6 +47,33 @@ class ImageProcessor:
         returnval = returnval.lower()
         returnval = re.sub(r'\n', ' ', returnval)
         return returnval
+    
+    @staticmethod
+    def reduce_image_size(image, horizontal_pixels):
+        """
+        Reduces the size of an image.
+        :param image: PIL image
+        :param horizontal_pixels: number of horizontal pixels to reduce to
+        :return:
+        """
+        width, height = image.size
+        if width > horizontal_pixels:
+            ratio = width / horizontal_pixels
+            height = int(height / ratio)
+            image = image.resize((horizontal_pixels, height), resample=Image.ANTIALIAS)
+        return image
+    
+    @staticmethod
+    def get_webp_bytes(image, quality=90):
+        """
+        Converts an image to webp format.
+        :param image: PIL image
+        :return: webp bytes
+        """
+        with BytesIO() as output:
+            image.save(output, format="WEBP", quality=quality)
+            webp_bytes = output.getvalue()
+        return webp_bytes
 
     def process_image(self, image, extension, reddit_post_id, reddit_comment_id=None):
         """
