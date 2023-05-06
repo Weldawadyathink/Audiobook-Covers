@@ -78,7 +78,7 @@ def remove_stale_files_from_bucket(db, table, filename_column, s3, save_bucket_n
     print(f'[R2] Removed {removed} stale files.')
 
 def send_to_s3(description):
-    s3 =  description['s3']
+    s3 = description['s3']
     db = description['db']
     save_bucket_name = description['save_bucket_name']
     save_folder = description['save_folder']
@@ -88,22 +88,28 @@ def send_to_s3(description):
     
     print(f'Reading {image_data_column} from {table}...')
 
-    images = db.execute(
-        text(f'SELECT {filename_column}, {image_data_column} FROM {table}'),
-        execution_options={"stream_results": True}
-    )
+    query = text(f'SELECT {filename_column}, {image_data_column} FROM {table}')
+    result = db.execute(query, execution_options={"stream_results": True})
     
-    for filename, image_data in images:
-        local_md5 = compute_md5_hash(image_data)
-        remote_etag = get_remote_etag(s3,  save_bucket_name, save_folder, filename)
+    batch_size = 50
+    while True:
+        batch = result.fetchmany(batch_size)
+        print(f'Loading batch of {50}')
+        if not batch:
+            break
+        
+        for filename, image_data in batch:
+            local_md5 = compute_md5_hash(image_data)
+            remote_etag = get_remote_etag(s3, save_bucket_name, save_folder, filename)
 
-        if remote_etag is None or remote_etag != local_md5:
-            upload_image_to_r2(s3, save_bucket_name, save_folder, filename, image_data)
-            print(f'Uploaded {filename}')
-        else:
-            print(f'Skipped {filename}')
+            if remote_etag is None or remote_etag != local_md5:
+                upload_image_to_r2(s3, save_bucket_name, save_folder, filename, image_data)
+                print(f'Uploaded {filename}')
+            else:
+                print(f'Skipped {filename}')
     
     remove_stale_files_from_bucket(db, table, filename_column, s3, save_bucket_name, save_folder)
+
 
 if __name__ == '__main__':
     for description in save_info:

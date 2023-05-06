@@ -7,6 +7,7 @@ import re
 from io import BytesIO
 import uuid
 import imagehash
+from s3manager import s3manager
 
 class ImageHashMatch(Exception):
     pass
@@ -16,7 +17,8 @@ class ImageProcessor:
     Class to process images. Gathers necessary information from the image and saves it to a database.
     """
     
-    def __init__(self, db_file = "covers.db"):
+    def __init__(self, print_logs = True, db_file = "covers.db"):
+        self.log = print_logs
         self.conn = sqlite3.connect(db_file)
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'google.json'
     
@@ -83,7 +85,7 @@ class ImageProcessor:
         :param reddit_post_id: reddit post id
         :return:
         """
-        print(f'Processing image {image}')
+        print(f'Processing image {image}') if self.log else None
         image_hash = self._image_hash(image)
         self._check_hash_match(image_hash)
         cloud_vision_text = self._detect_text(image)
@@ -110,7 +112,7 @@ class ImageProcessor:
     
     def _save_image_to_db(self,  reddit_post_id, image_hash, image_bytes, cloud_vision_text, filename, reddit_comment_id):
         cursor = self.conn.cursor()
-        print(f'Adding image to database {filename}')
+        print(f'Adding image to database {filename}') if self.log else None
         cursor.execute('INSERT OR IGNORE INTO reddit_post(reddit_post_id, post_type) VALUES (?, ?)',
                        (reddit_post_id, 'image'))
         cursor.execute("INSERT INTO reddit_image (reddit_post_id, hash, image_data, cloud_vision_text, filename, reddit_comment_id) VALUES (?, ?, ?, ?, ?, ?)",
