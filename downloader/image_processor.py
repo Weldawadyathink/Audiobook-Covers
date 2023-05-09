@@ -5,9 +5,9 @@ from google.cloud.vision_v1 import types
 import os
 import re
 from io import BytesIO
-import uuid
 import imagehash
-from s3manager import s3manager
+from s3manager import S3manager
+from db import get_covers_db
 
 class ImageHashMatch(Exception):
     pass
@@ -19,8 +19,9 @@ class ImageProcessor:
     
     def __init__(self, print_logs = True, db_file = "covers.db"):
         self.log = print_logs
-        self.conn = sqlite3.connect(db_file)
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'google.json'
+        # self.db = get_covers_db()
+        self.s3 = S3manager()
     
     @staticmethod
     def _detect_text(image):
@@ -89,14 +90,8 @@ class ImageProcessor:
         image_hash = self._image_hash(image)
         self._check_hash_match(image_hash)
         cloud_vision_text = self._detect_text(image)
-        new_file_name = f'{uuid.uuid4()}.{extension}'
 
-        # Save the image data in the same format as the original image
-        with BytesIO() as output:
-            image.save(output, image.format)
-            image_bytes = output.getvalue()
-
-        self._save_image_to_db(reddit_post_id, image_hash, image_bytes, cloud_vision_text, new_file_name, reddit_comment_id)
+        self._save_image_to_db(reddit_post_id, image_hash, image, cloud_vision_text, extension, reddit_comment_id)
 
     
     @staticmethod
@@ -104,17 +99,32 @@ class ImageProcessor:
         return str(imagehash.colorhash(image, binbits=32))
     
     def _check_hash_match(self, image_hash):
-        cursor = self.conn.cursor()
-        cursor.execute('SELECT reddit_post_id FROM reddit_image WHERE hash=?', (image_hash,))
-        matching_images = cursor.fetchall()
-        if matching_images:
+        db = get_covers_db()
+        result = db.execute('SELECT 1 FROM reddit_image WHERE hash=? LIMIT 1', [image_hash]).fetchall()
+        if result:
+            db.close()
             raise ImageHashMatch(f'Image already in database.')
+        db.close()
     
-    def _save_image_to_db(self,  reddit_post_id, image_hash, image_bytes, cloud_vision_text, filename, reddit_comment_id):
-        cursor = self.conn.cursor()
-        print(f'Adding image to database {filename}') if self.log else None
-        cursor.execute('INSERT OR IGNORE INTO reddit_post(reddit_post_id, post_type) VALUES (?, ?)',
-                       (reddit_post_id, 'image'))
-        cursor.execute("INSERT INTO reddit_image (reddit_post_id, hash, image_data, cloud_vision_text, filename, reddit_comment_id) VALUES (?, ?, ?, ?, ?, ?)",
-                       (reddit_post_id, image_hash, image_bytes, cloud_vision_text, filename, reddit_comment_id))
-        self.conn.commit()
+    def _save_image_to_db(self, reddit_post_id, image_hash, image, cloud_vision_text, file_extension, reddit_comment_id):
+        
+        with BytesIO() as output:
+            image.save(output, image.format)
+            image_bytes = output.getvalue()
+        
+        small_image = self.reduce_image_size(image, 500)
+        small_image_bytes = self.get_webp_bytes(small_image)
+        
+        db = get_covers_db()
+
+        print(f'Adding image to database with hash: {image_hash}') if self.log else None
+        db.execute('INSERT OR IGNORE INTO reddit_post(reddit_post_id, post_type) VALUES (?, "image")',
+                        [reddit_post_id])
+        db.execute("""INSERT INTO image (id, image_hash, image_data, file_extension, small_image_data, small_image_file_extension,
+                        reddit_post_id, reddit_comment_id, cloud_vision_text, search_text) VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        [image_hash, image_bytes, file_extension, small_image_bytes, "webp",
+                        reddit_post_id, reddit_comment_id, cloud_vision_text, cloud_vision_text])
+        db.commit()
+        result = db.execute('SELECT id FROM image WHERE image_hash=? LIMIT 1', [image_hash]).fetchall()
+        db.close()
+        self.s3.upload_to_s3_by_id(result[0])

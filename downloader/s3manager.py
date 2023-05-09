@@ -4,7 +4,7 @@ import hashlib
 from io import BytesIO
 from sqlalchemy import text
 
-class s3manager:
+class S3manager:
     
     def __init__(self, print_logs=True):
         self.log = print_logs
@@ -57,6 +57,30 @@ class s3manager:
                     print(f'Uploaded {filename}') if self.log else None
                 else:
                     print(f'Skipped {filename}') if self.log else None
+            db.close()
+    
+    
+    def remove_stale_files(self):
+        for config in self.save_info:
+            s3 = config['s3']()
+            bucket = config['save_bucket_name']
+            folder = config['save_folder']
+            db = config['db']()
+            table = config['table']
+            filename_column = config['filename_column']
+            image_data_column = config['image_data_column']
+            print(f"Removing stale files from {bucket}/{folder}")
+            i = 0
+            
+            for obj in s3.Bucket(bucket).objects.filter(Prefix=f"{folder}/"):
+                filename = obj.key.split('/')[-1]
+                results = db.execute(text(f"SELECT 1 FROM {table} WHERE {filename_column} = :filename"), {"filename": filename})
+                if results.fetchone() is None:
+                    obj.delete()
+                    i += 1
+                    print(f'Removed {filename}') if self.log else None
+            
+            print(f"Removed {i} stale files from {bucket}/{folder}")
     
     
     @staticmethod
@@ -77,4 +101,10 @@ class s3manager:
             
 
 if __name__ == '__main__':
-    s3manager(print_logs=True).upload_to_s3_by_id_list(["00462bae-e83a-11ed-bbde-0a1261ea33eb", "00462bae-e83a-11ed-bbde-0a1261ea33eb", "00462bae-e83a-11ed-bbde-0a1261ea33eb"])
+    db = get_covers_db()
+    results = db.execute(text("SELECT id FROM image")).fetchall()
+    ids = [row[0] for row in results]
+    db.close()
+    s3 = S3manager(print_logs=True)
+    s3.upload_to_s3_by_id_list(ids)
+    s3.remove_stale_files()
