@@ -54,7 +54,7 @@ function displayResults(results) {
     coverContainer.className = "cover-container"
 
     const coverImage = document.createElement("img")
-    coverImage.src = result.filename
+    coverImage.src = result.small_filename
     coverImage.className = "cover-image"
 
     coverImage.onclick = function () {
