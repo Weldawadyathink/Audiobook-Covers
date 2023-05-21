@@ -1,16 +1,19 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from db import get_covers_db, get_log_db
 import datetime
 from sqlalchemy import text
 import re
 
 app = Flask(__name__)
+CORS(app) # Allow all CORS
 
 @app.route('/')
 def hello():
     return "Hello AudiobookCover Enthusiasts!"
 
 @app.route('/cover/bytext')
+@app.route('/cover/bytext/')
 def get_covers_by_text():
     user_given_params = request.args.get('q')
     search_text = user_given_params
@@ -29,6 +32,7 @@ def get_covers_by_text():
     return jsonify(covers)
 
 @app.route('/cover/byredditpostid')
+@app.route('/cover/byredditpostid/')
 def get_covers_by_reddit_post_id():
     user_given_params = request.args.get('q')
     reddit_post_id = extract_reddit_post_id(user_given_params)
