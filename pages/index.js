@@ -16,9 +16,6 @@ async function search() {
   const selectedSearchType = Array.from(searchTypeInputs).find(
     (input) => input.checked
   ).value
-  if (selectedSearchType === "reddit") {
-    query = getRedditPostId(query)
-  }
 
   let apiUrl = ""
   if (selectedSearchType === "text") {
@@ -41,11 +38,6 @@ async function search() {
   searchInput.blur() // Remove the focus from the input element
 }
 
-function getRedditPostId(url) {
-  const regex = /(?:^https?:\/\/(?:www\.|old\.)?reddit\.com\/(?:r\/[^/]+\/comments|gallery)\/([^/?]+).*|^redd\.it\/([^/?]+))/i
-  const match = url.match(regex)
-  return match && (match[1] || match[2])
-}
 
 function displayResults(results) {
   resultsContainer.innerHTML = ""
