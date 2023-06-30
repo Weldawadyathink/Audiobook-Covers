@@ -7,6 +7,7 @@ export class database {
 
   async searchCloudVision(searchString) {
     const query = {
+      "size": 1024,
       "query": {
         "match": {
           "cloud_vision_text": {
@@ -22,10 +23,11 @@ export class database {
 
   async getByRedditPostId(reddit_post_id){
     const query = {
-      query: {
-        term: {
+      "size": 1024,
+      "query": {
+        "term": {
           "reddit_post_id.keyword": {
-            value: reddit_post_id
+            "value": reddit_post_id
           }
         }
       }
