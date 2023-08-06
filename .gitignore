@@ -2,6 +2,7 @@
 /downloader/*
 !/downloader/*.py
 !/downloader/*.sh
+config.py
 
 keys.py
 

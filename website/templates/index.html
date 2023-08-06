@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Audiobook Covers Search</title>
-    <link rel="stylesheet" href="index.css" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}" />
   </head>
   <body>
     <header>
@@ -49,6 +49,10 @@
         <div id="results-container"></div>
       </div>
     </main>
-    <script src="index.js"></script>
+    <script>
+      const baseApiUrl = "{{ api_url }}"
+      const redditIconUrl = "{{ url_for('static', filename='reddit-logo.png') }}"
+    </script>
+    <script src="{{ url_for('static', filename='index.js') }}"></script>
   </body>
 </html>

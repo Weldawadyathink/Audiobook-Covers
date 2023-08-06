@@ -19,9 +19,9 @@ async function search() {
 
   let apiUrl = ""
   if (selectedSearchType === "text") {
-    apiUrl = `https://api.audiobookcovers.com/cover/bytext/?q=${encodeURIComponent(query)}`
+    apiUrl = `${baseApiUrl}/cover/bytext/?q=${encodeURIComponent(query)}`
   } else {
-    apiUrl = `https://api.audiobookcovers.com/cover/byredditpostid/?q=${encodeURIComponent(query)}`
+    apiUrl = `${baseApiUrl}/cover/byredditpostid/?q=${encodeURIComponent(query)}`
   }
 
   try {
@@ -67,7 +67,7 @@ function displayResults(results) {
     sourceLink.target = "_blank"
 
     const redditLogo = document.createElement("img")
-    redditLogo.src = "reddit-logo.png"
+    redditLogo.src = redditIconUrl
     redditLogo.alt = "Reddit Source"
     redditLogo.className = "reddit-logo"
     sourceLink.appendChild(redditLogo)

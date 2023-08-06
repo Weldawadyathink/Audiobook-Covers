@@ -1,6 +1,6 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-from db import get_covers_db, get_log_db
+from config import get_covers_db, get_log_db, api_url
 import datetime
 from sqlalchemy import text
 import re
@@ -9,11 +9,11 @@ app = Flask(__name__)
 CORS(app) # Allow all CORS
 
 @app.route('/')
-def hello():
-    return "Hello AudiobookCover Enthusiasts!"
+def index():
+    return render_template('index.html', api_url=api_url)
 
-@app.route('/cover/bytext')
-@app.route('/cover/bytext/')
+@app.route('/api/cover/bytext')
+@app.route('/api/cover/bytext/')
 def get_covers_by_text():
     user_given_params = request.args.get('q')
     search_text = user_given_params
@@ -22,7 +22,7 @@ def get_covers_by_text():
             source,
             CONCAT('https://download.audiobookcovers.com/covers/fullres/', filename) AS filename,
             CONCAT('https://download.audiobookcovers.com/covers/lowres/', small_image_filename) AS small_filename
-        FROM Weldawadyathink$covers.searchable_images
+        FROM searchable_images
         WHERE MATCH (search_text) AGAINST (:search_text)
     """)
     db = get_covers_db()
@@ -31,8 +31,8 @@ def get_covers_by_text():
     save_search_log('/cover/bytext', user_given_params, search_text, len(covers))
     return jsonify(covers)
 
-@app.route('/cover/byredditpostid')
-@app.route('/cover/byredditpostid/')
+@app.route('/api/cover/byredditpostid')
+@app.route('/api/cover/byredditpostid/')
 def get_covers_by_reddit_post_id():
     user_given_params = request.args.get('q')
     reddit_post_id = extract_reddit_post_id(user_given_params)
@@ -41,7 +41,7 @@ def get_covers_by_reddit_post_id():
             source,
             CONCAT('https://download.audiobookcovers.com/covers/fullres/', filename) AS filename,
             CONCAT('https://download.audiobookcovers.com/covers/lowres/', small_image_filename) AS small_filename
-        FROM Weldawadyathink$covers.image
+        FROM image
         WHERE reddit_post_id = :reddit_post_id
     """)
     db = get_covers_db()
