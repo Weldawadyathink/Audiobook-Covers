@@ -46,4 +46,4 @@ update-checker==0.18.0
 urllib3==1.26.15
 websocket-client==1.5.1
 websockets==11.0.2
-yt-dlp==2023.3.4
+yt-dlp==2023.9.24
