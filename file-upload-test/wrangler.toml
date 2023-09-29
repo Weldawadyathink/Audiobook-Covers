@@ -1,0 +1,19 @@
+name = "file-upload-test"
+main = "src/index.js"
+compatibility_date = "2023-09-29"
+usage_model = "unbound"
+env = { }
+
+[triggers]
+crons = [ ]
+
+[[r2_buckets]]
+binding = "bucket"
+bucket_name = "file-upload-test"
+preview_bucket_name = "file-upload-test-dev"
+
+[[unsafe.bindings]]
+database_id = "dbbed3f7-c921-4ba8-aff1-1f2441960a21"
+name = "db"
+type = "d1"
+id = "dbbed3f7-c921-4ba8-aff1-1f2441960a21"
