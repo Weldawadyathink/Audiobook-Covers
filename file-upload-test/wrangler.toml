@@ -3,6 +3,7 @@ main = "src/index.js"
 compatibility_date = "2023-09-29"
 usage_model = "unbound"
 env = { }
+node_compat = true
 
 [triggers]
 crons = [ ]
