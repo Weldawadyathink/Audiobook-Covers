@@ -25,7 +25,7 @@ imgurpython==1.1.7
 jmespath==1.0.1
 mutagen==1.46.0
 numpy==1.24.3
-Pillow==9.5.0
+Pillow==10.0.1
 praw==7.7.0
 prawcore==2.3.0
 proto-plus==1.22.2
