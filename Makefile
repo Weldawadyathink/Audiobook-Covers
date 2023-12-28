@@ -1,25 +1,30 @@
-download:
-	@./venv/bin/python ./downloader/download_all.py
+.PHONY: deploy_lambda_functions deploy_lambda_layers deploy_workers deploy
 
-deploy: deploy-worker deploy-pages deploy-elasticsearch deploy-files
+ALL_FUNCTION_MAKEFILES := $(shell find ./functions -name Makefile)
 
-deploy-worker:
-	@cd worker && wrangler publish
+ALL_LAYERS_MAKEFILES := $(shell find ./layers -name Makefile)
 
-deploy-pages:
-	@wrangler pages publish pages --project-name=audiobook-covers --branch=production
+ALL_WORKERS_MAKEFILES := $(shell find ./workers -name Makefile)
 
-deploy-elasticsearch:
-	@./venv/bin/python ./deploy/to_elasticsearch.py
+deploy: deploy_lambda_layers deploy_lambda_functions deploy_workers
 
-deploy-files:
-	@./venv/bin/python ./deploy/to_s3.py
+deploy_lambda_functions:
+	@echo "Deploying all lambda functions"
+	@for makefile in $(ALL_FUNCTION_MAKEFILES); do \
+		echo Deploying $$makefile; \
+		$(MAKE) -C $$(dirname $$makefile) deploy; \
+	done
 
-curate-overview:
-	@./venv/bin/python ./downloader/curate_overview_images.py
+deploy_lambda_layers:
+	@echo "Deploying all lambda layers"
+	@for makefile in $(ALL_LAYERS_MAKEFILES); do \
+		echo Deploying $$makefile; \
+		$(MAKE) -C $$(dirname $$makefile) deploy; \
+	done
 
-database-backup:
-	@mkdir -p backup
-	@sqlite3 covers.db ".backup backup/covers-`date +'%Y-%m-%d_%H-%M-%S'`.db"
-
-.PHONY: download add-to-db deploy deploy-worker deploy-pages deploy-elasticsearch deploy-files curate-overview database-backup
+deploy_workers:
+	@echo "Deploying all Cloudflare Workers"
+	@for makefile in $(ALL_WORKERS_MAKEFILES); do \
+		echo Deploying $$makefile; \
+		$(MAKE) -C $$(dirname $$makefile) deploy; \
+	done
