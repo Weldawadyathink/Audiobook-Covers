@@ -3,7 +3,7 @@ import { v1 as uuidv1 } from 'uuid';
 import algoliasearch from 'algoliasearch';
 import { createFetchRequester } from '@algolia/requester-fetch';
 
-import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export default {
@@ -61,9 +61,20 @@ export default {
 				return new Response('Improperly formatted source url', {status: 422, statusText: 'Improperly formatted source url', headers: headers})
 			}
 			const extension = params.get('extension')
+			const mime_type = params.get('mime_type')
 
-			if (source_url === '' || extension === ''){
+			if (source_url === '' || extension === '' || mime_type === ''){
 				return new Response('Missing url parameters', {status: 422, statusText: 'Missing url parameters', headers: headers})
+			}
+
+			valid_mime_types = [
+				'image/png',
+				'image/jpeg',
+				'image/webp',
+			]
+
+			if (!valid_mime_types.includes(mime_type)) {
+				return new Response('Invalid mime type', {status: 422, statusText: 'Invalid mime type', headers: headers})
 			}
 
 			const index = get_algolia_index(env)
@@ -82,16 +93,16 @@ export default {
 				}
 			})
 
+			const expiration = 60*60*24
+
 			const s3_url_params = {
 				Bucket: 'com-audiobookcovers-uploads',
 				Key: `${extension}|${newUUID}|${source_url}`,
-				ACL: 'bucket-owner-full-control'
+				ContentType: mime_type
 			}
-			const command = new GetObjectCommand(s3_url_params)
-			const signed_url = await getSignedUrl(s3, command, { expiresIn: 60*60 })
+			const command = new PutObjectCommand(s3_url_params)
 			const response = {
-				key: s3_url_params['Key'],
-				url: signed_url
+				url: await getSignedUrl(s3, command, { expiresIn: expiration })
 			}
 			return new Response(JSON.stringify(response), {headers: headers})
 		}
