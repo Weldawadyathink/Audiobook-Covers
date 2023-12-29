@@ -1,13 +1,3 @@
-/**
- * Welcome to Cloudflare Workers! This is your first worker.
- *
- * - Run `npm run dev` in your terminal to start a development server
- * - Open a browser tab at http://localhost:8787/ to see your worker in action
- * - Run `npm run deploy` to publish your worker
- *
- * Learn more at https://developers.cloudflare.com/workers/
- */
-
 import { v1 as uuidv1 } from 'uuid';
 
 import algoliasearch from 'algoliasearch';
@@ -18,12 +8,24 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export default {
 	async fetch(request, env, ctx) {
+		if (request.method === 'OPTIONS') {
+			// Handle CORS preflight request.
+			return new Response('', {
+				headers: {
+					'Access-Control-Allow-Origin': '*',
+					'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+					'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+				}
+			});
+		}
+
 		const headers = {
 			'Content-Type': 'application/json',
 			'Access-Control-Allow-Origin': '*',
 			'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
 		}
 		const url = new URL(request.url)
+
 
 
 
@@ -52,11 +54,16 @@ export default {
 
 		if (url.pathname === '/upload/cover' || url.pathname === '/upload/cover/') {
 			const params = new URLSearchParams(url.search)
-			const source_url = new URL(params.get('source'))
+			let source_url
+			try{
+				source_url = new URL(params.get('source'))
+			} catch (_) {
+				return new Response('Improperly formatted source url', {status: 422, statusText: 'Improperly formatted source url', headers: headers})
+			}
 			const extension = params.get('extension')
 
 			if (source_url === '' || extension === ''){
-				return new Response('Missing url parameters', {status: 422, statusText: 'Missing url parameters'})
+				return new Response('Missing url parameters', {status: 422, statusText: 'Missing url parameters', headers: headers})
 			}
 
 			const index = get_algolia_index(env)
@@ -93,7 +100,7 @@ export default {
 
 
 
-		return new Response('404 not found', {status: 404, statusText: 'Not Found'})
+		return new Response('404 not found', {status: 404, statusText: 'Not Found', headers: headers})
 	},
 };
 
