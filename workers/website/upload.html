@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Upload Cover</title>
+</head>
+
+<body>
+    <form id="uploadForm">
+        <label for="sourceUrl">Source URL:</label>
+        <input type="text" id="sourceUrl" name="sourceUrl"><br><br>
+
+        <label for="fileExtension">File Extension:</label>
+        <select id="fileExtension" name="fileExtension">
+            <option value="jpg">.jpg</option>
+            <option value="png">.png</option>
+            <!-- Add other file extensions as needed -->
+        </select><br><br>
+
+        <label for="fileUpload">Select image:</label>
+        <input type="file" id="fileUpload" name="fileUpload"><br><br>
+
+        <button type="button" onclick="uploadCover()">Upload</button>
+    </form>
+
+    <script src="upload.js"></script>
+</body>
+
+</html>
