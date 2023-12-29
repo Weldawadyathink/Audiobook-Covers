@@ -8,7 +8,7 @@ import uuid
 
 
 
-def save_to_algolia(cover_id: uuid, cloud_vision_text: str, file_extension: str, hash: str, dry_run = False) -> bool:
+def save_to_algolia(cover_id: str, cloud_vision_text: str, file_extension: str, hash: str, source: str, dry_run = False) -> bool:
     """
     Saves an object to an Algolia search index.
 
@@ -22,7 +22,7 @@ def save_to_algolia(cover_id: uuid, cloud_vision_text: str, file_extension: str,
     Returns:
         bool: True if the object is saved to Algolia. False if the object ID already exists in the index.
     """
-    object_id = str(cover_id)
+    object_id = cover_id
     client = get_algolia_client()
     index = client.init_index('bookCoverIndex')
     
@@ -53,7 +53,8 @@ def save_to_algolia(cover_id: uuid, cloud_vision_text: str, file_extension: str,
             'objectID': object_id,
             'cloudVisionText': cloud_vision_text,
             'extension': file_extension,
-            'hash': hash
+            'hash': hash,
+            'source': source,
         })
         print(f"Saved {object_id} to algolia")
         return True
