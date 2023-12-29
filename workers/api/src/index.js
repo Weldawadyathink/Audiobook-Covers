@@ -8,9 +8,13 @@
  * Learn more at https://developers.cloudflare.com/workers/
  */
 
+import { v1 as uuidv1 } from 'uuid';
+
 import algoliasearch from 'algoliasearch';
 import { createFetchRequester } from '@algolia/requester-fetch';
+
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export default {
 	async fetch(request, env, ctx) {
@@ -32,21 +36,111 @@ export default {
 
 
 
-		const client = algoliasearch(env.ALGOLIA_APP_ID, env.ALGOLIA_SEARCH_KEY, {
-			requester: createFetchRequester(),
-		});
-		const index = client.initIndex('bookCoverIndex')
-
 		if (url.pathname === '/cover/bytext/' || url.pathname === '/cover/bytext') {
+			index = get_algolia_index(env)
 			const params = new URLSearchParams(url.search)
 			const searchString = params.get('q')
 			const hits = await index.search(searchString)
 			const response_list = generate_response_object(hits)
 			return new Response(JSON.stringify(response_list), {headers: headers})
 		}
+
+
+
+
+
+
+		if (url.pathname === '/upload/cover' || url.pathname === '/upload/cover/') {
+			const params = new URLSearchParams(url.search)
+			const source_url = new URL(params.get('source'))
+			const extension = params.get('extension')
+
+			if (source_url === '' || extension === ''){
+				return new Response('Missing url parameters', {status: 422, statusText: 'Missing url parameters'})
+			}
+
+			const index = get_algolia_index(env)
+			let unique = false
+			let newUUID = null
+			while (!unique) {
+				newUUID = uuidv1()
+				unique = await check_uuid_in_algolia(index, newUUID)
+				console.log(unique)
+				unique = true
+			}
+
+			const s3 = new S3Client({
+				region: "us-west-1",
+				credentials: {
+					accessKeyId: env.AWS_ACCESS_KEY_ID,
+					secretAccessKey: env.AWS_SECREST_ACCESS_KEY
+				}
+			})
+
+			const s3_url_params = {
+				Bucket: 'com-audiobookcovers-uploads',
+				Key: `${extension}|${newUUID}|${source_url}`,
+				ACL: 'bucket-owner-full-control'
+			}
+			const command = new GetObjectCommand(s3_url_params)
+			const signed_url = await getSignedUrl(s3, command, { expiresIn: 60*5 })
+			const response = {
+				key: s3_url_params['Key'],
+				url: signed_url
+			}
+			return new Response(response)
+		}
+
+
+
+
+
 		return new Response('404 not found', {status: 404, statusText: 'Not Found'})
 	},
 };
+
+
+
+
+async function check_uuid_in_algolia(index, uuid) {
+	/**
+     * Checks if a given UUID exists in the Algolia index.
+     * 
+     * @param {object} index - The Algolia index object.
+     * @param {string} uuid - The UUID to check.
+     * @returns {boolean} True if the UUID is valid and usable, false if it is a duplicate.
+     */
+	try{
+		const response = await index.getObject(uuid, {
+			attributesToRetrieve: ['objectID']
+		});
+	} catch(error) {
+		if (!error.message.includes("ObjectID does not exist")) {
+			throw error
+		} else {
+			// If it errors, uuid is not in index and therefore is valid
+			return true
+		}
+	}
+	// If error was not thrown, the uuid exists in the index, and therefore is not valid
+	return false
+}
+
+
+
+
+
+function get_algolia_index(env) {
+	const client = algoliasearch(env.ALGOLIA_APP_ID, env.ALGOLIA_SEARCH_KEY, {
+		requester: createFetchRequester(),
+	});
+	return client.initIndex('bookCoverIndex')
+}
+
+
+
+
+
 
 
 function generate_response_object(hits) {
@@ -78,6 +172,5 @@ function generate_response_object(hits) {
 			"source": "URL Source not yet implemented"
 		})
 	}
-	console.log(response_list)
 	return response_list
 }
