@@ -61,13 +61,14 @@ export default {
 				return new Response('Improperly formatted source url', {status: 422, statusText: 'Improperly formatted source url', headers: headers})
 			}
 			const extension = params.get('extension')
+			console.log(extension)
 			const mime_type = params.get('mime_type')
 
-			if (source_url === '' || extension === '' || mime_type === ''){
+			if (source_url === null || extension === null || mime_type === null){
 				return new Response('Missing url parameters', {status: 422, statusText: 'Missing url parameters', headers: headers})
 			}
 
-			valid_mime_types = [
+			const valid_mime_types = [
 				'image/png',
 				'image/jpeg',
 				'image/webp',
