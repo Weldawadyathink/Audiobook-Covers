@@ -65,15 +65,13 @@ export default {
 			while (!unique) {
 				newUUID = uuidv1()
 				unique = await check_uuid_in_algolia(index, newUUID)
-				console.log(unique)
-				unique = true
 			}
 
 			const s3 = new S3Client({
 				region: "us-west-1",
 				credentials: {
 					accessKeyId: env.AWS_ACCESS_KEY_ID,
-					secretAccessKey: env.AWS_SECREST_ACCESS_KEY
+					secretAccessKey: env.AWS_SECRET_ACCESS_KEY
 				}
 			})
 
@@ -88,7 +86,7 @@ export default {
 				key: s3_url_params['Key'],
 				url: signed_url
 			}
-			return new Response(response)
+			return new Response(JSON.stringify(response), {headers: headers})
 		}
 
 
