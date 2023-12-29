@@ -22,7 +22,7 @@ def save_to_algolia(cover_id: uuid, cloud_vision_text: str, file_extension: str,
     Returns:
         bool: True if the object is saved to Algolia. False if the object ID already exists in the index.
     """
-    object_id = str(cover_id.hex)
+    object_id = str(cover_id)
     client = get_algolia_client()
     index = client.init_index('bookCoverIndex')
     

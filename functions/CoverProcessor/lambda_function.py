@@ -23,7 +23,7 @@ def lambda_handler(event, context):
     failed_bucket = 'com-audiobookcovers-failed'
     cover_id = uuid1()
     file_extension = re.search(r'\.([^.]+)$', source_key).group(1)
-    new_s3_filename_base = cover_id.hex
+    new_s3_filename_base = str(cover_id)
     download_path = '/tmp/{}'.format(source_key)
     
     s3.download_file(source_bucket, source_key, download_path)
