@@ -88,7 +88,7 @@ export default {
 				ACL: 'bucket-owner-full-control'
 			}
 			const command = new GetObjectCommand(s3_url_params)
-			const signed_url = await getSignedUrl(s3, command, { expiresIn: 60*5 })
+			const signed_url = await getSignedUrl(s3, command, { expiresIn: 60*60 })
 			const response = {
 				key: s3_url_params['Key'],
 				url: signed_url
