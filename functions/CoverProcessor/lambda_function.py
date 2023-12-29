@@ -59,13 +59,20 @@ def save_all_image_versions(image: Image, s3: boto3.client, destination: str, fi
             match format:
                 case 'jpg':
                     image_bytes = get_jpeg_bytes(resized_image)
+                    content_type = 'image/jpeg'
                 case 'png':
                     image_bytes = get_png_bytes(resized_image)
+                    content_type = 'image/png'
                 case 'webp':
                     image_bytes = get_webp_bytes(resized_image)
+                    content_type = 'image/webp'
                 
-            s3.upload_fileobj(
-                Fileobj=io.BytesIO(image_bytes),
-                Bucket=destination,
-                Key=f'{format}/{size}/{filename_base}.{format}'
-            )
+            with io.BytesIO(image_bytes) as file_obj:
+                s3.upload_fileobj(
+                    Fileobj=file_obj,
+                    Bucket=destination,
+                    Key=f'{format}/{size}/{filename_base}.{format}',
+                    ExtraArgs={
+                        'ContentType': content_type,
+                    }
+                )
