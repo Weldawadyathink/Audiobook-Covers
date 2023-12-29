@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@algolia/requester-fetch": "^4.22.0",
+    "@aws-sdk/client-s3": "^3.481.0",
     "algoliasearch": "^4.22.0"
   }
 }

@@ -10,6 +10,7 @@
 
 import algoliasearch from 'algoliasearch';
 import { createFetchRequester } from '@algolia/requester-fetch';
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 
 export default {
 	async fetch(request, env, ctx) {
