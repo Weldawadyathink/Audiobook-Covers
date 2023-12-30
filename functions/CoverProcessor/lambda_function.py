@@ -23,7 +23,7 @@ def lambda_handler(event, context):
     file_extension, cover_id, source = source_key.split('|')
 
     new_s3_filename_base = cover_id
-    download_path = f'/tmp/{source_key}'
+    download_path = f'/tmp/{uuid1()}'
     
     s3.download_file(source_bucket, source_key, download_path)
     
