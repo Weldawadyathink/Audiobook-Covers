@@ -14,5 +14,5 @@ function.zip: $(DEPLOY_FILES)
 	@rm -f $(ZIP_FILE)
 	@zip -9 --quiet $(ZIP_FILE) *.py
 	@# Deploy included here to only deploy of changes are made
-	@tput setaf 75; echo "Deploying to AWS Lambda"
+	@echo "Deploying to AWS Lambda"
 	@aws lambda update-function-code --function-name $(FUNCTION_NAME) --zip-file fileb://$(ZIP_FILE) --publish --output text > /dev/null
