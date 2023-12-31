@@ -31,7 +31,12 @@ h1 {
   margin-bottom: 10px;
 }
 
-/* Navigation styles */
+
+
+
+
+
+/* Navigation bar styles */
 nav {
   align-self: stretch; /* Stretch nav to fit the width of the header */
   text-align: center; /* Center the links */
@@ -51,6 +56,11 @@ nav a {
 main {
   padding: 2rem;
 }
+
+
+
+
+
 
 /* Search container styles */
 .search-container {
@@ -146,8 +156,52 @@ main {
   transform: scale(1.05);
 }
 
+
+
+
+
+
+
 /* Source link styles */
 .source-link {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  padding: 0.3rem 0.5rem;
+  text-decoration: none;
+  color: #4caf50;
+  font-weight: bold;
+}
+
+.source-icon {
+  width: 64px;
+  height: 64px;
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+@media screen and (max-width: 600px) {
+  .source-icon {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+@media screen and (max-width: 400px) {
+  .source-icon {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+
+
+
+
+
+
+/* Share link styles */
+.share-link {
   position: absolute;
   top: 1rem;
   right: 1rem;
@@ -157,11 +211,72 @@ main {
   font-weight: bold;
 }
 
-.reddit-logo {
+.share-icon {
   width: 64px;
   height: 64px;
   margin-right: 0.5rem;
+  margin-top: 0.5rem;
 }
+
+@media screen and (max-width: 600px) {
+  .share-icon {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+@media screen and (max-width: 400px) {
+  .share-icon {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+
+
+
+
+
+
+/* Versions link styles */
+.versions-link {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  padding: 0.3rem 0.5rem;
+  text-decoration: none;
+  color: #4caf50;
+  font-weight: bold;
+}
+
+.versions-icon {
+  width: 64px;
+  height: 64px;
+  margin-left: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+@media screen and (max-width: 600px) {
+  .versions-icon {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+@media screen and (max-width: 400px) {
+  .versions-icon {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+
+
+
+
+
+
+
 
 /* Media queries for responsive design */
 @media screen and (max-width: 600px) {
@@ -175,19 +290,8 @@ main {
     max-width: 100%;
     height: auto;
   }
-
-  .reddit-logo {
-    width: 48px;
-    height: 48px;
-  }
 }
 
-@media screen and (max-width: 400px) {
-  .reddit-logo {
-    width: 32px;
-    height: 32px;
-  }
-}
 
 /* Search type wrapper styles */
 .search-type-wrapper {

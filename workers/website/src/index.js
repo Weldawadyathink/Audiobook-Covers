@@ -50,37 +50,94 @@ function displayResults(results) {
   }
 
   results.forEach((result) => {
-    const coverContainer = document.createElement("div")
-    coverContainer.className = "cover-container"
+    const coverContainer = document.createElement("div");
+    coverContainer.className = "cover-container";
 
-    const coverImage = document.createElement("img")
-    coverImage.src = result.small_filename
-    coverImage.className = "cover-image"
+    const coverImage = document.createElement("img");
+    coverImage.src = result.small_filename;
+    coverImage.className = "cover-image";
+    coverContainer.appendChild(coverImage);
 
-    coverImage.onclick = function () {
-      window.open(result.filename, "_blank")
-    }
+    // Source Link
 
-    const sourceLink = document.createElement("a")
-    sourceLink.href = result.source
-    sourceLink.className = "source-link"
-    sourceLink.target = "_blank"
+    const sourceLink = document.createElement("a");
+    sourceLink.href = result.source;
+    sourceLink.className = "source-link";
+    sourceLink.target = "_blank";
 
-    const redditLogo = document.createElement("img")
-    redditLogo.src = "reddit-logo.png"
-    redditLogo.alt = "Reddit Source"
-    redditLogo.className = "reddit-logo"
-    sourceLink.appendChild(redditLogo)
+    const sourceIcon = document.createElement("img");
+    sourceIcon.src = "dataset_linked.svg";
+    sourceIcon.alt = "Source";
+    sourceIcon.className = "source-icon";
+    sourceLink.appendChild(sourceIcon);
 
-    coverContainer.appendChild(coverImage)
-    coverContainer.appendChild(sourceLink)
-    resultsContainer.appendChild(coverContainer)
+    coverContainer.appendChild(sourceLink);
+
+
+
+
+    // Share Link
+
+    const shareLink = document.createElement("div");
+    shareLink.className = "share-link"
+    shareLink.addEventListener("click", () => copyToClipboard("https://google.com"))
+
+    const shareIcon = document.createElement("img");
+    shareIcon.src = "share.svg";
+    shareIcon.alt = "Get sharing link";
+    shareIcon.className = "share-icon";
+    shareLink.appendChild(shareIcon)
+
+    coverContainer.appendChild(shareLink)
+
+
+
+
+    // Versions Link
+
+    const versionsLink = document.createElement("div");
+    versionsLink.className = "versions-link"
+
+    const versionsIcon = document.createElement("img");
+    versionsIcon.src = "auto_awesome_motion.svg";
+    versionsIcon.alt = "Photo Versions";
+    versionsIcon.className = "versions-icon";
+    versionsLink.appendChild(versionsIcon)
+
+    coverContainer.appendChild(versionsLink)
+
+
+
+
+    // Apply to results container
+
+    resultsContainer.appendChild(coverContainer);
   })
 }
 
+
+
+
+
+
 function displayError(error) {
-  resultsContainer.innerHTML = ""
-  const errorMessage = document.createElement("p")
-  errorMessage.textContent = `An error occurred: ${error.message}`
-  resultsContainer.appendChild(errorMessage)
+  resultsContainer.innerHTML = "";
+  const errorMessage = document.createElement("p");
+  errorMessage.textContent = `An error occurred: ${error.message}`;
+  resultsContainer.appendChild(errorMessage);
 }
+
+
+
+
+
+
+
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    alert('Link copied to clipboard!');
+  }).catch(err => {
+    console.error('Failed to copy: ', err);
+  });
+}
+
