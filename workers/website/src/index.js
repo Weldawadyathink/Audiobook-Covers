@@ -19,9 +19,9 @@ async function search() {
 
   let apiUrl = ""
   if (selectedSearchType === "text") {
-    apiUrl = `https://api.audiobookcovers.com/cover/bytext/?q=${encodeURIComponent(query)}`
+    apiUrl = `https://dev.api.audiobookcovers.com/cover/bytext/?q=${encodeURIComponent(query)}`
   } else {
-    apiUrl = `https://api.audiobookcovers.com/cover/byredditpostid/?q=${encodeURIComponent(query)}`
+    apiUrl = `https://dev.api.audiobookcovers.com/cover/byredditpostid/?q=${encodeURIComponent(query)}`
   }
 
   try {
