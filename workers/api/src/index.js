@@ -39,7 +39,7 @@ export default {
 
 
 		if (url.pathname === '/cover/bytext/' || url.pathname === '/cover/bytext') {
-			index = get_algolia_index(env)
+			const index = get_algolia_index(env)
 			const params = new URLSearchParams(url.search)
 			const searchString = params.get('q')
 			const hits = await index.search(searchString)
