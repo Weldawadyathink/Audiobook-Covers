@@ -186,10 +186,6 @@ main {
   position: absolute;
   bottom: 1rem;
   right: 1rem;
-  padding: 0.3rem 0.5rem;
-  text-decoration: none;
-  color: #4caf50;
-  font-weight: bold;
 }
 
 .source-icon {
@@ -222,10 +218,6 @@ main {
   position: absolute;
   top: 1rem;
   right: 1rem;
-  padding: 0.3rem 0.5rem;
-  text-decoration: none;
-  color: #4caf50;
-  font-weight: bold;
 }
 
 .share-icon {
@@ -258,10 +250,6 @@ main {
   position: absolute;
   top: 1rem;
   left: 1rem;
-  padding: 0.3rem 0.5rem;
-  text-decoration: none;
-  color: #4caf50;
-  font-weight: bold;
 }
 
 .versions-icon {
