@@ -13,18 +13,46 @@
     </header>
 
     <nav>
-      <a href="about.html">About</a> |
-      <a href="upload.html">Upload</a>
+      <a href="index.html"><b>Home</b></a> | <a href="about.html">About</a> |
+      <a href="api.html">API</a>
     </nav>
 
     <main>
-      <section>
-        <h2>Welcome!</h2>
-        <p>
-          This is the homepage for our Image Management System. Learn more about
-          how we handle images or start uploading your own.
-        </p>
-      </section>
+      <div class="search-container">
+        <div class="search-type-wrapper">
+          <label class="search-type-label">
+            <input
+              type="radio"
+              name="search-type"
+              value="text"
+              checked
+              class="search-type-input"
+            />
+            <span class="search-type-pill">Image Text</span>
+          </label>
+          <label class="search-type-label">
+            <input
+              type="radio"
+              name="search-type"
+              value="reddit"
+              class="search-type-input"
+            />
+            <span class="search-type-pill">Reddit Post</span>
+          </label>
+        </div>
+        <div class="search-field-wrapper">
+          <input
+            type="text"
+            id="search-input"
+            placeholder="Search for audiobook covers..."
+          />
+          <button id="search-btn">Search</button>
+        </div>
+      </div>
+      <div class="results-wrapper">
+        <div id="results-container"></div>
+      </div>
     </main>
+    <script src="index.js"></script>
   </body>
 </html>

@@ -1,211 +1,225 @@
 .fira-code {
-    font-family: 'Fira Code', monospace;
-    font-feature-settings: 'liga' 1, 'calt' 1;
+  font-family: "Fira Code", monospace;
+  font-feature-settings: "liga" 1, "calt" 1;
 }
 
 body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-    line-height: 1.6;
-    background-color: #222;
-    color: #fff;
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  line-height: 1.6;
+  background-color: #222;
+  color: #fff;
 }
 
 header {
-    background-color: #4caf50;
-    color: #fff;
-    text-align: center;
-    padding: 1rem;
+  display: flex;
+  /* Make the header a flex container */
+  flex-direction: column;
+  /* Stack children vertically */
+  align-items: center;
+  /* Center items horizontally */
+  justify-content: space-between;
+  /* Distribute space between children */
+  background-color: #4caf50;
+  color: #fff;
+  text-align: center;
+  padding: 1rem;
 }
 
 h1 {
-    margin-bottom: 0;
+  margin-bottom: 10px;
 }
 
 /* Navigation styles */
 nav {
-    margin-top: 1rem;
+  align-self: stretch; /* Stretch nav to fit the width of the header */
+  text-align: center; /* Center the links */
+  background-color: #3e8e41; /* Slightly darker green for visual separation */
+  padding: 0.5rem 0; /* Add some padding */
 }
 
 nav a {
-    color: #fff;
-    text-decoration: none;
+  color: #fff;
+  text-decoration: none;
+  padding: 0 15px; /* Add horizontal padding */
+  line-height: 2; /* Increase line height for vertical spacing */
+  display: inline; /* Display links in a line */
 }
 
 /* Main content styles */
 main {
-    padding: 2rem;
+  padding: 2rem;
 }
 
 /* Search container styles */
 .search-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2rem;
 }
 
 .search-field-wrapper {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-top: 1rem;
-    width: 80%;
-    max-width: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1rem;
+  width: 80%;
+  max-width: 500px;
 }
 
 /* Search input styles */
 #search-input {
-    width: 100%;
-    padding: 0.5rem 1.5rem;
-    font-size: 1.2rem;
-    border: none;
-    border-radius: 25px;
-    background-color: #333;
-    color: #fff;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    transition: box-shadow 0.3s ease;
+  width: 100%;
+  padding: 0.5rem 1.5rem;
+  font-size: 1.2rem;
+  border: none;
+  border-radius: 25px;
+  background-color: #333;
+  color: #fff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.3s ease;
 }
 
 #search-input:focus {
-    outline: none;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  outline: none;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 /* Search button styles */
 #search-btn {
-    background-color: #4caf50;
-    color: #fff;
-    border: none;
-    padding: 0.5rem 1rem;
-    margin-left: 1rem;
-    cursor: pointer;
-    border-radius: 25px;
-    font-size: 1.2rem;
-    transition: transform 0.3s ease;
+  background-color: #4caf50;
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1rem;
+  margin-left: 1rem;
+  cursor: pointer;
+  border-radius: 25px;
+  font-size: 1.2rem;
+  transition: transform 0.3s ease;
 }
 
 #search-btn:hover {
-    transform: scale(1.1);
+  transform: scale(1.1);
 }
 
 /* Results wrapper styles */
 .results-wrapper {
-    display: flex;
-    justify-content: center;
-    margin-top: 2rem;
+  display: flex;
+  justify-content: center;
+  margin-top: 2rem;
 }
 
 #results-container {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 /* Cover container styles */
 .cover-container {
-    width: 500px;
-    height: 500px;
-    margin: 0.5rem;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: #333;
-    overflow: hidden;
-    border-radius: 15px;
-    box-shadow: 0px 2px 2px rgba(0, 0, 0, 0.2);
-    transition: transform 0.3s ease-in-out;
+  width: 500px;
+  height: 500px;
+  margin: 0.5rem;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #333;
+  overflow: hidden;
+  border-radius: 15px;
+  box-shadow: 0px 2px 2px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease-in-out;
 }
 
 .cover-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s ease-in-out;
-    border-radius: 5px;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease-in-out;
+  border-radius: 5px;
 }
 
 .cover-container:hover {
-    transform: scale(1.05);
+  transform: scale(1.05);
 }
 
 /* Source link styles */
 .source-link {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    padding: 0.3rem 0.5rem;
-    text-decoration: none;
-    color: #4caf50;
-    font-weight: bold;
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  padding: 0.3rem 0.5rem;
+  text-decoration: none;
+  color: #4caf50;
+  font-weight: bold;
 }
 
 .reddit-logo {
-    width: 64px;
-    height: 64px;
-    margin-right: 0.5rem;
+  width: 64px;
+  height: 64px;
+  margin-right: 0.5rem;
 }
 
 /* Media queries for responsive design */
 @media screen and (max-width: 600px) {
-    .cover-container {
-        width: 90%;
-        height: auto;
-        margin: 0.5rem 0;
-    }
+  .cover-container {
+    width: 90%;
+    height: auto;
+    margin: 0.5rem 0;
+  }
 
-    .cover-image {
-        max-width: 100%;
-        height: auto;
-    }
+  .cover-image {
+    max-width: 100%;
+    height: auto;
+  }
 
-    .reddit-logo {
-        width: 48px;
-        height: 48px;
-    }
+  .reddit-logo {
+    width: 48px;
+    height: 48px;
+  }
 }
 
 @media screen and (max-width: 400px) {
-    .reddit-logo {
-        width: 32px;
-        height: 32px;
-    }
+  .reddit-logo {
+    width: 32px;
+    height: 32px;
+  }
 }
 
 /* Search type wrapper styles */
 .search-type-wrapper {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
 }
 
 .search-type-label {
-    margin: 0.5rem;
+  margin: 0.5rem;
 }
 
 .search-type-input {
-    display: none;
+  display: none;
 }
 
 .search-type-pill {
-    display: inline-block;
-    padding: 0.5rem 1rem;
-    border-radius: 25px;
-    background-color: #333;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    transition: background-color 0.3s ease, transform 0.3s ease;
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border-radius: 25px;
+  background-color: #333;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s ease, transform 0.3s ease;
 }
 
-.search-type-input:checked+.search-type-pill {
-    background-color: #4caf50;
-    transform: scale(1.1);
+.search-type-input:checked + .search-type-pill {
+  background-color: #4caf50;
+  transform: scale(1.1);
 }
 
 /* Add this rule to remove the outline when the input is focused */
-.search-type-input:focus+.search-type-pill {
-    outline: none;
+.search-type-input:focus + .search-type-pill {
+  outline: none;
 }
