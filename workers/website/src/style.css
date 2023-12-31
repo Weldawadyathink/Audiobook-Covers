@@ -156,6 +156,25 @@ main {
   transform: scale(1.05);
 }
 
+.card {
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+  cursor: pointer;
+}
+
+.cover-container.flipped .card {
+  transform: rotateY(180deg);
+}
+
+.back {
+  transform: rotateY(180deg);
+}
+
+.front, .back {
+  backface-visibility: hidden;
+}
+
+
 
 
 

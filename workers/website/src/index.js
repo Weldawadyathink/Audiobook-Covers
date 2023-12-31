@@ -53,10 +53,28 @@ function displayResults(results) {
     const coverContainer = document.createElement("div");
     coverContainer.className = "cover-container";
 
+    // Card
+    const card = document.createElement("div");
+    card.className = "card";
+
+    // Card front
+    const front = document.createElement("div");
+    front.className = "front"
+
+    // Card back
+    const back = document.createElement("div");
+    back.className = "back"
+
+    // Add image
     const coverImage = document.createElement("img");
     coverImage.src = result.small_filename;
     coverImage.className = "cover-image";
-    coverContainer.appendChild(coverImage);
+    front.appendChild(coverImage);
+
+
+
+
+
 
     // Source Link
 
@@ -71,7 +89,7 @@ function displayResults(results) {
     sourceIcon.className = "source-icon";
     sourceLink.appendChild(sourceIcon);
 
-    coverContainer.appendChild(sourceLink);
+    front.appendChild(sourceLink);
 
 
 
@@ -80,7 +98,7 @@ function displayResults(results) {
 
     const shareLink = document.createElement("div");
     shareLink.className = "share-link"
-    shareLink.addEventListener("click", () => copyToClipboard("https://google.com"))
+    shareLink.addEventListener("click", () => copyToClipboard("https://google.com"));
 
     const shareIcon = document.createElement("img");
     shareIcon.src = "share.svg";
@@ -88,7 +106,7 @@ function displayResults(results) {
     shareIcon.className = "share-icon";
     shareLink.appendChild(shareIcon)
 
-    coverContainer.appendChild(shareLink)
+    front.appendChild(shareLink)
 
 
 
@@ -97,6 +115,7 @@ function displayResults(results) {
 
     const versionsLink = document.createElement("div");
     versionsLink.className = "versions-link"
+    versionsLink.addEventListener("click", (event) => flipCard(event.target));
 
     const versionsIcon = document.createElement("img");
     versionsIcon.src = "auto_awesome_motion.svg";
@@ -104,15 +123,34 @@ function displayResults(results) {
     versionsIcon.className = "versions-icon";
     versionsLink.appendChild(versionsIcon)
 
-    coverContainer.appendChild(versionsLink)
+    front.appendChild(versionsLink)
 
 
 
 
     // Apply to results container
-
+    card.appendChild(front);
+    card.appendChild(back);
+    coverContainer.appendChild(card);
     resultsContainer.appendChild(coverContainer);
   })
+}
+
+
+
+
+
+
+function flipCard(target) {
+    const classToFlip = "cover-container";
+    let element = target;
+    while (element && element !== document.body) {
+        if (element.classList.contains(classToFlip)) {
+            element.classList.toggle("flipped")
+            return
+        }
+        element = element.parentElement;
+    }
 }
 
 
