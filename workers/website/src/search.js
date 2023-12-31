@@ -67,7 +67,7 @@ function displayResults(results) {
 
     // Add image
     const coverImage = document.createElement("img");
-    coverImage.src = result.small_filename;
+    coverImage.src = result.versions.webp["1000"];
     coverImage.className = "cover-image";
     front.appendChild(coverImage);
 
@@ -134,6 +134,17 @@ function displayResults(results) {
     coverContainer.appendChild(card);
     resultsContainer.appendChild(coverContainer);
   })
+}
+
+
+
+
+
+
+function downloadFile(url) {
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = 
 }
 
 
