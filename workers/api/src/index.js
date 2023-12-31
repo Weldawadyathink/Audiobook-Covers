@@ -53,6 +53,24 @@ export default {
 
 
 		if (url.pathname === '/upload/cover' || url.pathname === '/upload/cover/') {
+			const valid_auth = 'Basic ' + btoa(env.UPLOAD_USERNAME + ':' + env.UPLOAD_PASSWORD);
+			const authHeader = request.headers.get('Authorization');
+
+			if (!authHeader || authHeader !== valid_auth) {
+				return new Response('Unauthorized', {
+				status: 401,
+				headers: {
+					'WWW-Authenticate': 'Basic realm="my realm"',
+				},
+				});
+			}
+
+			return new Response('working', {status: 200})
+
+
+			return new Response('404', {status: 404});
+
+
 			const params = new URLSearchParams(url.search)
 			let source_url
 			try{

@@ -31,7 +31,18 @@ async function uploadCover() {
         return;
     }
 
-    const status = await upload_to_s3(file, sourceUrl);
+    const username = prompt("Please enter your username:");
+    const password = prompt("Please enter your password:");
+
+    if (!username || !password) {
+        alert("Username and password are required for authentication.");
+        throw new Error("Authentication credentials not provided.");
+    }
+
+    const credentials = btoa(`${username}:${password}`);
+
+
+    const status = await upload_to_s3(file, sourceUrlm credentials);
     alert(status);
 }
 
@@ -39,11 +50,14 @@ async function uploadCover() {
 
 
 
-async function get_presigned_url(source, extension, mime_type) {
+async function get_presigned_url(source, extension, mime_type, credentials) {
     const url = `https://dev.api.audiobookcovers.com/upload/cover?extension=${extension}&source=${encodeURIComponent(source)}&mime_type=${mime_type}`;
     const requestOptions = {
         method: 'GET',
-        redirect: 'follow'
+        redirect: 'follow',
+        headers: new Headers({
+            "Authorization": `Basic ${credentials}`
+        }),
     };
     return fetch(url, requestOptions)
         .then(response => {
@@ -60,12 +74,12 @@ async function get_presigned_url(source, extension, mime_type) {
 
 
 
-async function upload_to_s3(file, source) {
+async function upload_to_s3(file, source, credentials) {
 
     // Get pre-signed url
     const mime_type = file.type;
     const fileExtension = file.name.split('.').pop();
-    const signed_url = await get_presigned_url(source, fileExtension, mime_type);
+    const signed_url = await get_presigned_url(source, fileExtension, mime_type, credentials);
 
 
     // Upload to pre-signed url
