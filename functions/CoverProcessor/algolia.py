@@ -30,8 +30,8 @@ def save_to_algolia(cover_id: str, cloud_vision_text: str, file_extension: str, 
     try:
         index.get_object(object_id)
         # We want the object to not exist. If it does, it raises RequestException and continues. 
-        # If not, we raise ValueError. 
-        raise ValueError("Object ID already exists.")
+        # If not, we return False
+        return False
     except RequestException as e:
         pass
     

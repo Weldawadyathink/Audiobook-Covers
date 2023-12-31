@@ -24,7 +24,6 @@ def get_image_text(image_bytes):
     returnval = texts[0].description
     returnval = returnval.lower()
     returnval = re.sub(r'\n', ' ', returnval)
-    print(f'Google Vision API Result: {returnval}')
     return returnval
 
 
