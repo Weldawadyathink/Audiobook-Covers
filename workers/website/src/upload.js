@@ -42,7 +42,7 @@ async function uploadCover() {
     const credentials = btoa(`${username}:${password}`);
 
 
-    const status = await upload_to_s3(file, sourceUrlm credentials);
+    const status = await upload_to_s3(file, sourceUrlm, credentials);
     alert(status);
 }
 
