@@ -204,7 +204,7 @@ function generate_response_object(hits) {
 					"original": `${base_download_url}/png/original/${hit["objectID"]}.png`
 				}
 			},
-			"source": "URL Source not yet implemented"
+			"source": hit["source"]
 		})
 	}
 	return response_list
