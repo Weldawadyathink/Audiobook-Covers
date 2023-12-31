@@ -65,12 +65,6 @@ export default {
 				});
 			}
 
-			return new Response('working', {status: 200})
-
-
-			return new Response('404', {status: 404});
-
-
 			const params = new URLSearchParams(url.search)
 			let source_url
 			try{
