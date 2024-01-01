@@ -155,7 +155,6 @@ function flipCard(target) {
         element = element.parentElement;
     }
     const elementsToFlip = new Set([element, ...document.querySelectorAll(".can_be_flipped.flipped")]);
-    console.log(elementsToFlip)
     elementsToFlip.forEach((element) => {
         element.classList.toggle("flipped");
     });
