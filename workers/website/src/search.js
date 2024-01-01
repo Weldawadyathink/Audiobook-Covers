@@ -74,7 +74,6 @@ function displayResults(results) {
 
 
     // Source Link
-
     const sourceLink = document.createElement("a");
     sourceLink.href = result.source;
     sourceLink.className = "corner_bottom_right";
@@ -91,8 +90,8 @@ function displayResults(results) {
 
 
 
-    // Share Link
 
+    // Share Link
     const shareLink = document.createElement("img");
     shareLink.className = "corner_bottom_left";
     shareLink.addEventListener("click", () => copyToClipboard("https://google.com"));
@@ -105,12 +104,10 @@ function displayResults(results) {
 
 
     // Back of card
-
     const back = document.createElement("div");
     back.className = "back fill_cover rounded";
 
     // Back button
-
     const backButton = document.createElement("img");
     backButton.className = "corner_top_left"
     backButton.addEventListener("click", (event) => flipCard(event.target))
@@ -119,6 +116,7 @@ function displayResults(results) {
     back.appendChild(backButton);
 
 
+    
 
 
     // Apply to results container
