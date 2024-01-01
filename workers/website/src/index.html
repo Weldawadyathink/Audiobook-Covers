@@ -53,32 +53,37 @@
         <div id="results-container"></div>
       </div>
 
-      <div id="download_selection_window" style>
-        <div class="download_format_selection">
-          <input type="radio" id="radio_download_format_jpeg" name="radio_download_format" value="jpeg" checked />
-          <label for="radio_download_format_jpeg" class="radio_pill">jpeg</label>
+      <div id="download_selection_window">
+        <div id="download_options_container">
+          <div id="download_format_selection">
+            <input type="radio" id="radio_download_format_jpeg" name="radio_download_format" value="jpeg" checked />
+            <label for="radio_download_format_jpeg" class="radio_pill">jpeg</label>
 
-          <input type="radio" id="radio_download_format_png" name="radio_download_format" value="png" />
-          <label for="radio_download_format_png" class="radio_pill">png</label>
+            <input type="radio" id="radio_download_format_png" name="radio_download_format" value="png" />
+            <label for="radio_download_format_png" class="radio_pill">png</label>
 
-          <input type="radio" id="radio_download_format_webp" name="radio_download_format" value="webp" />
-          <label for="radio_download_format_webp" class="radio_pill">webp</label>
+            <input type="radio" id="radio_download_format_webp" name="radio_download_format" value="webp" />
+            <label for="radio_download_format_webp" class="radio_pill">webp</label>
 
-          <input type="radio" id="radio_download_format_original" name="radio_download_format" value="original" />
-          <label for="radio_download_format_original" class="radio_pill">Original</label>
+            <input type="radio" id="radio_download_format_original" name="radio_download_format" value="original" />
+            <label for="radio_download_format_original" class="radio_pill">Original</label>
+          </div>
+          <div id="download_size_selection">
+            <input type="radio" id="radio_download_size_200" name="radio_download_size" value="200" />
+            <label for="radio_download_size_200" class="radio_pill">Small</label>
+
+            <input type="radio" id="radio_download_size_500" name="radio_download_size" value="500" />
+            <label for="radio_download_size_500" class="radio_pill">Medium</label>
+
+            <input type="radio" id="radio_download_size_1000" name="radio_download_size" value="1000" checked />
+            <label for="radio_download_size_1000" class="radio_pill">Large</label>
+
+            <input type="radio" id="radio_download_size_original" name="radio_download_size" value="original" />
+            <label for="radio_download_size_original" class="radio_pill">Full Size</label>
+          </div>
         </div>
-        <div class="download_size_selection">
-          <input type="radio" id="radio_download_size_200" name="radio_download_size" value="200" />
-          <label for="radio_download_size_200" class="radio_pill">Small</label>
-
-          <input type="radio" id="radio_download_size_500" name="radio_download_size" value="500" />
-          <label for="radio_download_size_500" class="radio_pill">Medium</label>
-
-          <input type="radio" id="radio_download_size_1000" name="radio_download_size" value="1000" checked />
-          <label for="radio_download_size_1000" class="radio_pill">Large</label>
-
-          <input type="radio" id="radio_download_size_original" name="radio_download_size" value="original" />
-          <label for="radio_download_size_original" class="radio_pill">Full Size</label>
+        <div id="download_button_container">
+          <button id="download_button">Download</button>
         </div>
       </div>
     </main>
