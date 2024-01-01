@@ -173,7 +173,7 @@ function get_algolia_index(env) {
 
 
 function generate_response_object(hits) {
-	const base_download_url = "https://download-v2.audiobookcovers.com"
+	const base_download_url = 'https://download.dev.audiobookcovers.com';
 	let response_list = []
 	for (const hit of hits["hits"]) {
 		response_list.push({
