@@ -93,15 +93,11 @@ function displayResults(results) {
 
     // Share Link
 
-    const shareLink = document.createElement("div");
+    const shareLink = document.createElement("img");
     shareLink.className = "corner_bottom_left";
     shareLink.addEventListener("click", () => copyToClipboard("https://google.com"));
-
-    const shareIcon = document.createElement("img");
-    shareIcon.src = "share.svg";
-    shareIcon.alt = "Get sharing link";
-    shareIcon.className = "fill_cover";
-    shareLink.appendChild(shareIcon);
+    shareLink.src = "share.svg";
+    shareLink.alt = "Get sharing link";
 
     front.appendChild(shareLink);
 
