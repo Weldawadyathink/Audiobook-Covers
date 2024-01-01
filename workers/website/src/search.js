@@ -68,7 +68,7 @@ function displayResults(results) {
     // Add image
     const coverImage = document.createElement("img");
     coverImage.src = result.versions.webp["1000"];
-    coverImage.className = "cover-image";
+    coverImage.className = "fill_cover cover-image";
     front.appendChild(coverImage);
 
 
@@ -80,13 +80,13 @@ function displayResults(results) {
 
     const sourceLink = document.createElement("a");
     sourceLink.href = result.source;
-    sourceLink.className = "source-link";
+    sourceLink.className = "corner_bottom_left";
     sourceLink.target = "_blank";
 
     const sourceIcon = document.createElement("img");
     sourceIcon.src = "dataset_linked.svg";
     sourceIcon.alt = "Source";
-    sourceIcon.className = "source-icon";
+    sourceIcon.className = "fill_cover";
     sourceLink.appendChild(sourceIcon);
 
     front.appendChild(sourceLink);
@@ -97,13 +97,13 @@ function displayResults(results) {
     // Share Link
 
     const shareLink = document.createElement("div");
-    shareLink.className = "share-link"
+    shareLink.className = "corner_top_right"
     shareLink.addEventListener("click", () => copyToClipboard("https://google.com"));
 
     const shareIcon = document.createElement("img");
     shareIcon.src = "share.svg";
     shareIcon.alt = "Get sharing link";
-    shareIcon.className = "share-icon";
+    shareIcon.className = "fill_cover";
     shareLink.appendChild(shareIcon)
 
     front.appendChild(shareLink)
@@ -114,16 +114,27 @@ function displayResults(results) {
     // Versions Link
 
     const versionsLink = document.createElement("div");
-    versionsLink.className = "versions-link"
+    versionsLink.className = "corner_bottom_right"
     versionsLink.addEventListener("click", (event) => flipCard(event.target));
 
     const versionsIcon = document.createElement("img");
     versionsIcon.src = "auto_awesome_motion.svg";
     versionsIcon.alt = "Photo Versions";
-    versionsIcon.className = "versions-icon";
+    versionsIcon.className = "fill_cover";
     versionsLink.appendChild(versionsIcon)
 
     front.appendChild(versionsLink)
+
+
+
+
+    // Back of card
+
+    // Back button
+
+    // const backButton = document.createElement("div");
+    // backButton.className = "back_button corner_icon top_left dynamic_size"
+    // backButton.addEventListener("click", (event) => flipCard(event.target))
 
 
 
