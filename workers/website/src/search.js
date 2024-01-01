@@ -1,6 +1,6 @@
 const searchInput = document.getElementById("search-input")
 const searchBtn = document.getElementById("search-btn")
-const resultsContainer = document.getElementById("results-container")
+const allResultsContainer = document.getElementById("results-container")
 const searchTypeInputs = document.querySelectorAll(".search-type-input")
 
 searchBtn.addEventListener("click", search)
@@ -40,35 +40,32 @@ async function search() {
 
 
 function displayResults(results) {
-  resultsContainer.innerHTML = ""
+  allResultsContainer.innerHTML = ""
 
   if (results.length === 0) {
     const noResultsMessage = document.createElement("p")
     noResultsMessage.textContent = "No results found."
-    resultsContainer.appendChild(noResultsMessage)
+    allResultsContainer.appendChild(noResultsMessage)
     return
   }
 
   results.forEach((result) => {
-    const coverContainer = document.createElement("div");
-    coverContainer.className = "cover-container";
+    const resultContainer = document.createElement("div");
+    resultContainer.className = "result_container";
 
     // Card
     const card = document.createElement("div");
-    card.className = "card";
+    card.className = "card fill_cover rounded can_be_flipped";
 
     // Card front
     const front = document.createElement("div");
-    front.className = "front"
-
-    // Card back
-    const back = document.createElement("div");
-    back.className = "back"
+    front.className = "front fill_cover rounded";
 
     // Add image
     const coverImage = document.createElement("img");
     coverImage.src = result.versions.webp["1000"];
-    coverImage.className = "fill_cover cover-image";
+    coverImage.className = "fill_cover rounded";
+    coverImage.addEventListener("click", (event) => flipCard(event.target));
     front.appendChild(coverImage);
 
 
@@ -80,7 +77,7 @@ function displayResults(results) {
 
     const sourceLink = document.createElement("a");
     sourceLink.href = result.source;
-    sourceLink.className = "corner_bottom_left";
+    sourceLink.className = "corner_bottom_right";
     sourceLink.target = "_blank";
 
     const sourceIcon = document.createElement("img");
@@ -97,7 +94,7 @@ function displayResults(results) {
     // Share Link
 
     const shareLink = document.createElement("div");
-    shareLink.className = "corner_top_right"
+    shareLink.className = "corner_bottom_left"
     shareLink.addEventListener("click", () => copyToClipboard("https://google.com"));
 
     const shareIcon = document.createElement("img");
@@ -111,30 +108,16 @@ function displayResults(results) {
 
 
 
-    // Versions Link
-
-    const versionsLink = document.createElement("div");
-    versionsLink.className = "corner_bottom_right"
-    versionsLink.addEventListener("click", (event) => flipCard(event.target));
-
-    const versionsIcon = document.createElement("img");
-    versionsIcon.src = "auto_awesome_motion.svg";
-    versionsIcon.alt = "Photo Versions";
-    versionsIcon.className = "fill_cover";
-    versionsLink.appendChild(versionsIcon)
-
-    front.appendChild(versionsLink)
-
-
-
-
     // Back of card
+
+    const back = document.createElement("div");
+    back.className = "back fill_cover rounded"
 
     // Back button
 
-    // const backButton = document.createElement("div");
-    // backButton.className = "back_button corner_icon top_left dynamic_size"
-    // backButton.addEventListener("click", (event) => flipCard(event.target))
+    const backButton = document.createElement("div");
+    backButton.className = "corner_top_right"
+    backButton.addEventListener("click", (event) => flipCard(event.target))
 
 
 
@@ -142,8 +125,8 @@ function displayResults(results) {
     // Apply to results container
     card.appendChild(front);
     card.appendChild(back);
-    coverContainer.appendChild(card);
-    resultsContainer.appendChild(coverContainer);
+    resultContainer.appendChild(card);
+    allResultsContainer.appendChild(resultContainer);
   })
 }
 
@@ -167,15 +150,16 @@ function downloadFile(url) {
 
 
 function flipCard(target) {
-    const classToFlip = "cover-container";
+    const classToFlip = "can_be_flipped";
     let element = target;
-    while (element && element !== document.body) {
-        if (element.classList.contains(classToFlip)) {
-            element.classList.toggle("flipped")
-            return
-        }
+    while (element && element !== document.body && !element.classList.contains(classToFlip)) {
         element = element.parentElement;
     }
+    const elementsToFlip = [element, ...document.querySelectorAll(".can_be_flipped.flipped")];
+    console.log(elementsToFlip)
+    elementsToFlip.forEach((element) => {
+        element.classList.toggle("flipped");
+    });
 }
 
 
@@ -184,10 +168,10 @@ function flipCard(target) {
 
 
 function displayError(error) {
-  resultsContainer.innerHTML = "";
+  allResultsContainer.innerHTML = "";
   const errorMessage = document.createElement("p");
   errorMessage.textContent = `An error occurred: ${error.message}`;
-  resultsContainer.appendChild(errorMessage);
+  allResultsContainer.appendChild(errorMessage);
 }
 
 
