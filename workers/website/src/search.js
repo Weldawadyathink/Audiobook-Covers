@@ -168,9 +168,9 @@ document.getElementById("download_button").addEventListener("click", () => {
   }
 
   if (download_format === "original") {
-    browser.downloads.download(dataset_element.dataset.original);
+    downloadFile(dataset_element.dataset.original);
   } else {
-    browser.downloads.download(
+    downloadFile(
       dataset_element.dataset[`${download_format}_${download_size}`]
     );
   }
