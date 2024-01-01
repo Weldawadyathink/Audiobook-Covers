@@ -11,6 +11,30 @@ searchInput.addEventListener("keydown", (event) => {
   }
 });
 
+function download_options_limiter() {
+  const download_format_input = document.querySelector(
+    "input[name='radio_download_format']:checked"
+  );
+  if (download_format_input.value === "original") {
+    document.getElementById("radio_download_size_original").checked = true;
+    document.getElementById("radio_download_size_200").disabled = true;
+    document.getElementById("radio_download_size_500").disabled = true;
+    document.getElementById("radio_download_size_1000").disabled = true;
+  } else {
+    document.getElementById("radio_download_size_200").disabled = false;
+    document.getElementById("radio_download_size_500").disabled = false;
+    document.getElementById("radio_download_size_1000").disabled = false;
+  }
+}
+
+document
+  .querySelectorAll(
+    'input[type="radio"][name="radio_download_format"], input[type="radio"][name="radio_download_size"]'
+  )
+  .forEach((button) =>
+    button.addEventListener("click", download_options_limiter)
+  );
+
 async function search() {
   let query = searchInput.value;
   const selectedSearchType = Array.from(searchTypeInputs).find(

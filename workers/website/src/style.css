@@ -31,6 +31,12 @@ h1 {
   margin-bottom: 10px;
 }
 
+input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    z-index: -1; /* Places the input behind the label */
+}
+
 
 
 
@@ -44,6 +50,43 @@ main > #download_selection_window {
 .back > #download_selection_window {
   visibility: visible;
 }
+
+.download_size_selection {
+  width: 50%;
+  height: 100%;
+  float: left;
+  display: flex;
+  flex-direction: column;
+}
+
+.download_format_selection {
+  width: 50%;
+  height: 100%;
+  float: left;
+  display: flex;
+  flex-direction: column;
+}
+
+input[type="radio"]:checked + .radio_pill {
+  background-color: #4caf50;
+}
+
+input[type="radio"]:disabled + .radio_pill {
+  background-color: #af7d4c;
+}
+
+.radio_pill {
+  background-color: #606060;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  border-radius: 25px;
+  font-size: 1.2rem;
+  margin: 1em 1em 0;
+  padding: 0.5em;
+  text-align: center;
+}
+
 
 
 
@@ -180,30 +223,9 @@ main {
   position: absolute;
 }
 
-
-
-
-
 .rounded {
   border-radius: 25px;
 }
-
-
-
-
-
-.transparent_to_click {
-  pointer-events: none;
-}
-
-
-
-
-
-
-
-
-
 
 .fill_cover {
   width: 100%;
