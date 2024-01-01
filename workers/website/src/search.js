@@ -188,7 +188,11 @@ document.getElementById("download_button").addEventListener("click", () => {
     file_addition = "_full";
   }
   const file_name = `${id}${file_addition}.${extension}`;
-  downloadFile(url, file_name);
+
+  fetch(url)
+    .then((response) => response.blob())
+    .then((blob) => downloadFile(blob, file_name))
+    .catch(console.error);
 });
 
 function downloadFile(data, filename, mime, bom) {
