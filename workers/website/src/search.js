@@ -171,7 +171,7 @@ document.getElementById("download_button").addEventListener("click", () => {
   if (download_format === "original") {
     url = dataset_element.dataset.original;
   } else {
-    url = dataset_element.dataset.original;
+    url = dataset_element.dataset[`${download_format}_${download_size}`];
   }
   const server_file_name = url.split("/").pop();
   const [id, extension] = server_file_name.split(".");
