@@ -53,12 +53,32 @@
         <div id="results-container"></div>
       </div>
 
-      <div class="download_selection_window" style>
+      <div id="download_selection_window" style>
         <div class="download_format_selection">
-          <p>Hi there</p>
+          <input type="radio" id="radio_download_format_jpeg" name="radio_download_format" value="jpeg" checked />
+          <label for="radio_download_format_jpeg">jpeg</label>
+
+          <input type="radio" id="radio_download_format_png" name="radio_download_format" value="png" />
+          <label for="radio_download_format_png">png</label>
+
+          <input type="radio" id="radio_download_format_webp" name="radio_download_format" value="webp" />
+          <label for="radio_download_format_webp">webp</label>
+
+          <input type="radio" id="radio_download_format_original" name="radio_download_format" value="original" />
+          <label for="radio_download_format_original">webp</label>
         </div>
         <div class="download_size_selection">
+          <input type="radio" id="radio_download_size_200" name="radio_download_size" value="200" />
+          <label for="radio_download_size_200">200px</label>
 
+          <input type="radio" id="radio_download_size_500" name="radio_download_size" value="500" />
+          <label for="radio_download_size_500">500px</label>
+
+          <input type="radio" id="radio_download_size_1000" name="radio_download_size" value="1000" checked />
+          <label for="radio_download_size_1000">1000px</label>
+
+          <input type="radio" id="radio_download_size_original" name="radio_download_size" value="original" />
+          <label for="radio_download_size_original">Full Size</label>
         </div>
       </div>
     </main>

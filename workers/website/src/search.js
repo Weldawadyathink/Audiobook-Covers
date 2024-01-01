@@ -127,7 +127,7 @@ function flipCard(target) {
   ) {
     element = element.parentElement;
   }
-  const download_form = document.querySelector("div.download_selection_window");
+  const download_form = document.querySelector("#download_selection_window");
   const card_back = element.querySelector("div.back");
   card_back.appendChild(download_form);
   const elementsToFlip = new Set([

@@ -36,12 +36,12 @@ h1 {
 
 
 /* Hide download selectors when not in use */
-main > div.download_selection_window {
+main > #download_selection_window {
   visibility: hidden;
 }
 
 /* Show download selectors when needed */
-.back > div.download_selection_window {
+.back > #download_selection_window {
   visibility: visible;
 }
 
