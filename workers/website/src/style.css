@@ -35,6 +35,20 @@ h1 {
 
 
 
+/* Hide download selectors when not in use */
+main > div.download_selection_window {
+  visibility: hidden;
+}
+
+/* Show download selectors when needed */
+.back > div.download_selection_window {
+  visibility: visible;
+}
+
+
+
+
+
 
 /* Navigation bar styles */
 nav {
