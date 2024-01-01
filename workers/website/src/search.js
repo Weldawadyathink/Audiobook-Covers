@@ -167,22 +167,67 @@ document.getElementById("download_button").addEventListener("click", () => {
     dataset_element = dataset_element.parentElement;
   }
 
+  let url = "";
   if (download_format === "original") {
-    downloadFile(dataset_element.dataset.original);
+    url = dataset_element.dataset.original;
   } else {
-    downloadFile(
-      dataset_element.dataset[`${download_format}_${download_size}`]
-    );
+    url = dataset_element.dataset.original;
   }
-}); 
+  const server_file_name = url.split("/").pop();
+  const [id, extension] = server_file_name.split(".");
+  let file_addition = "";
+  if (download_format === "original") {
+    file_addition = "_original";
+  } else if (download_size === "200") {
+    file_addition = "_small";
+  } else if (download_size === "500") {
+    file_addition = "_medium";
+  } else if (download_size === "1000") {
+    file_addition = "_large";
+  } else if (download_size === "original") {
+    file_addition = "_full";
+  }
+  const file_name = `${id}${file_addition}.${extension}`;
+  downloadFile(url, file_name);
+});
 
-function downloadFile(url) {
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = url.split("//").pop();
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+function downloadFile(data, filename, mime, bom) {
+  // Taken from https://github.com/kennethjiang/js-file-download
+  var blobData = typeof bom !== "undefined" ? [bom, data] : [data];
+  var blob = new Blob(blobData, { type: mime || "application/octet-stream" });
+  if (typeof window.navigator.msSaveBlob !== "undefined") {
+    // IE workaround for "HTML7007: One or more blob URLs were
+    // revoked by closing the blob for which they were created.
+    // These URLs will no longer resolve as the data backing
+    // the URL has been freed."
+    window.navigator.msSaveBlob(blob, filename);
+  } else {
+    var blobURL =
+      window.URL && window.URL.createObjectURL
+        ? window.URL.createObjectURL(blob)
+        : window.webkitURL.createObjectURL(blob);
+    var tempLink = document.createElement("a");
+    tempLink.style.display = "none";
+    tempLink.href = blobURL;
+    tempLink.setAttribute("download", filename);
+
+    // Safari thinks _blank anchor are pop ups. We only want to set _blank
+    // target if the browser does not support the HTML5 download attribute.
+    // This allows you to download files in desktop safari if pop up blocking
+    // is enabled.
+    if (typeof tempLink.download === "undefined") {
+      tempLink.setAttribute("target", "_blank");
+    }
+
+    document.body.appendChild(tempLink);
+    tempLink.click();
+
+    // Fixes "webkit blob resource error 1"
+    setTimeout(function () {
+      document.body.removeChild(tempLink);
+      window.URL.revokeObjectURL(blobURL);
+    }, 200);
+  }
 }
 
 function flipCard(target) {
