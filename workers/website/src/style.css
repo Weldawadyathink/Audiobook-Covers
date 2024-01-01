@@ -163,6 +163,7 @@ main {
 
 .front, .back {
   backface-visibility: hidden;
+  position: absolute;
 }
 
 

@@ -94,16 +94,16 @@ function displayResults(results) {
     // Share Link
 
     const shareLink = document.createElement("div");
-    shareLink.className = "corner_bottom_left"
+    shareLink.className = "corner_bottom_left";
     shareLink.addEventListener("click", () => copyToClipboard("https://google.com"));
 
     const shareIcon = document.createElement("img");
     shareIcon.src = "share.svg";
     shareIcon.alt = "Get sharing link";
     shareIcon.className = "fill_cover";
-    shareLink.appendChild(shareIcon)
+    shareLink.appendChild(shareIcon);
 
-    front.appendChild(shareLink)
+    front.appendChild(shareLink);
 
 
 
@@ -111,13 +111,16 @@ function displayResults(results) {
     // Back of card
 
     const back = document.createElement("div");
-    back.className = "back fill_cover rounded"
+    back.className = "back fill_cover rounded";
 
     // Back button
 
-    const backButton = document.createElement("div");
-    backButton.className = "corner_top_right"
+    const backButton = document.createElement("img");
+    backButton.className = "corner_top_left"
     backButton.addEventListener("click", (event) => flipCard(event.target))
+    backButton.src = "navigate_before.svg";
+    backButton.alt = "Go back";
+    back.appendChild(backButton);
 
 
 
@@ -155,7 +158,7 @@ function flipCard(target) {
     while (element && element !== document.body && !element.classList.contains(classToFlip)) {
         element = element.parentElement;
     }
-    const elementsToFlip = [element, ...document.querySelectorAll(".can_be_flipped.flipped")];
+    const elementsToFlip = new Set([element, ...document.querySelectorAll(".can_be_flipped.flipped")]);
     console.log(elementsToFlip)
     elementsToFlip.forEach((element) => {
         element.classList.toggle("flipped");
