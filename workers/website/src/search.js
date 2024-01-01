@@ -80,6 +80,23 @@ function displayResults(results) {
     const resultContainer = document.createElement("div");
     resultContainer.className = "result_container";
 
+    resultContainer.dataset.jpeg_200 = result.versions.jpeg[200];
+    resultContainer.dataset.jpeg_500 = result.versions.jpeg[500];
+    resultContainer.dataset.jpeg_1000 = result.versions.jpeg[1000];
+    resultContainer.dataset.jpeg_original = result.versions.jpeg.original;
+
+    resultContainer.dataset.png_200 = result.versions.png[200];
+    resultContainer.dataset.png_500 = result.versions.png[500];
+    resultContainer.dataset.png_1000 = result.versions.png[1000];
+    resultContainer.dataset.png_original = result.versions.png.original;
+
+    resultContainer.dataset.webp_200 = result.versions.webp[200];
+    resultContainer.dataset.webp_500 = result.versions.webp[500];
+    resultContainer.dataset.webp_1000 = result.versions.webp[1000];
+    resultContainer.dataset.webp_original = result.versions.webp.original;
+
+    resultContainer.dataset.original = result.filename;
+
     // Card
     const card = document.createElement("div");
     card.className = "card fill_cover rounded can_be_flipped";
@@ -131,6 +148,33 @@ function displayResults(results) {
     allResultsContainer.appendChild(resultContainer);
   });
 }
+
+document.getElementById("download_button").addEventListener("click", () => {
+  const download_button = document.getElementById("download_button");
+  const download_format = document.querySelector(
+    "input[name='radio_download_format']:checked"
+  ).value;
+  const download_size = document.querySelector(
+    "input[name='radio_download_size']:checked"
+  ).value;
+
+  let dataset_element = download_button;
+  while (
+    dataset_element &&
+    dataset_element !== document.body &&
+    !dataset_element.classList.contains("result_container")
+  ) {
+    dataset_element = dataset_element.parentElement;
+  }
+
+  if (download_format === "original") {
+    browser.downloads.download(dataset_element.dataset.original);
+  } else {
+    browser.downloads.download(
+      dataset_element.dataset[`${download_format}_${download_size}`]
+    );
+  }
+}); 
 
 function downloadFile(url) {
   const link = document.createElement("a");
