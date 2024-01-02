@@ -36,6 +36,8 @@ document
   );
 
 async function search() {
+  const download_form = document.querySelector("#download_selection_window");
+  document.querySelector("main").appendChild(download_form);
   let query = searchInput.value;
   const selectedSearchType = Array.from(searchTypeInputs).find(
     (input) => input.checked
