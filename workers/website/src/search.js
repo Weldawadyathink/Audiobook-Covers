@@ -124,7 +124,7 @@ function displayResults(results) {
     sourceLink.target = "_blank";
 
     const sourceIcon = document.createElement("img");
-    sourceIcon.src = "dataset_linked.svg";
+    sourceIcon.src = "assets/dataset_linked.svg";
     sourceIcon.alt = "Source";
     sourceIcon.className = "fill_cover";
     sourceLink.appendChild(sourceIcon);
@@ -137,7 +137,7 @@ function displayResults(results) {
     shareLink.addEventListener("click", () =>
       copyToClipboard("https://google.com")
     );
-    shareLink.src = "share.svg";
+    shareLink.src = "assets/share.svg";
     shareLink.alt = "Get sharing link";
 
     front.appendChild(shareLink);
