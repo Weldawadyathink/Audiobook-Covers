@@ -191,7 +191,7 @@ document.getElementById("download_button").addEventListener("click", () => {
   }
   const file_name = `${id}${file_addition}.${extension}`;
 
-  fetch(url)
+  fetch(url, { method: "GET", cache: "no-store" })
     .then((response) => response.blob())
     .then((blob) => downloadFile(blob, file_name))
     .catch(console.error);
