@@ -299,7 +299,7 @@ async function getCoverById() {
         throw new Error(response.status);
       }
       const results = await response.json();
-      displayResults([...results]);
+      displayResults([results]);
     } catch (error) {
       displayError(error);
     }
