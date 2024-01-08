@@ -222,7 +222,7 @@ function generate_response_object(hits) {
 				},
 			},
 			id: hit['objectID'],
-			permalink: `https://audiobookcovers.com/id?id=${hit['objectID']}`,
+			permalink: `https://audiobookcovers.com/?id=${hit['objectID']}`,
 			source: hit['source'],
 		});
 	}
