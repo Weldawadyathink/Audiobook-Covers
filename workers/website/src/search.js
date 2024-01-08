@@ -135,7 +135,7 @@ function displayResults(results) {
     const shareLink = document.createElement("img");
     shareLink.className = "corner_bottom_left";
     shareLink.addEventListener("click", () =>
-      copyToClipboard("https://google.com")
+      copyToClipboard(result.permalink)
     );
     shareLink.src = "assets/share.svg";
     shareLink.alt = "Get sharing link";
