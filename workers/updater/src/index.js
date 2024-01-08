@@ -8,10 +8,16 @@
  * Learn more at https://developers.cloudflare.com/workers/
  */
 
-import Parser from 'rss-parser';
+import { extract } from '@extractus/feed-extractor';
 
 export default {
 	async fetch(request, env, ctx) {
-		return new Response('Hello World!');
+		const headers = {
+			'Content-Type': 'application/json',
+			'Access-Control-Allow-Origin': '*',
+			'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept',
+		};
+		const result = await extract('https://www.reddit.com/r/AudiobookCovers/.rss');
+		return new Response(JSON.stringify(result), { headers: headers });
 	},
 };
