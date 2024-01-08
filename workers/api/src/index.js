@@ -35,7 +35,7 @@ export default {
 			const params = new URLSearchParams(url.search);
 			const searchString = params.get('q');
 			const hits = await index.search(searchString);
-			const response_list = generate_response_object(hits);
+			const response_list = hits['hits'].map(generate_single_response_object);
 			return new Response(JSON.stringify(response_list), { headers: headers });
 		}
 
@@ -131,32 +131,7 @@ export default {
 				}
 			}
 			const base_download_url = 'https://download.dev.audiobookcovers.com';
-			const cover_info = {
-				filename: `${base_download_url}/original/${hit['objectID']}.${hit['extension']}`,
-				versions: {
-					webp: {
-						200: `${base_download_url}/webp/200/${hit['objectID']}.webp`,
-						500: `${base_download_url}/webp/500/${hit['objectID']}.webp`,
-						1000: `${base_download_url}/webp/1000/${hit['objectID']}.webp`,
-						original: `${base_download_url}/webp/original/${hit['objectID']}.webp`,
-					},
-					jpeg: {
-						200: `${base_download_url}/jpg/200/${hit['objectID']}.jpg`,
-						500: `${base_download_url}/jpg/500/${hit['objectID']}.jpg`,
-						1000: `${base_download_url}/jpg/1000/${hit['objectID']}.jpg`,
-						original: `${base_download_url}/jpg/original/${hit['objectID']}.jpg`,
-					},
-					png: {
-						200: `${base_download_url}/png/200/${hit['objectID']}.png`,
-						500: `${base_download_url}/png/500/${hit['objectID']}.png`,
-						1000: `${base_download_url}/png/1000/${hit['objectID']}.png`,
-						original: `${base_download_url}/png/original/${hit['objectID']}.png`,
-					},
-				},
-				id: hit['objectID'],
-				permalink: `https://audiobookcovers.com/?id=${hit['objectID']}`,
-				source: hit['source'],
-			};
+			const cover_info = generate_single_response_object(hit);
 			return new Response(JSON.stringify(cover_info), { headers: headers });
 		}
 
@@ -195,36 +170,32 @@ function get_algolia_index(env) {
 	return client.initIndex('bookCoverIndex');
 }
 
-function generate_response_object(hits) {
+function generate_single_response_object(hit) {
 	const base_download_url = 'https://download.dev.audiobookcovers.com';
-	let response_list = [];
-	for (const hit of hits['hits']) {
-		response_list.push({
-			filename: `${base_download_url}/original/${hit['objectID']}.${hit['extension']}`,
-			versions: {
-				webp: {
-					200: `${base_download_url}/webp/200/${hit['objectID']}.webp`,
-					500: `${base_download_url}/webp/500/${hit['objectID']}.webp`,
-					1000: `${base_download_url}/webp/1000/${hit['objectID']}.webp`,
-					original: `${base_download_url}/webp/original/${hit['objectID']}.webp`,
-				},
-				jpeg: {
-					200: `${base_download_url}/jpg/200/${hit['objectID']}.jpg`,
-					500: `${base_download_url}/jpg/500/${hit['objectID']}.jpg`,
-					1000: `${base_download_url}/jpg/1000/${hit['objectID']}.jpg`,
-					original: `${base_download_url}/jpg/original/${hit['objectID']}.jpg`,
-				},
-				png: {
-					200: `${base_download_url}/png/200/${hit['objectID']}.png`,
-					500: `${base_download_url}/png/500/${hit['objectID']}.png`,
-					1000: `${base_download_url}/png/1000/${hit['objectID']}.png`,
-					original: `${base_download_url}/png/original/${hit['objectID']}.png`,
-				},
+	return {
+		filename: `${base_download_url}/original/${hit['objectID']}.${hit['extension']}`,
+		versions: {
+			webp: {
+				200: `${base_download_url}/webp/200/${hit['objectID']}.webp`,
+				500: `${base_download_url}/webp/500/${hit['objectID']}.webp`,
+				1000: `${base_download_url}/webp/1000/${hit['objectID']}.webp`,
+				original: `${base_download_url}/webp/original/${hit['objectID']}.webp`,
 			},
-			id: hit['objectID'],
-			permalink: `https://audiobookcovers.com/?id=${hit['objectID']}`,
-			source: hit['source'],
-		});
-	}
-	return response_list;
+			jpeg: {
+				200: `${base_download_url}/jpg/200/${hit['objectID']}.jpg`,
+				500: `${base_download_url}/jpg/500/${hit['objectID']}.jpg`,
+				1000: `${base_download_url}/jpg/1000/${hit['objectID']}.jpg`,
+				original: `${base_download_url}/jpg/original/${hit['objectID']}.jpg`,
+			},
+			png: {
+				200: `${base_download_url}/png/200/${hit['objectID']}.png`,
+				500: `${base_download_url}/png/500/${hit['objectID']}.png`,
+				1000: `${base_download_url}/png/1000/${hit['objectID']}.png`,
+				original: `${base_download_url}/png/original/${hit['objectID']}.png`,
+			},
+		},
+		id: hit['objectID'],
+		permalink: `https://audiobookcovers.com/?id=${hit['objectID']}`,
+		source: hit['source'],
+	};
 }
