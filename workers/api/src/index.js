@@ -14,29 +14,21 @@ export default {
 				headers: {
 					'Access-Control-Allow-Origin': '*',
 					'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-					'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-				}
+					'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept',
+				},
 			});
 		}
 
 		const headers = {
 			'Content-Type': 'application/json',
 			'Access-Control-Allow-Origin': '*',
-			'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-		}
-		const url = new URL(request.url)
-
-
-
-
+			'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept',
+		};
+		const url = new URL(request.url);
 
 		if (url.pathname === '/') {
-			return new Response('Hello AudiobookCover Enthusiasts!', {headers: headers})
+			return new Response('Hello AudiobookCover Enthusiasts!', { headers: headers });
 		}
-
-
-
-
 
 		if (url.pathname === '/cover/bytext/' || url.pathname === '/cover/bytext') {
 			const index = get_algolia_index(env);
@@ -161,91 +153,78 @@ export default {
 						original: `${base_download_url}/png/original/${hit['objectID']}.png`,
 					},
 				},
+				id: hit['objectID'],
+				permalink: `https://audiobookcovers.com/id?id=${hit['objectID']}`,
 				source: hit['source'],
 			};
 			return new Response(JSON.stringify(cover_info), { headers: headers });
 		}
 
-
-
-
-
-		return new Response('404 not found', {status: 404, statusText: 'Not Found', headers: headers})
+		return new Response('404 not found', { status: 404, statusText: 'Not Found', headers: headers });
 	},
 };
 
-
-
-
 async function check_uuid_in_algolia(index, uuid) {
 	/**
-     * Checks if a given UUID exists in the Algolia index.
-     * 
-     * @param {object} index - The Algolia index object.
-     * @param {string} uuid - The UUID to check.
-     * @returns {boolean} True if the UUID is valid and usable, false if it is a duplicate.
-     */
-	try{
+	 * Checks if a given UUID exists in the Algolia index.
+	 *
+	 * @param {object} index - The Algolia index object.
+	 * @param {string} uuid - The UUID to check.
+	 * @returns {boolean} True if the UUID is valid and usable, false if it is a duplicate.
+	 */
+	try {
 		const response = await index.getObject(uuid, {
-			attributesToRetrieve: ['objectID']
+			attributesToRetrieve: ['objectID'],
 		});
-	} catch(error) {
-		if (!error.message.includes("ObjectID does not exist")) {
-			throw error
+	} catch (error) {
+		if (!error.message.includes('ObjectID does not exist')) {
+			throw error;
 		} else {
 			// If it errors, uuid is not in index and therefore is valid
-			return true
+			return true;
 		}
 	}
 	// If error was not thrown, the uuid exists in the index, and therefore is not valid
-	return false
+	return false;
 }
-
-
-
-
 
 function get_algolia_index(env) {
 	const client = algoliasearch(env.ALGOLIA_APP_ID, env.ALGOLIA_SEARCH_KEY, {
 		requester: createFetchRequester(),
 	});
-	return client.initIndex('bookCoverIndex')
+	return client.initIndex('bookCoverIndex');
 }
-
-
-
-
-
-
 
 function generate_response_object(hits) {
 	const base_download_url = 'https://download.dev.audiobookcovers.com';
-	let response_list = []
-	for (const hit of hits["hits"]) {
+	let response_list = [];
+	for (const hit of hits['hits']) {
 		response_list.push({
-			"filename": `${base_download_url}/original/${hit["objectID"]}.${hit["extension"]}`,
-			"versions": {
-				"webp": {
-					"200": `${base_download_url}/webp/200/${hit["objectID"]}.webp`,
-					"500": `${base_download_url}/webp/500/${hit["objectID"]}.webp`,
-					"1000": `${base_download_url}/webp/1000/${hit["objectID"]}.webp`,
-					"original": `${base_download_url}/webp/original/${hit["objectID"]}.webp`
+			filename: `${base_download_url}/original/${hit['objectID']}.${hit['extension']}`,
+			versions: {
+				webp: {
+					200: `${base_download_url}/webp/200/${hit['objectID']}.webp`,
+					500: `${base_download_url}/webp/500/${hit['objectID']}.webp`,
+					1000: `${base_download_url}/webp/1000/${hit['objectID']}.webp`,
+					original: `${base_download_url}/webp/original/${hit['objectID']}.webp`,
 				},
-				"jpeg": {
-					"200": `${base_download_url}/jpg/200/${hit["objectID"]}.jpg`,
-					"500": `${base_download_url}/jpg/500/${hit["objectID"]}.jpg`,
-					"1000": `${base_download_url}/jpg/1000/${hit["objectID"]}.jpg`,
-					"original": `${base_download_url}/jpg/original/${hit["objectID"]}.jpg`
+				jpeg: {
+					200: `${base_download_url}/jpg/200/${hit['objectID']}.jpg`,
+					500: `${base_download_url}/jpg/500/${hit['objectID']}.jpg`,
+					1000: `${base_download_url}/jpg/1000/${hit['objectID']}.jpg`,
+					original: `${base_download_url}/jpg/original/${hit['objectID']}.jpg`,
 				},
-				"png": {
-					"200": `${base_download_url}/png/200/${hit["objectID"]}.png`,
-					"500": `${base_download_url}/png/500/${hit["objectID"]}.png`,
-					"1000": `${base_download_url}/png/1000/${hit["objectID"]}.png`,
-					"original": `${base_download_url}/png/original/${hit["objectID"]}.png`
-				}
+				png: {
+					200: `${base_download_url}/png/200/${hit['objectID']}.png`,
+					500: `${base_download_url}/png/500/${hit['objectID']}.png`,
+					1000: `${base_download_url}/png/1000/${hit['objectID']}.png`,
+					original: `${base_download_url}/png/original/${hit['objectID']}.png`,
+				},
 			},
-			"source": hit["source"]
-		})
+			id: hit['objectID'],
+			permalink: `https://audiobookcovers.com/id?id=${hit['objectID']}`,
+			source: hit['source'],
+		});
 	}
-	return response_list
+	return response_list;
 }
