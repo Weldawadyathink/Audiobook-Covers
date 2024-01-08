@@ -154,7 +154,7 @@ export default {
 					},
 				},
 				id: hit['objectID'],
-				permalink: `https://audiobookcovers.com/id?id=${hit['objectID']}`,
+				permalink: `https://audiobookcovers.com/?id=${hit['objectID']}`,
 				source: hit['source'],
 			};
 			return new Response(JSON.stringify(cover_info), { headers: headers });
