@@ -1,10 +1,5 @@
-const searchInput = document.getElementById("search-input");
-const searchBtn = document.getElementById("search-btn");
-const allResultsContainer = document.getElementById("results-container");
-const searchTypeInputs = document.querySelectorAll(".search-type-input");
-
-searchBtn.addEventListener("click", search);
-searchInput.addEventListener("keydown", (event) => {
+document.getElementById("search-btn").addEventListener("click", search);
+document.getElementById("search-input").addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
     event.preventDefault();
     search();
@@ -36,6 +31,8 @@ document
   );
 
 async function search() {
+  const searchInput = document.getElementById("search-input");
+  const searchTypeInputs = document.querySelectorAll(".search-type-input");
   const download_form = document.querySelector("#download_selection_window");
   document.querySelector("main").appendChild(download_form);
   let query = searchInput.value;
@@ -69,6 +66,7 @@ async function search() {
 }
 
 function displayResults(results) {
+  const allResultsContainer = document.getElementById("results-container");
   allResultsContainer.innerHTML = "";
 
   if (results.length === 0) {
@@ -282,3 +280,29 @@ window.addEventListener("storage", (event) => {
   if (event.key === "download_size") {
   }
 });
+
+async function getCoverById() {
+  console.log("loaded");
+  if (
+    window.location.pathname === "/id" ||
+    window.location.pathname === "/id/"
+  ) {
+    console.log("working");
+    const queryString = window.location.search;
+    const urlParams = new URLSearchParams(queryString);
+    const search_id = urlParams.get("id");
+    const apiUrl = `https://dev.api.audiobookcovers.com/cover/id?id=${search_id}`;
+    try {
+      const response = await fetch(apiUrl);
+      if (!response.ok) {
+        throw new Error(response.status);
+      }
+      const results = await response.json();
+      displayResults([...results]);
+    } catch (error) {
+      displayError(error);
+    }
+  }
+}
+
+getCoverById();
