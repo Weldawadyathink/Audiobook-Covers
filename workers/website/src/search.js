@@ -1,10 +1,15 @@
-document.getElementById("search-btn").addEventListener("click", search);
-document.getElementById("search-input").addEventListener("keydown", (event) => {
-  if (event.key === "Enter") {
+window.onload = () => {
+  document.getElementById("search_form").addEventListener("submit", (event) => {
     event.preventDefault();
     search();
-  }
-});
+  });
+
+  document
+    .getElementById("download_button")
+    .addEventListener("click", download_button_handler);
+
+  getCoverById();
+};
 
 function download_options_limiter() {
   const download_format_input = document.querySelector(
@@ -149,7 +154,7 @@ function displayResults(results) {
   });
 }
 
-document.getElementById("download_button").addEventListener("click", () => {
+function download_button_handler() {
   const download_button = document.getElementById("download_button");
   const download_format = document.querySelector(
     "input[name='radio_download_format']:checked"
@@ -193,7 +198,7 @@ document.getElementById("download_button").addEventListener("click", () => {
     .then((response) => response.blob())
     .then((blob) => downloadFile(blob, file_name))
     .catch(console.error);
-});
+}
 
 function downloadFile(data, filename, mime, bom) {
   // Taken from https://github.com/kennethjiang/js-file-download
@@ -257,6 +262,7 @@ function flipCard(target) {
 }
 
 function displayError(error) {
+  const allResultsContainer = document.getElementById("results-container");
   allResultsContainer.innerHTML = "";
   const errorMessage = document.createElement("p");
   errorMessage.textContent = `An error occurred: ${error.message}`;
@@ -282,15 +288,10 @@ window.addEventListener("storage", (event) => {
 });
 
 async function getCoverById() {
-  console.log("loaded");
-  if (
-    window.location.pathname === "/id" ||
-    window.location.pathname === "/id/"
-  ) {
-    console.log("working");
-    const queryString = window.location.search;
-    const urlParams = new URLSearchParams(queryString);
-    const search_id = urlParams.get("id");
+  const queryString = window.location.search;
+  const urlParams = new URLSearchParams(queryString);
+  const search_id = urlParams.get("id");
+  if (search_id) {
     const apiUrl = `https://dev.api.audiobookcovers.com/cover/id?id=${search_id}`;
     try {
       const response = await fetch(apiUrl);
@@ -304,5 +305,3 @@ async function getCoverById() {
     }
   }
 }
-
-getCoverById();
