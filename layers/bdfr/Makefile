@@ -18,6 +18,7 @@ layer.zip: requirements.txt
 		/venv/bin/python -m pip install -r /mount/requirements.txt --target /package/python/lib/python3.11/site-packages > /dev/null && \
 		cd /package && \
 		find . -type d -name "__pycache__" -exec rm -rf {} + && \
+		mv /package/python/lib/python3.11/site-packages/bdfr /package && \
 		zip -r9 /mount/layer.zip * > /dev/null '
 	@# Upload step is included here so that new version will not be uploaded unless it is modified
 	@echo "Uploading layer to s3"

@@ -1,6 +1,6 @@
 ZIP_FILE=function.zip
 FUNCTION_NAME=AudiobookCovers_RedditDownloader
-DEPLOY_FILES = $(wildcard *.py)
+DEPLOY_FILES = $(wildcard *.py) $(wildcard *.sh)
 
 .PHONY: clean deploy
 
