@@ -3,28 +3,47 @@ import os
 import sys
 import shutil
 
+include_file = "/tmp/include-id.txt"
+download_folder = "/tmp/downloads"
+bdfr_base_folder = '/opt/bdfr'
+bdfr_run_folder = '/tmp/site-packages'
+
 def lambda_handler(event, context):
-    # subprocess.run("rm -rf /tmp/*".split(" "))
+    prepare_environment()
     
     include_id = "192mt7x"
-    include_file = "/tmp/include-id.txt"
-    subprocess.run("ls -a /opt/".split(" "))
-    subprocess.run("mkdir -p /tmp/site-packages/bdfr".split(" "))
-    subprocess.run("cp -r /opt/bdfr /tmp/site-packages/".split(" "))
-    subprocess.run("ls -a /tmp/site-packages".split(" "))
     with open(include_file, "w+") as f:
         f.write(include_id)
-    subprocess.run(f"{sys.executable} -m bdfr download /tmp --config /tmp/config.cfg --include-id-file {include_file} --file-scheme {{POSTID}}".split(" "), shell=True)
-    print(os.listdir('/tmp'))
+    print(subprocess.run(f"{sys.executable} -m bdfr download /tmp/downloads --include-id-file {include_file} --file-scheme {{POSTID}}".split(" "), shell=True, capture_output=True))
+    print(os.listdir("/tmp/downloads"))
 
-def prepare_bdfr():
-    source_folder = '/opt/bdfr'
-    destination_folder = '/tmp/site-packages'
-    if os.path.exists(destination_folder):
-        print(f"{destination_folder} already exists. Exiting.")
+def prepare_environment():
+    if os.path.exists(bdfr_run_folder):
+        print(f"{bdfr_run_folder} already exists.")
     else:
-        shutil.copytree(source_folder, destination_folder)
-        print(f"Copied {source_folder} to {destination_folder}.")
+        shutil.copytree(bdfr_base_folder, bdfr_run_folder)
+        print(f"Copied {bdfr_base_folder} to {bdfr_run_folder}.")
+    
+    if os.path.exists(include_file):
+        os.remove(include_file)
+        print(f"Deleted {include_file}")
+    
+    if os.path.exists(download_folder):
+        for filename in os.listdir(download_folder):
+            file_path = os.path.join(download_folder, filename)
+            try:
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+                if os.path.islink(file_path):
+                    os.unlink(file_path)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+            except Exception as e:
+                raise Exception(f'Failed to delete {file_path}. Reason: {e}')
+        print(f"All contents of {download_folder} have been deleted.")
+    else:
+        os.makedirs(download_folder)
+    
 
 if __name__ == '__main__':
     lambda_handler(None, None)
