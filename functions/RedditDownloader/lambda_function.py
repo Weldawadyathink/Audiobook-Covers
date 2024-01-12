@@ -6,7 +6,7 @@ import shutil
 include_file = "/tmp/include-id.txt"
 download_folder = "/tmp/downloads"
 bdfr_base_folder = '/opt/bdfr'
-bdfr_run_folder = '/tmp/site-packages'
+bdfr_run_folder = '/tmp/site-packages/bdfr'
 
 def lambda_handler(event, context):
     prepare_environment()
@@ -14,8 +14,11 @@ def lambda_handler(event, context):
     include_id = "192mt7x"
     with open(include_file, "w+") as f:
         f.write(include_id)
-    print(subprocess.run(f"{sys.executable} -m bdfr download /tmp/downloads --include-id-file {include_file} --file-scheme {{POSTID}}".split(" "), shell=True, capture_output=True))
-    print(os.listdir("/tmp/downloads"))
+    # subprocess.run(f"{sys.executable} --version".split(" "))
+    subprocess.run(["python", "-c", "import os; print(os.environ['PYTHONPATH'])"])
+    subprocess.run(["ls", "/tmp/site-packages"])
+    subprocess.run(f"{sys.executable} -m bdfr download /tmp/downloads --include-id-file {include_file} --file-scheme {{POSTID}}".split(" "))
+    print(os.listdir("/tmp/downloads/"))
 
 def prepare_environment():
     if os.path.exists(bdfr_run_folder):
