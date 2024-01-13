@@ -41,6 +41,7 @@ def get_post_id_to_download():
         post_id = response.data.data[0]["postId"]
     except IndexError:
         raise NoMoreItems()
+    return post_id
 
 def mark_post_id_complete(post_id):
     client = get_fauna_client()
@@ -48,10 +49,8 @@ def mark_post_id_complete(post_id):
         "RedditPost.where(.postId == ${post_id}).first().updateData({status: 'downloaded'})",
         post_id=post_id
     )
-    print(query)
     response = client.query(query)
     return response
 
 if __name__ == "__main__":
     print(get_post_id_to_download())
-    print(mark_post_id_complete("1902fqd"))

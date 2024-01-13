@@ -28,6 +28,10 @@ def lambda_handler(event, context):
     print(f"Downloaded files for post {include_id} with BDFR")
     process_all_files()
     mark_post_id_complete(include_id)
+    boto3.client("lambda").invoke(
+        FunctionName=context.function_name,
+        InvocationType='Event',
+    )
     
 
 def prepare_environment():
