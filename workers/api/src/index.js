@@ -130,7 +130,6 @@ export default {
 					throw error;
 				}
 			}
-			const base_download_url = 'https://download.dev.audiobookcovers.com';
 			const cover_info = generate_single_response_object(hit);
 			return new Response(JSON.stringify(cover_info), { headers: headers });
 		}
@@ -171,7 +170,7 @@ function get_algolia_index(env) {
 }
 
 function generate_single_response_object(hit) {
-	const base_download_url = 'https://download.dev.audiobookcovers.com';
+	const base_download_url = 'https://download.audiobookcovers.com';
 	return {
 		filename: `${base_download_url}/original/${hit['objectID']}.${hit['extension']}`,
 		versions: {
