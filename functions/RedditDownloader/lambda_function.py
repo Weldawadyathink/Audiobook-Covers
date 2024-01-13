@@ -19,6 +19,7 @@ def lambda_handler(event, context):
     try:
         include_id = get_post_id_to_download()
     except NoMoreItems:
+        print("No post id available, ending recursion")
         # Recursive lambda function exit point
         return
     
