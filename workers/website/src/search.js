@@ -47,11 +47,11 @@ async function search() {
 
   let apiUrl = "";
   if (selectedSearchType === "text") {
-    apiUrl = `https://dev.api.audiobookcovers.com/cover/bytext/?q=${encodeURIComponent(
+    apiUrl = `https://api.audiobookcovers.com/cover/bytext/?q=${encodeURIComponent(
       query
     )}`;
   } else {
-    apiUrl = `https://dev.api.audiobookcovers.com/cover/byredditpostid/?q=${encodeURIComponent(
+    apiUrl = `https://api.audiobookcovers.com/cover/byredditpostid/?q=${encodeURIComponent(
       query
     )}`;
   }
@@ -292,7 +292,7 @@ async function getCoverById() {
   const urlParams = new URLSearchParams(queryString);
   const search_id = urlParams.get("id");
   if (search_id) {
-    const apiUrl = `https://dev.api.audiobookcovers.com/cover/id?id=${search_id}`;
+    const apiUrl = `https://api.audiobookcovers.com/cover/id?id=${search_id}`;
     try {
       const response = await fetch(apiUrl);
       if (!response.ok) {
