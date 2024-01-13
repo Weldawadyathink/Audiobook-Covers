@@ -71,7 +71,7 @@ def process_file(directory_name, file_name):
     
     s3 = boto3.client("s3")
     
-    reddit_post_id = file_name[:7]
+    reddit_post_id = file_name.split(".")[0].split("_")[0]
     print(f"Processing {file_name}, post id {reddit_post_id}")
     
     if os.path.splitext(file_name)[1].lower() in image_extensions:
