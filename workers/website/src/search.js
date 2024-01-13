@@ -8,6 +8,14 @@ window.onload = () => {
     .getElementById("download_button")
     .addEventListener("click", download_button_handler);
 
+  document
+    .querySelectorAll(
+      'input[name="radio_download_format"], input[name="radio_download_size"]'
+    )
+    .forEach((button) =>
+      button.addEventListener("click", download_options_limiter)
+    );
+
   getCoverById();
 };
 
@@ -26,14 +34,6 @@ function download_options_limiter() {
     document.getElementById("radio_download_size_1000").disabled = false;
   }
 }
-
-document
-  .querySelectorAll(
-    'input[type="radio"][name="radio_download_format"], input[type="radio"][name="radio_download_size"]'
-  )
-  .forEach((button) =>
-    button.addEventListener("click", download_options_limiter)
-  );
 
 async function search() {
   const searchInput = document.getElementById("search-input");
