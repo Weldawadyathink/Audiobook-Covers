@@ -6,6 +6,8 @@
 
 config.cfg
 
+rclip
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
