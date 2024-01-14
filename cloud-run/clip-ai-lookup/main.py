@@ -1,5 +1,5 @@
 import os
-
+from sentence_transformers import SentenceTransformer
 from flask import Flask
 
 app = Flask(__name__)
@@ -7,9 +7,8 @@ app = Flask(__name__)
 
 @app.route("/")
 def hello_world():
-    """Example Hello World route."""
-    name = os.environ.get("NAME", "World")
-    return f"Hello {name}!"
+    model = SentenceTransformer('clip-ViT-B-32')
+    return model.encode("Hello world!")
 
 
 if __name__ == "__main__":
