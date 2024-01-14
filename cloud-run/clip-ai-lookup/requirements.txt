@@ -1,0 +1,8 @@
+functions-framework
+torch
+torchvision
+pillow
+sentence_transformers
+Flask
+gunicorn
+Werkzeug
