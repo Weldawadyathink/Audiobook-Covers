@@ -41,7 +41,7 @@ def get_jpeg_bytes(image, quality=90):
     """
     with BytesIO() as output:
         # Convert RGBA to RGB if necessary
-        if image.mode == 'RGBA':
+        if image.mode == 'P' or image.mode == 'RGBA':
             # Create a white background image
             background = Image.new('RGB', image.size, (255, 255, 255))
             # Paste the image on the background, using the alpha channel as mask
