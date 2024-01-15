@@ -9,6 +9,8 @@ config.cfg
 rclip
 testing
 
+last_update
+
 cloud-run/clip-ai-lookup/clip-ViT-B-32
 
 

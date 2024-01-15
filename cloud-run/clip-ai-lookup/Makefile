@@ -4,8 +4,16 @@ DEPENDENCY_DIRECTORY = ./site-packages
 
 .PHONY: clean deploy
 
-deploy: 
-	@gcloud run deploy clip-ai-lookup --source . --region us-central1 --cpu 1 --cpu-boost --memory 4Gi
+deploy: last_update
+	@gcloud run deploy clip-ai-lookup --source . --region us-central1 --cpu 1 --cpu-boost --memory 4Gi \
+		--set-secrets=PINECONE=pinecone_db:latest \
+		--update-env-vars GOOGLE_CLOUD_RUN=True
+
+last_update:
+	@touch last_update
+	@gcloud run deploy clip-ai-lookup --source . --region us-central1 --cpu 1 --cpu-boost --memory 4Gi \
+		--set-secrets=PINECONE=pinecone_db:latest \
+		--update-env-vars GOOGLE_CLOUD_RUN=True
 
 clean:
 	@rm -rf $(ZIP_FILE)
