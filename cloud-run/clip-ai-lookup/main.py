@@ -1,12 +1,13 @@
 import os
 from sentence_transformers import SentenceTransformer
-from flask import Flask
+from flask import Flask, request
 
 app = Flask(__name__)
 
 
-@app.route("/")
-def hello_world():
+@app.route("/text")
+def text_search():
+    query = request.args.get("q")
     print("Loading Model")
     model = SentenceTransformer('./clip-ViT-B-32')
     print("Running model")
