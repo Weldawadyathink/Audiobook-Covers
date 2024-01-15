@@ -42,7 +42,7 @@ async function uploadCover() {
     const credentials = btoa(`${username}:${password}`);
 
 
-    const status = await upload_to_s3(file, sourceUrlm, credentials);
+    const status = await upload_to_s3(file, sourceUrl, credentials);
     alert(status);
 }
 
@@ -51,7 +51,7 @@ async function uploadCover() {
 
 
 async function get_presigned_url(source, extension, mime_type, credentials) {
-    const url = `https://dev.api.audiobookcovers.com/upload/cover?extension=${extension}&source=${encodeURIComponent(source)}&mime_type=${mime_type}`;
+    const url = `https://api.audiobookcovers.com/upload/cover?extension=${extension}&source=${encodeURIComponent(source)}&mime_type=${mime_type}`;
     const requestOptions = {
         method: 'GET',
         redirect: 'follow',
