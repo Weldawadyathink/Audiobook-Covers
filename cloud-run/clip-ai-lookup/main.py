@@ -7,8 +7,16 @@ app = Flask(__name__)
 
 @app.route("/")
 def hello_world():
-    model = SentenceTransformer('clip-ViT-B-32')
+    print("Loading Model")
+    model = SentenceTransformer('./clip-ViT-B-32')
+    print("Running model")
     return model.encode("Hello world!")
+
+def get_model():
+    if os.environ.get("GOOGLE_CLOUD_RUN") is None:
+        return SentenceTransformer('clip-ViT-B-32')
+    # Use local model file if in google cloud run
+    SentenceTransformer('./clip-ViT-B-32')
 
 
 if __name__ == "__main__":
