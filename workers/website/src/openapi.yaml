@@ -5,7 +5,7 @@ info:
   version: "1.0"
 
 servers:
-  - url: https://api.audiobookcovers.com/
+  - url: https://api.audiobookcovers.com
     description: Main API server
 
 paths:
@@ -14,6 +14,7 @@ paths:
     get:
       summary: Retrieve audiobook covers by search text
       description: Retrieves a list of audiobook covers that match the specified search text.
+      operationId: getCoverByText
       parameters:
         - name: q
           in: query
@@ -33,6 +34,7 @@ paths:
     get:
       summary: Retrieve audiobook covers by AI search
       description: Retrieves a list of audiobook covers based on the search. Uses OpenAI CLIP to search
+      operationId: getCoverAiSearch
       parameters:
         - name: q
           in: query
@@ -58,6 +60,7 @@ paths:
     get:
       summary: Retrieve random audiobook covers
       description: Retrieves a list of random audiobook covers.
+      operationId: getCoverRandom
       parameters:
         - name: k
           in: query
