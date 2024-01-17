@@ -3,6 +3,7 @@ from sentence_transformers import SentenceTransformer
 from flask import Flask, request
 import json
 from pinecone import Pinecone
+import time
 
 app = Flask(__name__)
 
@@ -23,6 +24,7 @@ def pinecone_init():
 
 @app.route("/text")
 def text_search():
+    start_time = time.time()
     query = request.args.get("q")
     pc = pinecone_init()
     index = pc.Index("covers")
@@ -33,7 +35,9 @@ def text_search():
         include_values = False,
         top_k = 50,
     )
-    return json.dumps(response.to_dict())
+    returnval = json.dumps(response.to_dict())
+    print(f"Ran /text search in {int((time.time()-start_time)*1000)}ms")
+    return returnval
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))

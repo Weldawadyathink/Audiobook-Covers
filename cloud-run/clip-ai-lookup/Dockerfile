@@ -17,4 +17,4 @@ RUN git clone https://huggingface.co/sentence-transformers/clip-ViT-B-32
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-CMD exec gunicorn --bind :$PORT --workers 1 --threads 1 --timeout 0 main:app
+CMD exec gunicorn --bind :$PORT --workers 1 --threads 1 --preload --timeout 0 main:app
