@@ -35,7 +35,35 @@ export default {
 			const params = new URLSearchParams(url.search);
 			const searchString = params.get('q');
 			const hits = await index.search(searchString);
-			const response_list = hits['hits'].map(generate_single_response_object);
+			const response_list = hits['hits'].map(generate_response_object);
+			return new Response(JSON.stringify(response_list), { headers: headers });
+		}
+
+		if (url.pathname === '/cover/ai-search' || url.pathname === '/cover/ai-search/') {
+			const params = new URLSearchParams(url.search);
+			const searchString = params.get('q');
+			const top_k = params.get('k') || 50;
+
+			const clip_api_url = new URL(env.CLIP_API_URL);
+			clip_api_url.pathname = '/text';
+			clip_api_url.searchParams.append('q', searchString);
+			clip_api_url.searchParams.append('k', top_k);
+			const clip_response = await fetch(clip_api_url);
+			const clip_response_json = await clip_response.json();
+			const response_list = clip_response_json.matches.map(generate_response_object);
+			return new Response(JSON.stringify(response_list), { headers: headers });
+		}
+
+		if (url.pathname === '/cover/random' || url.pathname === '/cover/random/') {
+			const params = new URLSearchParams(url.search);
+			const top_k = params.get('k') || 50;
+
+			const clip_api_url = new URL(env.CLIP_API_URL);
+			clip_api_url.pathname = '/random';
+			clip_api_url.searchParams.append('k', top_k);
+			const clip_response = await fetch(clip_api_url);
+			const clip_response_json = await clip_response.json();
+			const response_list = clip_response_json.matches.map(generate_response_object);
 			return new Response(JSON.stringify(response_list), { headers: headers });
 		}
 
@@ -130,7 +158,7 @@ export default {
 					throw error;
 				}
 			}
-			const cover_info = generate_single_response_object(hit);
+			const cover_info = generate_response_object(hit);
 			return new Response(JSON.stringify(cover_info), { headers: headers });
 		}
 
@@ -169,32 +197,39 @@ function get_algolia_index(env) {
 	return client.initIndex('bookCoverIndex');
 }
 
-function generate_single_response_object(hit) {
+function generate_response_object(item) {
+	/**
+	 * Returns a javascript object with all required data included
+	 * Designed to have an algolia or pinecone database response
+	 */
 	const base_download_url = 'https://download.audiobookcovers.com';
+	const id = item.objectID || item.id;
+	const ext = item.extension || item.metadata.extension;
+	const source = item.source || item.metadata.source;
 	return {
-		filename: `${base_download_url}/original/${hit['objectID']}.${hit['extension']}`,
+		filename: `${base_download_url}/original/${id}.${ext}`,
 		versions: {
 			webp: {
-				200: `${base_download_url}/webp/200/${hit['objectID']}.webp`,
-				500: `${base_download_url}/webp/500/${hit['objectID']}.webp`,
-				1000: `${base_download_url}/webp/1000/${hit['objectID']}.webp`,
-				original: `${base_download_url}/webp/original/${hit['objectID']}.webp`,
+				200: `${base_download_url}/webp/200/${id}.webp`,
+				500: `${base_download_url}/webp/500/${id}.webp`,
+				1000: `${base_download_url}/webp/1000/${id}.webp`,
+				original: `${base_download_url}/webp/original/${id}.webp`,
 			},
 			jpeg: {
-				200: `${base_download_url}/jpg/200/${hit['objectID']}.jpg`,
-				500: `${base_download_url}/jpg/500/${hit['objectID']}.jpg`,
-				1000: `${base_download_url}/jpg/1000/${hit['objectID']}.jpg`,
-				original: `${base_download_url}/jpg/original/${hit['objectID']}.jpg`,
+				200: `${base_download_url}/jpg/200/${id}.jpg`,
+				500: `${base_download_url}/jpg/500/${id}.jpg`,
+				1000: `${base_download_url}/jpg/1000/${id}.jpg`,
+				original: `${base_download_url}/jpg/original/${id}.jpg`,
 			},
 			png: {
-				200: `${base_download_url}/png/200/${hit['objectID']}.png`,
-				500: `${base_download_url}/png/500/${hit['objectID']}.png`,
-				1000: `${base_download_url}/png/1000/${hit['objectID']}.png`,
-				original: `${base_download_url}/png/original/${hit['objectID']}.png`,
+				200: `${base_download_url}/png/200/${id}.png`,
+				500: `${base_download_url}/png/500/${id}.png`,
+				1000: `${base_download_url}/png/1000/${id}.png`,
+				original: `${base_download_url}/png/original/${id}.png`,
 			},
 		},
-		id: hit['objectID'],
-		permalink: `https://audiobookcovers.com/?id=${hit['objectID']}`,
-		source: hit['source'],
+		id: id,
+		permalink: `https://audiobookcovers.com/?id=${id}`,
+		source: source,
 	};
 }
