@@ -26,11 +26,13 @@ export default {
 		};
 		const url = new URL(request.url);
 
-		if (url.pathname === '/') {
+		const path = url.pathname.replace(/\/+/g, '/').replace(/\/$/, '').toLowerCase();
+
+		if (path === '/') {
 			return new Response('Hello AudiobookCover Enthusiasts!', { headers: headers });
 		}
 
-		if (url.pathname === '/cover/bytext/' || url.pathname === '/cover/bytext') {
+		if (path === '/cover/bytext/') {
 			const index = get_algolia_index(env);
 			const params = new URLSearchParams(url.search);
 			const searchString = params.get('q');
@@ -39,7 +41,7 @@ export default {
 			return new Response(JSON.stringify(response_list), { headers: headers });
 		}
 
-		if (url.pathname === '/cover/ai-search' || url.pathname === '/cover/ai-search/') {
+		if (path === '/cover/ai-search') {
 			const params = new URLSearchParams(url.search);
 			const searchString = params.get('q');
 			const top_k = params.get('k') || 50;
@@ -54,7 +56,7 @@ export default {
 			return new Response(JSON.stringify(response_list), { headers: headers });
 		}
 
-		if (url.pathname === '/cover/random' || url.pathname === '/cover/random/') {
+		if (path === '/cover/random') {
 			const params = new URLSearchParams(url.search);
 			const top_k = params.get('k') || 50;
 
@@ -67,7 +69,7 @@ export default {
 			return new Response(JSON.stringify(response_list), { headers: headers });
 		}
 
-		if (url.pathname === '/upload/cover' || url.pathname === '/upload/cover/') {
+		if (path === '/upload/cover') {
 			const valid_auth = 'Basic ' + btoa(env.UPLOAD_USERNAME + ':' + env.UPLOAD_PASSWORD);
 			const authHeader = request.headers.get('Authorization');
 
@@ -135,7 +137,7 @@ export default {
 			return new Response(JSON.stringify(response), { headers: headers });
 		}
 
-		if (url.pathname === '/cover/id' || url.pathname === '/cover/id/') {
+		if (path === '/cover/id') {
 			const params = new URLSearchParams(url.search);
 			let search_id;
 			try {
