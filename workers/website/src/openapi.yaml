@@ -1,0 +1,145 @@
+openapi: 3.0.0
+info:
+  title: Audiobook Covers API
+  description: The Audiobook Covers API provides a simple interface to search for audiobook covers based on text or Reddit post ID.
+  version: "1.0"
+
+servers:
+  - url: https://api.audiobookcovers.com/
+    description: Main API server
+
+paths:
+
+  /cover/bytext/:
+    get:
+      summary: Retrieve audiobook covers by search text
+      description: Retrieves a list of audiobook covers that match the specified search text.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search query based on the text in the cover image.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A JSON array of audiobook covers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AudiobookCoverResponse'
+
+  /cover/ai-search/:
+    get:
+      summary: Retrieve audiobook covers by AI search
+      description: Retrieves a list of audiobook covers based on the search. Uses OpenAI CLIP to search
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search query. Used with OpenAI CLIP to search the vector database. 
+          schema:
+            type: string
+        - name: k
+          in: query
+          required: false
+          description: Number of results to return
+          schema:
+            type: number
+      responses:
+        '200':
+          description: A JSON array of audiobook covers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AudiobookCoverResponse'
+
+  /cover/random/:
+    get:
+      summary: Retrieve random audiobook covers
+      description: Retrieves a list of random audiobook covers.
+      parameters:
+        - name: k
+          in: query
+          required: false
+          description: Number of results to return
+          schema:
+            type: number
+      responses:
+        '200':
+          description: A JSON array of audiobook covers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AudiobookCoverResponse'
+
+
+components:
+  schemas:
+    AudiobookCoverResponse:
+      type: array
+      items:
+        type: object
+        properties:
+          filename:
+            type: string
+            description: URL of the audiobook cover image.
+
+          versions:
+            type: object
+            properties:
+              webp:
+                type: object
+                properties:
+                  200: 
+                    type: string
+                    description: URL of cover image resized to 200 pixels wide in webp format
+                  500: 
+                    type: string
+                    description: URL of cover image resized to 500 pixels wide in webp format
+                  1000: 
+                    type: string
+                    description: URL of cover image resized to 1000 pixels wide in webp format
+                  original: 
+                    type: string
+                    description: URL of cover image in webp format
+              jpeg:
+                type: object
+                properties:
+                  200: 
+                    type: string
+                    description: URL of cover image resized to 200 pixels wide in jpeg format
+                  500: 
+                    type: string
+                    description: URL of cover image resized to 500 pixels wide in jpeg format
+                  1000: 
+                    type: string
+                    description: URL of cover image resized to 1000 pixels wide in jpeg format
+                  original: 
+                    type: string
+                    description: URL of cover image in jpeg format
+              png:
+                type: object
+                properties:
+                  200: 
+                    type: string
+                    description: URL of cover image resized to 200 pixels wide in png format
+                  500: 
+                    type: string
+                    description: URL of cover image resized to 500 pixels wide in png format
+                  1000: 
+                    type: string
+                    description: URL of cover image resized to 1000 pixels wide in png format
+                  original: 
+                    type: string
+                    description: URL of cover image in png format
+
+          id:
+            type: string
+            description: Unique identifier of the image on AudiobookCovers.com
+          permalink:
+            type: string
+            description: URL to load the image on AudiobookCovers.com
+          source:
+            type: string
+            description: URL for the source of the image.
