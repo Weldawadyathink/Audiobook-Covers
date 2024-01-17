@@ -1,0 +1,5 @@
+functions-framework
+pillow
+sentence_transformers
+pinecone-client
+algoliasearch
