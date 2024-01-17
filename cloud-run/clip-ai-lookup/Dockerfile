@@ -15,6 +15,8 @@ RUN apt-get update && \
 
 RUN git clone https://huggingface.co/sentence-transformers/clip-ViT-B-32
 
+RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
 RUN pip install --no-cache-dir -r requirements.txt
 
 CMD exec gunicorn --bind :$PORT --workers 1 --threads 1 --preload --timeout 0 main:app
