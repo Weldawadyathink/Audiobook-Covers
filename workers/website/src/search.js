@@ -41,6 +41,9 @@ async function search() {
   const download_form = document.querySelector("#download_selection_window");
   document.querySelector("main").appendChild(download_form);
   let query = searchInput.value;
+  if (query === "") {
+    return;
+  }
   const selectedSearchType = Array.from(searchTypeInputs).find(
     (input) => input.checked
   ).value;
@@ -48,6 +51,10 @@ async function search() {
   let apiUrl = "";
   if (selectedSearchType === "text") {
     apiUrl = `https://api.audiobookcovers.com/cover/bytext/?q=${encodeURIComponent(
+      query
+    )}`;
+  } else if (selectedSearchType === "ai") {
+    apiUrl = `https://api.audiobookcovers.com/cover/ai-search?q=${encodeURIComponent(
       query
     )}`;
   } else {
