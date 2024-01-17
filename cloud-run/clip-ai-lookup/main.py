@@ -1,6 +1,6 @@
 import os
 from sentence_transformers import SentenceTransformer
-from flask import Flask, request
+from flask import Flask, request, Response
 import json
 from pinecone import Pinecone
 import numpy as np
@@ -25,7 +25,7 @@ def pinecone_init():
 @app.route("/text")
 def text_search():
     query = request.args.get("q")
-    top_k = request.args.get("k")
+    top_k = int(request.args.get("k"))
     pc = pinecone_init()
     index = pc.Index("covers")
     vector = model.encode(query).tolist()
@@ -35,22 +35,24 @@ def text_search():
         include_values = False,
         top_k = top_k,
     )
-    return json.dumps(response.to_dict())
+    json_data = json.dumps(response.to_dict())
+    return Response(json_data, content_type='application/json')
 
 
 @app.route("/random")
 def random():
-    top_k = request.args.get("k")
+    top_k = int(request.args.get("k"))
     pc = pinecone_init()
     index = pc.Index("covers")
-    vector = np.random.normal(size=512)
+    vector = np.random.normal(size=512).tolist()
     response = index.query(
         vector = vector,
         include_metadata = True,
         include_values = False,
         top_k = top_k,
     )
-    return json.dumps(response.to_dict())
+    json_data = json.dumps(response.to_dict())
+    return Response(json_data, content_type='application/json')
     
 
 if __name__ == "__main__":
