@@ -76,6 +76,26 @@ paths:
               schema:
                 $ref: '#/components/schemas/AudiobookCoverResponse'
 
+  /cover/id/:
+    get:
+      summary: Retrieve audiobook cover by id
+      description: Retrieves a specific audiobook cover, using the internal use id. 
+      operationId: getCoverById
+      parameters:
+        - name: id
+          in: query
+          required: false
+          description: id of cover image
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A JSON array of audiobook covers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AudiobookCoverResponse'
+
 
 components:
   schemas:
