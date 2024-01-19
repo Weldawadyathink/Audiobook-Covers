@@ -14,5 +14,5 @@ last_update: $(DEPLOY_FILES)
 		--set-secrets=ALGOLIA=algolia-search:latest \
 		--task-timeout=60m \
 		--max-retries=0 \
-		--parallelism=1
+		--parallelism=1 \
 		--update-env-vars GOOGLE_CLOUD_RUN=True \
