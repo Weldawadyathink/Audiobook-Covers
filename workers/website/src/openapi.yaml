@@ -56,6 +56,32 @@ paths:
               schema:
                 $ref: '#/components/schemas/AudiobookCoverResponse'
 
+  /cover/similar-to/:
+    get:
+      summary: Retrieve covers similar to another file. 
+      description: Retrieves a list of audiobook covers that are similar to the input ID. Uses OpenAI CLIP to search
+      operationId: getCoverAiSearch
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search image ID.
+          schema:
+            type: string
+        - name: k
+          in: query
+          required: false
+          description: Number of results to return
+          schema:
+            type: number
+      responses:
+        '200':
+          description: A JSON array of audiobook covers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AudiobookCoverResponse'
+
   /cover/random/:
     get:
       summary: Retrieve random audiobook covers

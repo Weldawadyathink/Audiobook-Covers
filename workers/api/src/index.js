@@ -164,6 +164,40 @@ export default {
 			return new Response(JSON.stringify(cover_info), { headers: headers });
 		}
 
+		if (path === '/cover/similar-to') {
+			const params = new URLSearchParams(url.search);
+			const top_k = params.get('k') || 50;
+			let search_id;
+			try {
+				search_id = params.get('id');
+			} catch (_) {
+				return new Response('Incorrect or missing cover id', {
+					status: 422,
+					statusText: 'Incorrect or missing cover id',
+					headers: headers,
+				});
+			}
+			const index = get_algolia_index(env);
+			let hit;
+			try {
+				hit = await index.getObject(search_id);
+			} catch (error) {
+				if (error.message.includes('ObjectID does not exist')) {
+					return new Response('Cover ID not found', { status: 404, statusText: 'Cover ID not found', headers: headers });
+				} else {
+					throw error;
+				}
+			}
+			const clip_api_url = new URL(env.CLIP_API_URL);
+			clip_api_url.pathname = '/similar';
+			clip_api_url.searchParams.append('q', search_id);
+			clip_api_url.searchParams.append('k', top_k);
+			const clip_response = await fetch(clip_api_url);
+			const clip_response_json = await clip_response.json();
+			const response_list = clip_response_json.matches.map(generate_response_object);
+			return new Response(JSON.stringify(response_list), { headers: headers });
+		}
+
 		return new Response('404 not found', { status: 404, statusText: 'Not Found', headers: headers });
 	},
 };
