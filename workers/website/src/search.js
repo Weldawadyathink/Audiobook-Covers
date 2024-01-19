@@ -16,8 +16,44 @@ window.onload = () => {
       button.addEventListener("click", download_options_limiter)
     );
 
-  getCoverById();
+  load_default_covers();
 };
+
+async function load_default_covers() {
+  // Load query string image id
+  const queryString = window.location.search;
+  const urlParams = new URLSearchParams(queryString);
+  const search_id = urlParams.get("id");
+  if (search_id) {
+    const apiUrl = `https://api.audiobookcovers.com/cover/id?id=${search_id}`;
+    try {
+      const response = await fetch(apiUrl);
+      if (!response.ok) {
+        throw new Error(response.status);
+      }
+      const results = await response.json();
+      displayResults([results]);
+    } catch (error) {
+      displayError(error);
+    }
+  } else {
+    const download_form = document.querySelector("#download_selection_window");
+    document.querySelector("main").appendChild(download_form);
+
+    const apiUrl = `https://api.audiobookcovers.com/cover/random?k=1`;
+
+    try {
+      const response = await fetch(apiUrl);
+      if (!response.ok) {
+        throw new Error(response.status);
+      }
+      const results = await response.json();
+      displayResults(results);
+    } catch (error) {
+      displayError(error);
+    }
+  }
+}
 
 function download_options_limiter() {
   const download_format_input = document.querySelector(
@@ -119,7 +155,7 @@ function displayResults(results) {
 
     // Add image
     const coverImage = document.createElement("img");
-    coverImage.src = result.versions.webp["1000"];
+    coverImage.src = result.versions.webp["500"];
     coverImage.className = "fill_cover rounded";
     coverImage.addEventListener("click", (event) => flipCard(event.target));
     front.appendChild(coverImage);
@@ -293,22 +329,3 @@ window.addEventListener("storage", (event) => {
   if (event.key === "download_size") {
   }
 });
-
-async function getCoverById() {
-  const queryString = window.location.search;
-  const urlParams = new URLSearchParams(queryString);
-  const search_id = urlParams.get("id");
-  if (search_id) {
-    const apiUrl = `https://api.audiobookcovers.com/cover/id?id=${search_id}`;
-    try {
-      const response = await fetch(apiUrl);
-      if (!response.ok) {
-        throw new Error(response.status);
-      }
-      const results = await response.json();
-      displayResults([results]);
-    } catch (error) {
-      displayError(error);
-    }
-  }
-}
