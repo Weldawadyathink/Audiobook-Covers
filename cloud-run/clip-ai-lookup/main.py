@@ -53,6 +53,28 @@ def random():
     )
     json_data = json.dumps(response.to_dict())
     return Response(json_data, content_type='application/json')
+
+
+@app.route("/similar")
+def similar():
+    query = request.args.get("q")
+    top_k = int(request.args.get("k"))
+    pc = pinecone_init()
+    index = pc.Index("covers")
+    cover_to_search = index.fetch([query]).to_dict()
+    print(cover_to_search)
+    vector = cover_to_search["vectors"][query]["values"]
+    print(vector)
+    response = index.query(
+        vector = vector,
+        include_metadata = True,
+        include_values = False,
+        top_k = top_k,
+    )
+    json_data = json.dumps(response.to_dict())
+    return Response(json_data, content_type='application/json')
+        
+        
     
 
 if __name__ == "__main__":
