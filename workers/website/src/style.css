@@ -306,22 +306,6 @@ main {
 
 
 
-
-
-
-
-/* Media queries for responsive design */
-/* @media screen and (max-width: 600px) {
-  .result_container {
-    width: 90%;
-    height: auto;
-    margin: 0.5rem 0;
-  }
-} */
-
-
-
-
 /* Search type wrapper styles */
 .search-type-wrapper {
   display: flex;
