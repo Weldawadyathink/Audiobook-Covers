@@ -71,6 +71,26 @@ function download_options_limiter() {
   }
 }
 
+async function findSimilar(image_id) {
+  const download_form = document.querySelector("#download_selection_window");
+  document.querySelector("main").appendChild(download_form);
+  let apiUrl = `https://api.audiobookcovers.com/cover/similar-to?id=${image_id}&k=50`;
+
+  fetch(apiUrl)
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error("Network response was not ok: " + response.statusText);
+      }
+      return response.json();
+    })
+    .then((results) => {
+      displayResults(results);
+    })
+    .catch((error) => {
+      displayError(error);
+    });
+}
+
 async function search() {
   const searchInput = document.getElementById("search-input");
   const searchTypeInputs = document.querySelectorAll(".search-type-input");
@@ -168,8 +188,9 @@ function displayResults(results) {
 
     const sourceIcon = document.createElement("img");
     sourceIcon.src = "assets/dataset_linked.svg";
-    sourceIcon.alt = "Source";
+    sourceIcon.alt = "Image source";
     sourceIcon.className = "fill_cover";
+    sourceIcon.title = "Image source";
     sourceLink.appendChild(sourceIcon);
 
     front.appendChild(sourceLink);
@@ -177,13 +198,25 @@ function displayResults(results) {
     // Share Link
     const shareLink = document.createElement("img");
     shareLink.className = "corner_bottom_left";
-    shareLink.addEventListener("click", () =>
-      copyToClipboard(result.permalink)
-    );
+    shareLink.addEventListener("click", () => {
+      copyToClipboard(result.permalink);
+    });
     shareLink.src = "assets/share.svg";
     shareLink.alt = "Get sharing link";
+    shareLink.title = "Copy link to this image";
 
     front.appendChild(shareLink);
+
+    const similarLink = document.createElement("img");
+    similarLink.className = "corner_top_right";
+    similarLink.src = "assets/image_search.svg";
+    similarLink.alt = "Find similar images";
+    similarLink.title = "Find similar images";
+    similarLink.addEventListener("click", () => {
+      findSimilar(result.id);
+    });
+
+    front.appendChild(similarLink);
 
     // Back of card
     const back = document.createElement("div");

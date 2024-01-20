@@ -218,8 +218,10 @@ main {
 
 /* Cover container styles */
 .result_container {
-  width: 500px;
-  height: 500px;
+  max-width: 400px;
+  max-height: 400px;
+  width: 80vw;
+  height: 80vw;
   margin: 0.5rem;
   position: relative;
   display: flex;
@@ -309,13 +311,13 @@ main {
 
 
 /* Media queries for responsive design */
-@media screen and (max-width: 600px) {
+/* @media screen and (max-width: 600px) {
   .result_container {
     width: 90%;
     height: auto;
     margin: 0.5rem 0;
   }
-}
+} */
 
 
 
