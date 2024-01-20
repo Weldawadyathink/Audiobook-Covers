@@ -40,7 +40,7 @@ async function load_default_covers() {
     const download_form = document.querySelector("#download_selection_window");
     document.querySelector("main").appendChild(download_form);
 
-    const apiUrl = `https://api.audiobookcovers.com/cover/random?k=1`;
+    const apiUrl = `https://api.audiobookcovers.com/cover/random?k=10`;
 
     try {
       const response = await fetch(apiUrl);
