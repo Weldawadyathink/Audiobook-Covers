@@ -1,6 +1,6 @@
 name = "audiobook-covers-api"
 main = "src/index.js"
-compatibility_date = "2023-12-18"
+compatibility_date = "2023-10-30"
 
 # Variable bindings. These are arbitrary, plaintext strings (similar to environment variables)
 # Note: Use secrets to store sensitive data.

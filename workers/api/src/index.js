@@ -27,12 +27,13 @@ export default {
 		const url = new URL(request.url);
 
 		const path = url.pathname.replace(/\/+/g, '/').replace(/\/$/, '').toLowerCase();
+		console.log(path);
 
 		if (path === '/') {
 			return new Response('Hello AudiobookCover Enthusiasts!', { headers: headers });
 		}
 
-		if (path === '/cover/bytext/') {
+		if (path === '/cover/bytext') {
 			const index = get_algolia_index(env);
 			const params = new URLSearchParams(url.search);
 			const searchString = params.get('q');
