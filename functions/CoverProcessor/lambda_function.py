@@ -2,7 +2,7 @@ import boto3
 import urllib
 import io
 from cloud_vision import get_image_text
-from algolia import save_to_algolia
+from algolia import save_to_algolia, generate_unique_uuid, check_uuid_in_algolia
 from uuid import uuid1
 from hash import get_image_hash_from_image
 from PIL import Image
@@ -23,6 +23,10 @@ def lambda_handler(event, context):
     file_extension, cover_id, source = source_key.split('|')
 
     new_s3_filename_base = cover_id
+    
+    if not check_uuid_in_algolia(cover_id):
+        cover_id = generate_unique_uuid()
+    
     download_path = f'/tmp/{uuid1()}'
     
     s3.download_file(source_bucket, source_key, download_path)
