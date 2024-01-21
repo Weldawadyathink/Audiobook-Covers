@@ -40,7 +40,6 @@ def save_to_algolia(cover_id: str, cloud_vision_text: str, file_extension: str, 
         'attributesToRetrieve': ['hash'],
         'restrictSearchableAttributes': ['hash'],
         'hitsPerPage': 1000,
-        # ... rest of the code ...
     })
     for item in res['hits']:
         if item['hash'] == hash:
