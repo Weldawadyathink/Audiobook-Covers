@@ -1,6 +1,4 @@
-FUNCTION_NAME = AudiobookCovers_CoverProcessor
 DEPLOY_FILES := $(wildcard *.py) Dockerfile requirements.txt Makefile
-DEPENDENCY_DIRECTORY = ./site-packages
 
 .PHONY: deploy
 
