@@ -1,0 +1,4 @@
+functions-framework
+pillow
+sentence_transformers
+psycopg2-binary
