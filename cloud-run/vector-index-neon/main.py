@@ -1,7 +1,7 @@
 import os
 from sentence_transformers import SentenceTransformer
 import requests
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 import psycopg2
 from psycopg2 import sql
 
@@ -21,7 +21,12 @@ def index_one(model, db):
     id = response[0]
     file_url = f"https://download.audiobookcovers.com/png/1000/{id}.png"
     response = requests.get(file_url, stream=True)
-    image = Image.open(response.raw)
+    image = ""
+    try:
+        image = Image.open(response.raw)
+    except UnidentifiedImageError as e:
+        print(f"Error opening image {id}. Skipping")
+        return True
     vector = model.encode(image).tolist()
     cursor.execute(sql.SQL("UPDATE image SET embedding = %s WHERE id = %s"), (vector, id))
     db.commit()
