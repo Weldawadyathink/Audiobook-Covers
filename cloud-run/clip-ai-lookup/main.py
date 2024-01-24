@@ -2,8 +2,9 @@ import os
 from sentence_transformers import SentenceTransformer
 from flask import Flask, request, Response
 import json
-from pinecone import Pinecone
 import numpy as np
+import psycopg2
+from psycopg2 import sql
 
 app = Flask(__name__)
 
@@ -15,63 +16,94 @@ def get_model():
 
 model = get_model()
 
-def pinecone_init():
-    secret = json.loads(os.environ.get("PINECONE"))
-    return Pinecone(
-        api_key = secret["api_key"],
-    )
-
 
 @app.route("/text")
 def text_search():
     query = request.args.get("q")
     top_k = int(request.args.get("k"))
-    pc = pinecone_init()
-    index = pc.Index("covers")
+    db = psycopg2.connect(os.environ.get("DATABASE"))
+    cursor = db.cursor()
     vector = model.encode(query).tolist()
-    response = index.query(
-        vector = vector,
-        include_metadata = True,
-        include_values = False,
-        top_k = top_k,
-    )
-    json_data = json.dumps(response.to_dict())
+    query = sql.SQL("""
+        SELECT id, extension, source
+        FROM image
+        ORDER BY embedding <=> %s::vector
+        LIMIT %s
+    """)
+    cursor.execute(query, (vector, top_k))
+    response = cursor.fetchall()
+    # Response shoult match pinecode format for compatability with frontend
+    modified_response = {'matches': [
+        {
+            'id': item[0],
+            'metadata': {
+                'extension': item[1],
+                'source': item[2],
+            }
+        }
+    for item in response]
+    } # This is kinda cursed
+    json_data = json.dumps(modified_response)
     return Response(json_data, content_type='application/json')
 
 
 @app.route("/random")
 def random():
     top_k = int(request.args.get("k"))
-    pc = pinecone_init()
-    index = pc.Index("covers")
     vector = np.random.normal(size=512).tolist()
-    response = index.query(
-        vector = vector,
-        include_metadata = True,
-        include_values = False,
-        top_k = top_k,
-    )
-    json_data = json.dumps(response.to_dict())
+    db = psycopg2.connect(os.environ.get("DATABASE"))
+    cursor = db.cursor()
+    query = sql.SQL("""
+        SELECT id, extension, source
+        FROM image
+        ORDER BY embedding <=> %s::vector
+        LIMIT %s
+    """)
+    cursor.execute(query, (vector, top_k))
+    response = cursor.fetchall()
+    # Response shoult match pinecode format for compatability with frontend
+    modified_response = {'matches': [
+        {
+            'id': item[0],
+            'metadata': {
+                'extension': item[1],
+                'source': item[2],
+            }
+        }
+    for item in response]
+    } # This is kinda cursed
+    json_data = json.dumps(modified_response)
     return Response(json_data, content_type='application/json')
 
 
 @app.route("/similar")
 def similar():
-    query = request.args.get("q")
+    search_id = request.args.get("q")
     top_k = int(request.args.get("k"))
-    pc = pinecone_init()
-    index = pc.Index("covers")
-    cover_to_search = index.fetch([query]).to_dict()
-    print(cover_to_search)
-    vector = cover_to_search["vectors"][query]["values"]
-    print(vector)
-    response = index.query(
-        vector = vector,
-        include_metadata = True,
-        include_values = False,
-        top_k = top_k,
-    )
-    json_data = json.dumps(response.to_dict())
+    db = psycopg2.connect(os.environ.get("DATABASE"))
+    cursor = db.cursor()
+    query = sql.SQL("""
+        SELECT id, extension, source
+        FROM image
+        ORDER BY embedding <=> (
+            SELECT embedding FROM image WHERE id = %s
+        )::vector
+        LIMIT %s;
+    """)
+    cursor.execute(query, (search_id, top_k))
+    response = cursor.fetchall()
+    # Response shoult match pinecode format for compatability with frontend
+    modified_response = {'matches': [
+        {
+            'id': item[0],
+            'metadata': {
+                'extension': item[1],
+                'source': item[2],
+            }
+        }
+    for item in response]
+    } # This is kinda cursed
+    json_data = json.dumps(modified_response)
     return Response(json_data, content_type='application/json')
         
         
