@@ -1,0 +1,9 @@
+This function will include metadata from the s3 key. Format is as follows. 
+
+ext|cover_id|source
+
+Items are processed from first to last, so new items can be added to the end in the same style. 
+
+ext is the file extension. Do not include the period. 
+cover_id is a 32 character uuid with no dashes. 
+source is the url source of the file. 
