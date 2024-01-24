@@ -13,7 +13,7 @@ def get_model():
 
 def index_one(model, db):
     cursor = db.cursor()
-    cursor.execute(sql.SQL('SELECT id FROM image WHERE embedding IS NULL ORDER BY RANDOM() LIMIT 1'))
+    cursor.execute(sql.SQL('SELECT id FROM image WHERE embedding IS NULL AND index_error IS NOT TRUE ORDER BY RANDOM() LIMIT 1'))
     response = cursor.fetchone()
     if not response:
         print("No more images to index")
@@ -25,7 +25,9 @@ def index_one(model, db):
     try:
         image = Image.open(response.raw)
     except UnidentifiedImageError as e:
-        print(f"Error opening image {id}. Skipping")
+        print(f"Error opening image {id}. Flagging in database. ")
+        cursor.execute(sql.SQL("UPDATE image SET index_error = TRUE WHERE id = %s"), [id])
+        db.commit()
         return True
     vector = model.encode(image).tolist()
     cursor.execute(sql.SQL("UPDATE image SET embedding = %s WHERE id = %s"), (vector, id))
