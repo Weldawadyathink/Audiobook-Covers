@@ -1,5 +1,4 @@
 functions-framework
 pillow
 sentence_transformers
-pinecone-client
-algoliasearch
+psycopg2-binary
