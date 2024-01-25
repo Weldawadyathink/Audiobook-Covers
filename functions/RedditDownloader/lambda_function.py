@@ -1,11 +1,12 @@
+import boto3
+from botocore.exceptions import ClientError
 import subprocess
 import os
 import sys
 import shutil
-import boto3
 from uuid import uuid1
-from algolia import generate_unique_uuid
-from faunadb import get_post_id_to_download, mark_post_id_complete, NoMoreItems
+import psycopg2
+from psycopg2 import sql
 
 include_file = "/tmp/include-id.txt"
 download_folder = "/tmp/downloads"
@@ -13,6 +14,52 @@ bdfr_base_folder = '/opt/bdfr'
 bdfr_run_folder = '/tmp/site-packages/bdfr'
 original_config_file = "/var/task/config.cfg"
 config_file = "/tmp/config.cfg"
+
+class NoMoreItems(Exception):
+    pass
+
+def get_post_id_to_download():
+    db = get_neon_db()
+    cursor = db.cursor()
+    cursor.execute(sql.SQL("SELECT post_id FROM reddit_post WHERE downloaded IS FALSE"))
+    result = cursor.fetchone()
+    if result is None:
+        db.close()
+        raise NoMoreItems
+    db.close()
+    return result[0]
+
+def mark_post_id_complete(id):
+    with get_neon_db() as db:
+        cursor = db.cursor()
+        cursor.execute(sql.SQL("UPDATE reddit_post SET downloaded = TRUE WHERE post_id = %s"), [id])
+        db.commit()
+        db.close()
+
+def get_neon_db():
+
+    secret_name = "audiobookcovers/neon/write"
+    region_name = "us-west-1"
+
+    # Create a Secrets Manager client
+    session = boto3.session.Session()
+    client = session.client(
+        service_name='secretsmanager',
+        region_name=region_name
+    )
+
+    try:
+        get_secret_value_response = client.get_secret_value(
+            SecretId=secret_name
+        )
+    except ClientError as e:
+        # For a list of exceptions thrown, see
+        # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
+        raise e
+
+    secret = get_secret_value_response['SecretString']
+    return psycopg2.connect(secret)
+    
 
 def lambda_handler(event, context):
     prepare_environment()
@@ -79,7 +126,7 @@ def process_file(directory_name, file_name):
         # Process image file
         new_file_key = "|".join([
             os.path.splitext(file_name)[1].lower().replace(".", ""),
-            generate_unique_uuid(),
+            uuid1(),
             f"https://reddit.com/{reddit_post_id}",
         ])
         s3.upload_file(complete_file_path, image_bucket, new_file_key)
