@@ -219,6 +219,7 @@ export default {
 		}
 
 		if (path === '/cover/give-feedback') {
+			const params = new URLSearchParams(url.search);
 			let search_id;
 			try {
 				search_id = params.get('id');
@@ -232,7 +233,31 @@ export default {
 				});
 			}
 
+			let comment;
+			try {
+				comment = params.get('comment');
+			} catch (_) {
+				const err_message = 'Incorrect or missing comment.';
+				await log_response(env, request, path, start_time, err_message);
+				return new Response(err_message, {
+					status: 422,
+					statusText: err_message,
+					headers: headers,
+				});
+			}
+
+			const sql = neon(env.DATABASE);
+			await sql`
+				INSERT INTO feedback (image_id, comment)
+				VALUES (${search_id}, ${comment})
+			`;
+
 			await log_response(env, request, path, start_time);
+			return new Response('Submitted', {
+				status: 200,
+				statusText: 'Submitted.',
+				headers: headers,
+			})
 		}
 
 		await log_response(env, request, path, start_time, 'No endpoints matched.')
