@@ -12,6 +12,6 @@
   },
   "dependencies": {
     "@extractus/feed-extractor": "^7.0.8",
-    "fauna": "^1.3.1"
+    "@neondatabase/serverless": "^0.7.2"
   }
 }
