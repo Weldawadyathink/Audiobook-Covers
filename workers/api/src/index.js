@@ -275,12 +275,13 @@ function generate_response_object(item) {
 	};
 }
 
-async function log_response(env, request, endpoint, error = "") {
-	const url = request.url
-	const user_agent = request.headers.get('User-Agent')
+async function log_response(env, request, endpoint, error = null) {
+	const url = request.url;
+	const user_agent = request.headers.get('User-Agent') || null;
+	const origin = request.headers.get('Origin') || null;
 	const sql = neon(env.DATABASE);
 	await sql`
-		INSERT INTO api_log (url, endpoint, user_agent, error)
-		VALUES(${url}, ${endpoint}, ${user_agent}, ${error})
+		INSERT INTO api_log (url, endpoint, user_agent, origin, error)
+		VALUES(${url}, ${endpoint}, ${user_agent}, ${origin}, ${error})
 	`;
 }
