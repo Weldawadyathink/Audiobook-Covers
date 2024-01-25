@@ -29,10 +29,12 @@ export default {
 		console.log(path);
 
 		if (path === '/') {
+			await log_response(env, request, path);
 			return new Response('Hello AudiobookCover Enthusiasts!', { headers: headers });
 		}
 
 		if (path === '/cover/bytext') {
+			await log_response(env, request, path);
 			const params = new URLSearchParams(url.search);
 			const searchString = params.get('q');
 			const formattedSearchString = searchString.split(' ').join(' & ');
@@ -51,6 +53,7 @@ export default {
 		}
 
 		if (path === '/cover/ai-search') {
+			await log_response(env, request, path);
 			const params = new URLSearchParams(url.search);
 			const searchString = params.get('q');
 			const top_k = params.get('k') || 50;
@@ -66,6 +69,7 @@ export default {
 		}
 
 		if (path === '/cover/random') {
+			await log_response(env, request, path);
 			const params = new URLSearchParams(url.search);
 			const top_k = params.get('k') || 50;
 
@@ -79,6 +83,7 @@ export default {
 		}
 
 		if (path === '/upload/cover') {
+			await log_response(env, request, path);
 			const valid_auth = 'Basic ' + btoa(env.UPLOAD_USERNAME + ':' + env.UPLOAD_PASSWORD);
 			const authHeader = request.headers.get('Authorization');
 
@@ -152,9 +157,11 @@ export default {
 			try {
 				search_id = params.get('id');
 			} catch (_) {
-				return new Response('Incorrect or missing cover id', {
+				const err_message = 'Incorrect or missing cover id.'
+				await log_response(env, request, path, err_message);
+				return new Response(err_message, {
 					status: 422,
-					statusText: 'Incorrect or missing cover id',
+					statusText: err_message,
 					headers: headers,
 				});
 			}
@@ -173,6 +180,7 @@ export default {
 			} else {
 				cover_info = generate_response_object(hit[0]);
 			}
+			await log_response(env, request, path);
 			return new Response(JSON.stringify(cover_info), { headers: headers });
 		}
 
@@ -183,9 +191,11 @@ export default {
 			try {
 				search_id = params.get('id');
 			} catch (_) {
-				return new Response('Incorrect or missing cover id', {
+				const err_message = 'Incorrect or missing cover id.';
+				await log_response(env, request, path, err_message);
+				return new Response(err_message, {
 					status: 422,
-					statusText: 'Incorrect or missing cover id',
+					statusText: err_message,
 					headers: headers,
 				});
 			}
@@ -203,9 +213,28 @@ export default {
 				LIMIT ${top_k}
 			`;
 			const response_list = hits.map(generate_response_object);
+			await log_response(env, request, path);
 			return new Response(JSON.stringify(response_list), { headers: headers });
 		}
 
+		if (path === '/cover/give-feedback') {
+			let search_id;
+			try {
+				search_id = params.get('id');
+			} catch (_) {
+				const err_message = 'Incorrect or missing cover id.';
+				await log_response(env, request, path, err_message);
+				return new Response(err_message, {
+					status: 422,
+					statusText: err_message,
+					headers: headers,
+				});
+			}
+
+			await log_response(env, request, path);
+		}
+
+		await log_response(env, request, path, 'No endpoints matched.')
 	},
 };
 
@@ -244,4 +273,14 @@ function generate_response_object(item) {
 		permalink: `https://audiobookcovers.com/?id=${id}`,
 		source: source,
 	};
+}
+
+async function log_response(env, request, endpoint, error = "") {
+	const url = request.url
+	const user_agent = request.headers.get('User-Agent')
+	const sql = neon(env.DATABASE);
+	await sql`
+		INSERT INTO api_log (url, endpoint, user_agent, error)
+		VALUES(${url}, ${endpoint}, ${user_agent}, ${error})
+	`;
 }
