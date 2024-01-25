@@ -8,4 +8,4 @@ fi
 
 echo "$RCLONE_CONFIG" > /rclone.conf
 
-rclone sync s3:com-audiobookcovers-processed gdrive:Audiobook\ Covers --config=/rclone.conf --transfers 10 -v --stats-one-line --fast-list --size-only
+rclone sync s3:com-audiobookcovers-processed gdrive:Audiobook\ Covers --config=/rclone.conf --transfers 10 --checkers 25 -v --stats-one-line --fast-list --size-only
