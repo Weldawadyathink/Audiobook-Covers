@@ -35,6 +35,7 @@ export default {
 		if (path === '/cover/bytext') {
 			const params = new URLSearchParams(url.search);
 			const searchString = params.get('q');
+			const formattedSearchString = searchString.split(' ').join(' & ');
 			const sql = neon(env.DATABASE);
 			const hits = await sql`
 				SELECT
@@ -44,7 +45,7 @@ export default {
 				FROM image
 				WHERE 
 					to_tsvector('english', cloud_vision_text) @@
-					to_tsquery('english', ${searchString})`;
+					to_tsquery('english', ${formattedSearchString})`;
 			const response_list = hits.map(generate_response_object);
 			return new Response(JSON.stringify(response_list), { headers: headers });
 		}
