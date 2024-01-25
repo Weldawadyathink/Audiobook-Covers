@@ -31,7 +31,7 @@ def lambda_handler(event, context):
             
         with Image.open(download_path) as image:
             image_hash = get_image_hash_from_image(image)
-            db = psycopg2.connect(os.environ.get("DATABASE"))
+            db = get_neon_db()
             
             cursor = db.cursor()
             cursor.execute(sql.SQL("SELECT COUNT(id) FROM image WHERE hash = %s"), image_hash)
@@ -78,6 +78,36 @@ def lambda_handler(event, context):
             pass
         raise e
 
+
+
+
+
+def get_neon_db():
+
+    secret_name = "audiobookcovers/neon/write"
+    region_name = "us-west-1"
+
+    # Create a Secrets Manager client
+    session = boto3.session.Session()
+    client = session.client(
+        service_name='secretsmanager',
+        region_name=region_name
+    )
+
+    try:
+        get_secret_value_response = client.get_secret_value(
+            SecretId=secret_name
+        )
+    except ClientError as e:
+        # For a list of exceptions thrown, see
+        # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
+        raise e
+
+    secret = get_secret_value_response['SecretString']
+    return psycopg2.connect(secret)
+    
+    
+    
 
 
 
