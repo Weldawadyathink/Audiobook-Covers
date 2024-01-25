@@ -7,6 +7,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export default {
 	async fetch(request, env, ctx) {
+		const start_time = performance.now()
 		if (request.method === 'OPTIONS') {
 			// Handle CORS preflight request.
 			return new Response('', {
@@ -29,12 +30,11 @@ export default {
 		console.log(path);
 
 		if (path === '/') {
-			await log_response(env, request, path);
+			await log_response(env, request, path, start_time);
 			return new Response('Hello AudiobookCover Enthusiasts!', { headers: headers });
 		}
 
 		if (path === '/cover/bytext') {
-			await log_response(env, request, path);
 			const params = new URLSearchParams(url.search);
 			const searchString = params.get('q');
 			const formattedSearchString = searchString.split(' ').join(' & ');
@@ -49,11 +49,11 @@ export default {
 					to_tsvector('english', cloud_vision_text) @@
 					to_tsquery('english', ${formattedSearchString})`;
 			const response_list = hits.map(generate_response_object);
+			await log_response(env, request, path, start_time);
 			return new Response(JSON.stringify(response_list), { headers: headers });
 		}
 
 		if (path === '/cover/ai-search') {
-			await log_response(env, request, path);
 			const params = new URLSearchParams(url.search);
 			const searchString = params.get('q');
 			const top_k = params.get('k') || 50;
@@ -65,11 +65,11 @@ export default {
 			const clip_response = await fetch(clip_api_url);
 			const clip_response_json = await clip_response.json();
 			const response_list = clip_response_json.matches.map(generate_response_object);
+			await log_response(env, request, path, start_time);
 			return new Response(JSON.stringify(response_list), { headers: headers });
 		}
 
 		if (path === '/cover/random') {
-			await log_response(env, request, path);
 			const params = new URLSearchParams(url.search);
 			const top_k = params.get('k') || 50;
 
@@ -79,11 +79,12 @@ export default {
 			const clip_response = await fetch(clip_api_url);
 			const clip_response_json = await clip_response.json();
 			const response_list = clip_response_json.matches.map(generate_response_object);
+			await log_response(env, request, path, start_time);
 			return new Response(JSON.stringify(response_list), { headers: headers });
 		}
 
 		if (path === '/upload/cover') {
-			await log_response(env, request, path);
+			await log_response(env, request, path, start_time);
 			const valid_auth = 'Basic ' + btoa(env.UPLOAD_USERNAME + ':' + env.UPLOAD_PASSWORD);
 			const authHeader = request.headers.get('Authorization');
 
@@ -158,7 +159,7 @@ export default {
 				search_id = params.get('id');
 			} catch (_) {
 				const err_message = 'Incorrect or missing cover id.'
-				await log_response(env, request, path, err_message);
+				await log_response(env, request, path, start_time, err_message);
 				return new Response(err_message, {
 					status: 422,
 					statusText: err_message,
@@ -180,7 +181,7 @@ export default {
 			} else {
 				cover_info = generate_response_object(hit[0]);
 			}
-			await log_response(env, request, path);
+			await log_response(env, request, path, start_time);
 			return new Response(JSON.stringify(cover_info), { headers: headers });
 		}
 
@@ -192,7 +193,7 @@ export default {
 				search_id = params.get('id');
 			} catch (_) {
 				const err_message = 'Incorrect or missing cover id.';
-				await log_response(env, request, path, err_message);
+				await log_response(env, request, path, start_time, err_message);
 				return new Response(err_message, {
 					status: 422,
 					statusText: err_message,
@@ -213,7 +214,7 @@ export default {
 				LIMIT ${top_k}
 			`;
 			const response_list = hits.map(generate_response_object);
-			await log_response(env, request, path);
+			await log_response(env, request, path, start_time);
 			return new Response(JSON.stringify(response_list), { headers: headers });
 		}
 
@@ -223,7 +224,7 @@ export default {
 				search_id = params.get('id');
 			} catch (_) {
 				const err_message = 'Incorrect or missing cover id.';
-				await log_response(env, request, path, err_message);
+				await log_response(env, request, path, start_time, err_message);
 				return new Response(err_message, {
 					status: 422,
 					statusText: err_message,
@@ -231,10 +232,10 @@ export default {
 				});
 			}
 
-			await log_response(env, request, path);
+			await log_response(env, request, path, start_time);
 		}
 
-		await log_response(env, request, path, 'No endpoints matched.')
+		await log_response(env, request, path, start_time, 'No endpoints matched.')
 	},
 };
 
@@ -275,13 +276,14 @@ function generate_response_object(item) {
 	};
 }
 
-async function log_response(env, request, endpoint, error = null) {
+async function log_response(env, request, endpoint, start_time, error = null) {
 	const url = request.url;
 	const user_agent = request.headers.get('User-Agent') || null;
 	const origin = request.headers.get('Origin') || null;
+	const request_time = Math.trunc(performance.now() - start_time);
 	const sql = neon(env.DATABASE);
 	await sql`
-		INSERT INTO api_log (url, endpoint, user_agent, origin, error)
-		VALUES(${url}, ${endpoint}, ${user_agent}, ${origin}, ${error})
+		INSERT INTO api_log (url, endpoint, user_agent, origin, error, request_time)
+		VALUES(${url}, ${endpoint}, ${user_agent}, ${origin}, ${error}, ${request_time})
 	`;
 }
