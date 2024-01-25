@@ -34,7 +34,6 @@ def mark_post_id_complete(id):
         cursor = db.cursor()
         cursor.execute(sql.SQL("UPDATE reddit_post SET downloaded = TRUE WHERE post_id = %s"), [id])
         db.commit()
-        db.close()
 
 def get_neon_db():
 
@@ -126,7 +125,7 @@ def process_file(directory_name, file_name):
         # Process image file
         new_file_key = "|".join([
             os.path.splitext(file_name)[1].lower().replace(".", ""),
-            uuid1(),
+            str(uuid1()),
             f"https://reddit.com/{reddit_post_id}",
         ])
         s3.upload_file(complete_file_path, image_bucket, new_file_key)
