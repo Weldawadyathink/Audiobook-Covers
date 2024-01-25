@@ -110,7 +110,7 @@ paths:
       parameters:
         - name: id
           in: query
-          required: false
+          required: true
           description: id of cover image
           schema:
             type: string
@@ -121,6 +121,32 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AudiobookCoverResponse'
+
+  /cover/give-feedback:
+    post:
+      summary: Send user feedback about an image
+      description: Logs a comment with the server. The administrator will view these comments as necessary to improve the website. 
+      operationId: giveFeedback
+      parameters:
+        - name: id
+          in: query
+          required: true
+          description: id of the image
+          schema:
+            type: string
+        - name: comment
+          in: query
+          required: true
+          description: comment to send to the admin
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A confirmation message
+          content:
+            text/plain:
+              schema:
+                type: string
 
 
 components:
