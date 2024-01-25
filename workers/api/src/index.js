@@ -1,7 +1,6 @@
 import { v1 as uuidv1 } from 'uuid';
 
-import algoliasearch from 'algoliasearch';
-import { createFetchRequester } from '@algolia/requester-fetch';
+import { neon } from '@neondatabase/serverless';
 
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -34,11 +33,18 @@ export default {
 		}
 
 		if (path === '/cover/bytext') {
-			const index = get_algolia_index(env);
 			const params = new URLSearchParams(url.search);
 			const searchString = params.get('q');
-			const hits = await index.search(searchString);
-			const response_list = hits['hits'].map(generate_response_object);
+			const sql = neon(env.DATABASE);
+			const hits = await sql`SELECT
+					id,
+					extension,
+					source
+				FROM image
+				WHERE 
+					to_tsvector('english', cloud_vision_text) @@
+					to_tsquery('english', ${searchString})`;
+			const response_list = hits.map(generate_response_object);
 			return new Response(JSON.stringify(response_list), { headers: headers });
 		}
 
@@ -150,18 +156,21 @@ export default {
 					headers: headers,
 				});
 			}
-			const index = get_algolia_index(env);
-			let hit;
-			try {
-				hit = await index.getObject(search_id);
-			} catch (error) {
-				if (error.message.includes('ObjectID does not exist')) {
-					return new Response('Cover ID not found', { status: 404, statusText: 'Cover ID not found', headers: headers });
-				} else {
-					throw error;
-				}
+			const sql = neon(env.DATABASE);
+			const hit = await sql`
+				SELECT
+					id,
+					extension,
+					source
+				FROM image
+				WHERE
+					id = ${search_id}`;
+			let cover_info
+			if (hit.length == 0) {
+				cover_info = hit
+			} else {
+				cover_info = generate_response_object(hit[0]);
 			}
-			const cover_info = generate_response_object(hit);
 			return new Response(JSON.stringify(cover_info), { headers: headers });
 		}
 
@@ -199,40 +208,8 @@ export default {
 			return new Response(JSON.stringify(response_list), { headers: headers });
 		}
 
-		return new Response('404 not found', { status: 404, statusText: 'Not Found', headers: headers });
 	},
 };
-
-async function check_uuid_in_algolia(index, uuid) {
-	/**
-	 * Checks if a given UUID exists in the Algolia index.
-	 *
-	 * @param {object} index - The Algolia index object.
-	 * @param {string} uuid - The UUID to check.
-	 * @returns {boolean} True if the UUID is valid and usable, false if it is a duplicate.
-	 */
-	try {
-		const response = await index.getObject(uuid, {
-			attributesToRetrieve: ['objectID'],
-		});
-	} catch (error) {
-		if (!error.message.includes('ObjectID does not exist')) {
-			throw error;
-		} else {
-			// If it errors, uuid is not in index and therefore is valid
-			return true;
-		}
-	}
-	// If error was not thrown, the uuid exists in the index, and therefore is not valid
-	return false;
-}
-
-function get_algolia_index(env) {
-	const client = algoliasearch(env.ALGOLIA_APP_ID, env.ALGOLIA_SEARCH_KEY, {
-		requester: createFetchRequester(),
-	});
-	return client.initIndex('bookCoverIndex');
-}
 
 function generate_response_object(item) {
 	/**
@@ -240,7 +217,7 @@ function generate_response_object(item) {
 	 * Designed to have an algolia or pinecone database response
 	 */
 	const base_download_url = 'https://download.audiobookcovers.com';
-	const id = item.objectID || item.id;
+	const id = item.id;
 	const ext = item.extension || item.metadata.extension;
 	const source = item.source || item.metadata.source;
 	return {
