@@ -4,7 +4,7 @@ ALL_FUNCTION_MAKEFILES := $(shell find ./functions -name Makefile)
 
 ALL_LAYERS_MAKEFILES := $(shell find ./layers -name Makefile)
 
-ALL_WORKERS_MAKEFILES := $(shell find ./workers -name Makefile)
+ALL_WORKERS_MAKEFILES := $(shell find ./workers -name 'node_modules' -prune -o -name 'Makefile' -print)
 
 ALL_CLOUD_RUN_MAKEFILES := $(shell find ./cloud-run -name Makefile)
 
