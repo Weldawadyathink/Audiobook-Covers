@@ -17,6 +17,10 @@ def get_model():
 model = get_model()
 
 
+@app.route("/keep-alive")
+def keep_alive():
+    return Response("Hello world")
+
 @app.route("/text")
 def text_search():
     query = request.args.get("q")
