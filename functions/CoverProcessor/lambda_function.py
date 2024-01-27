@@ -63,12 +63,15 @@ def lambda_handler(event, context):
                     )
         db.commit()
         db.close()
+        s3.delete_object(Bucket=source_bucket, Key=source_key)
+        print(f"Added {cover_id} to database")
     except Exception as e:
         for func in rollback_functions:
             func()
         print('Image not added to database. Moved to failed s3 bucket.')
         failed_bucket = 'com-audiobookcovers-failed'
         s3.copy_object(Bucket=failed_bucket, Key=source_key, CopySource={'Bucket': source_bucket, 'Key': source_key})
+        s3.delete_object(Bucket=source_bucket, Key=source_key)
         if db is not None:
             db.rollback()
             db.close()
