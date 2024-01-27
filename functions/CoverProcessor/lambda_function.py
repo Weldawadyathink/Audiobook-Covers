@@ -34,11 +34,11 @@ def lambda_handler(event, context):
             db = get_neon_db()
             
             cursor = db.cursor()
-            cursor.execute(sql.SQL("SELECT COUNT(id) FROM image WHERE hash = %s"), image_hash)
+            cursor.execute(sql.SQL("SELECT COUNT(id) FROM image WHERE hash = %s"), [image_hash])
             if int(cursor.fetchone()[0]) != 0:
                 raise Exception("Image hash already in database")
             
-            cursor.execute(sql.SQL("SELECT COUNT(id) FROM image WHERE id = %s"), cover_id)
+            cursor.execute(sql.SQL("SELECT COUNT(id) FROM image WHERE id = %s"), [cover_id])
             if int(cursor.fetchone()[0]) != 0:
                 raise Exception("Image ID already in database")
             
