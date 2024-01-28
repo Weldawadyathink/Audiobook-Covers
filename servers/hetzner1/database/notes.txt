@@ -1,0 +1,1 @@
+pgbouncer user auth setup: https://www.2ndquadrant.com/en/blog/pg-phriday-securing-pgbouncer/

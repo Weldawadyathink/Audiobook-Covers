@@ -1,0 +1,53 @@
+version: '3.1'
+
+services:
+  db:
+    image: ankane/pgvector
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - /opt/docker-files/postgres/data:/var/lib/postgresql/data
+    networks:
+      - pgnet
+    ports:
+      - "5432:5432"
+
+  pgbouncer:
+    image: edoburu/pgbouncer
+    restart: always
+    environment:
+      POOL_MODE: transaction
+      AUTH_TYPE: scram-sha-256
+      AUTH_QUERY: "SELECT * FROM pgbouncer.get_auth($1)"
+      AUTH_USER: pgbouncer
+      AUTH_PASSWORD: ${PG_BOUNCER_PASSWORD}
+
+      DB_USER: pgbouncer
+      DB_PASSWORD: ${PG_BOUNCER_PASSWORD}
+      DB_HOST: db
+      DB_PORT: "5432"
+      LISTEN_PORT: "6432"
+
+      CLIENT_TLS_SSLMODE: require
+      CLIENT_TLS_CA_FILE: /keys/root.crt
+      CLIENT_TLS_KEY_FILE: /keys/pgbouncer.key
+      CLIENT_TLS_CERT_FILE: /keys/pgbouncer.crt
+
+    networks:
+      - pgnet
+    ports:
+      - "6432:6432"
+    volumes:
+      - /opt/docker-files/postgres/keys:/keys
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    networks:
+      - pgnet
+
+networks:
+  pgnet:
