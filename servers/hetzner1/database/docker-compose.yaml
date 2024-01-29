@@ -1,17 +1,33 @@
 version: '3.1'
 
 services:
-  db:
+  postgres:
     image: ankane/pgvector
     restart: always
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - /opt/docker-files/postgres/data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
+      - /opt/docker-files/postgres/init:/docker-entrypoint-initdb.d 
     networks:
       - pgnet
     ports:
       - "5432:5432"
+    labels:
+      ofelia.enabled: "true"
+      ofelia.no-overlap: "true"
+      ofelia.job-exec.datecron.schedule: "@every 1m"
+      ofelia.job-exec.datecron.command: "/bin/sh -c 'pg_dumpall -U postgres | sed \"/^CREATE ROLE postgres;$/d\" > /dump.sql && chmod 777 /dump.sql && mv /dump.sql /docker-entrypoint-initdb.d/backup.sql'"
+  
+  ofelia:
+    image: mcuadros/ofelia:latest
+    depends_on:
+      - postgres
+    command: daemon --docker -f label=com.docker.compose.project=${COMPOSE_PROJECT_NAME}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - pgnet
 
   pgbouncer:
     image: edoburu/pgbouncer
@@ -51,3 +67,6 @@ services:
 
 networks:
   pgnet:
+
+volumes:
+  pgdata:
