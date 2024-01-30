@@ -46,9 +46,9 @@ services:
       LISTEN_PORT: "6432"
 
       CLIENT_TLS_SSLMODE: require
-      CLIENT_TLS_CA_FILE: /keys/root.crt
-      CLIENT_TLS_KEY_FILE: /keys/pgbouncer.key
-      CLIENT_TLS_CERT_FILE: /keys/pgbouncer.crt
+      CLIENT_TLS_CA_FILE: /keys/server.crt
+      CLIENT_TLS_KEY_FILE: /keys/server.key
+      CLIENT_TLS_CERT_FILE: /keys/server.crt
 
     networks:
       - pgnet
