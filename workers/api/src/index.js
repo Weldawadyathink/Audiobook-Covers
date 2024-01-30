@@ -1,6 +1,6 @@
 import { v1 as uuidv1 } from 'uuid';
 
-import { neon } from '@neondatabase/serverless';
+import { Client } from 'pg';
 
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -38,18 +38,21 @@ export default {
 			const params = new URLSearchParams(url.search);
 			const searchString = params.get('q');
 			const formattedSearchString = searchString.split(' ').join(' & ');
-			const sql = neon(env.DATABASE);
-			const hits = await sql`
-				SELECT
-					id,
-					extension,
-					source
-				FROM image
-				WHERE 
-					to_tsvector('english', cloud_vision_text) @@
-					to_tsquery('english', ${formattedSearchString})`;
-			const response_list = hits.map(generate_response_object);
-			await log_response(env, request, path, start_time);
+			const client = new Client(env.DATABASE);
+			await client.connect();
+			const results = await client.query(`
+			SELECT
+				id,
+				extension,
+				source
+			FROM image
+			WHERE
+				to_tsvector('english', cloud_vision_text) @@
+				to_tsquery('english', $1);
+			`, [formattedSearchString]);
+			const response_list = results.rows.map(generate_response_object);
+			ctx.waitUntil(log_response(env, request, path, start_time));
+			ctx.waitUntil(client.end());
 			return new Response(JSON.stringify(response_list), { headers: headers });
 		}
 
@@ -166,22 +169,24 @@ export default {
 					headers: headers,
 				});
 			}
-			const sql = neon(env.DATABASE);
-			const hit = await sql`
+			const client = new Client(env.DATABASE);
+			await client.connect();
+			const results = await client.query(`
 				SELECT
 					id,
 					extension,
 					source
 				FROM image
-				WHERE
-					id = ${search_id}`;
-			let cover_info
-			if (hit.length == 0) {
-				cover_info = hit
+				WHERE id = $1
+			`, [search_id]);
+			let cover_info;
+			if (results.rows.length == 0) {
+				cover_info = [];
 			} else {
-				cover_info = generate_response_object(hit[0]);
+				cover_info = generate_response_object(results.rows[0]);
 			}
-			await log_response(env, request, path, start_time);
+			ctx.waitUntil(log_response(env, request, path, start_time));
+			ctx.waitUntil(client.end());
 			return new Response(JSON.stringify(cover_info), { headers: headers });
 		}
 
@@ -200,21 +205,24 @@ export default {
 					headers: headers,
 				});
 			}
-			const sql = neon(env.DATABASE);
-			const hits = await sql`
-				SELECT ID,
-					EXTENSION,
-					SOURCE
+			const client = new Client(env.DATABASE);
+			await client.connect();
+			const results = await client.query(`
+				SELECT
+					id,
+					extension,
+					source
 				FROM image
 				ORDER BY embedding <=> (
 					SELECT embedding
 					FROM image
-					WHERE ID = ${search_id}
+					WHERE id = $1
 				)
-				LIMIT ${top_k}
-			`;
-			const response_list = hits.map(generate_response_object);
-			await log_response(env, request, path, start_time);
+				LIMIT $2
+			`, [search_id, top_k]);
+			const response_list = results.rows.map(generate_response_object);
+			ctx.waitUntil(log_response(env, request, path, start_time));
+			ctx.waitUntil(client.end());
 			return new Response(JSON.stringify(response_list), { headers: headers });
 		}
 
@@ -246,13 +254,15 @@ export default {
 				});
 			}
 
-			const sql = neon(env.DATABASE);
-			await sql`
+			const client = new Client(env.DATABASE);
+			await client.connect();
+			await client.query(`
 				INSERT INTO feedback (image_id, comment)
-				VALUES (${search_id}, ${comment})
-			`;
+				VALUES ($1, $2)
+			`, [search_id, comment]);
 
-			await log_response(env, request, path, start_time);
+			ctx.waitUntil(log_response(env, request, path, start_time));
+			ctx.waitUntil(client.end());
 			return new Response('Submitted', {
 				status: 200,
 				statusText: 'Submitted.',
@@ -306,9 +316,10 @@ async function log_response(env, request, endpoint, start_time, error = null) {
 	const user_agent = request.headers.get('User-Agent') || null;
 	const origin = request.headers.get('Origin') || null;
 	const request_time = Math.trunc(performance.now() - start_time);
-	const sql = neon(env.DATABASE);
-	await sql`
+	const client = new Client(env.DATABASE);
+	await client.connect();
+	await client.query(`
 		INSERT INTO api_log (url, endpoint, user_agent, origin, error, request_time)
-		VALUES(${url}, ${endpoint}, ${user_agent}, ${origin}, ${error}, ${request_time})
-	`;
+		VALUES($1, $2, $3, $4, $5, $6)
+	`, [url, endpoint, user_agent, origin, error, request_time]);
 }
