@@ -64,7 +64,7 @@ services:
     ports:
       - "6432:6432"
     volumes:
-      - /opt/docker-files/postgres/letsencrypt/live/hetzner-1.audiobookcovers.com/cert.pem:/keys/server.crt
+      - /opt/docker-files/postgres/letsencrypt/live/hetzner-1.audiobookcovers.com/fullchain.pem:/keys/server.crt
       - /opt/docker-files/postgres/letsencrypt/live/hetzner-1.audiobookcovers.com/privkey.pem:/keys/server.key
 
   adminer:
