@@ -28,6 +28,15 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - pgnet
+    labels:
+      ofelia.enabled: "true"
+      ofelia.job-exec.certbot.schedule: "@every 6h"
+      ofelia.job-exec.certbot.command: |
+        docker run -it --rm --name certbot -p 80:80
+        -v /opt/docker-files/postgres/letsencrypt:/etc/letsencrypt
+        certbot/certbot
+        certonly --standalone -n -d hetzner-1.audiobookcovers.com
+        --email admin@audiobookcovers.com --agree-tos -v
 
   pgbouncer:
     image: edoburu/pgbouncer
@@ -46,7 +55,6 @@ services:
       LISTEN_PORT: "6432"
 
       CLIENT_TLS_SSLMODE: require
-      # CLIENT_TLS_CA_FILE: /keys/server.crt
       CLIENT_TLS_KEY_FILE: /keys/server.key
       CLIENT_TLS_CERT_FILE: /keys/server.crt
 
