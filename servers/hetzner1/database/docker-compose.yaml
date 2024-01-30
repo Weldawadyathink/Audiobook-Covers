@@ -41,7 +41,7 @@ services:
 
       DB_USER: pgbouncer
       DB_PASSWORD: ${PG_BOUNCER_PASSWORD}
-      DB_HOST: db
+      DB_HOST: postgres
       DB_PORT: "5432"
       LISTEN_PORT: "6432"
 
