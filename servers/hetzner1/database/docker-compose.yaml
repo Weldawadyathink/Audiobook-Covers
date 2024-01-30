@@ -46,16 +46,18 @@ services:
       LISTEN_PORT: "6432"
 
       CLIENT_TLS_SSLMODE: require
-      CLIENT_TLS_CA_FILE: /keys/server.crt
+      # CLIENT_TLS_CA_FILE: /keys/server.crt
       CLIENT_TLS_KEY_FILE: /keys/server.key
       CLIENT_TLS_CERT_FILE: /keys/server.crt
 
+    user: "0:0"
     networks:
       - pgnet
     ports:
       - "6432:6432"
     volumes:
-      - /opt/docker-files/postgres/keys:/keys
+      - /opt/docker-files/postgres/letsencrypt/live/hetzner-1.audiobookcovers.com/cert.pem:/keys/server.crt
+      - /opt/docker-files/postgres/letsencrypt/live/hetzner-1.audiobookcovers.com/privkey.pem:/keys/server.key
 
   adminer:
     image: adminer
