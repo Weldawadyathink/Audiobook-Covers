@@ -1,0 +1,13 @@
+version: '3.1'
+
+services:
+  app:
+    build:
+      context: ./build
+    ports:
+      - "8000:8000"
+    restart: always
+    environment:
+      DATABASE: ${DATABASE}
+      GOOGLE_CLOUD_RUN: "TRUE"
+      PORT: 8000
