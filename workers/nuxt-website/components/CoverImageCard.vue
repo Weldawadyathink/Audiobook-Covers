@@ -14,24 +14,50 @@
                 <a :href="`/similar/${imageData.id}`" @click.stop class="option-pill">
                     Find similar images
                 </a>
+                <a @click.stop @click="downloadImage('original', 'original')" class="option-pill">
+                    Download image file
+                </a>
             </div>
         </div>
     </div>
 </template>
 
 <script>
+
+import fileDownload from 'js-file-download';
+import Axios from 'axios';
+
 export default {
     props: ['imageData'],
     data() {
         return {
             isFlipped: false,
+            versionFormats: ['webp', 'jpeg', 'png', 'original'],
+            sizeFormats: ['original', '200', '500', '1000'],
         };
     },
     methods: {
         flipCard() {
             this.isFlipped = !this.isFlipped;
-            console.log(this.isFlipped);
         },
+        downloadImage(format, size) {
+            let urlBase = '';
+            let downloadFileName = '';
+            if (format == 'original') {
+                urlBase = this.imageData.filename;
+                downloadFileName = `${this.imageData.id}.${urlBase.split('.').pop()}`
+            } else {
+                urlBase = this.imageData.versions[format][size];
+                downloadFileName = `${this.imageData.id}.${format}`
+            }
+            const url = `${urlBase}?cacheBust=${new Date().getTime()}`
+            console.log(url)
+            Axios.get(url, {
+                responseType: 'blob',
+            }).then(res => {
+                fileDownload(res.data, downloadFileName);
+            });
+        }
     },
 };
 </script>
