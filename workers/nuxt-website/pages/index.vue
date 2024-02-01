@@ -1,16 +1,7 @@
 <template>
-  <div class="container mx-auto p-4">
-    <div class="mb-4">
-      <input v-model="newItem" type="text" placeholder="Add a new item" class="border p-2 mr-2">
-      <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" @click="addItem">
-        Add
-      </button>
-    </div>
-    <ul>
-      <li v-for="(item, index) in items" :key="index" class="border-b py-2">
-        {{ item }}
-      </li>
-    </ul>
+  <div>
+    <CoverImage imageUrl="https://download.audiobookcovers.com/webp/200/b1593d35-b1e0-11ee-b8e9-69c4203ee0c5.webp" />
+    <CoverImage imageUrl="https://download.audiobookcovers.com/webp/200/e2a4481d-b1de-11ee-ac96-69c4203ee0c5.webp" />
   </div>
 </template>
 
