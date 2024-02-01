@@ -11,6 +11,7 @@
     "deploy": "nuxi generate && wrangler pages deploy .output/public --project-name audiobook-covers-website-nuxt --commit-dirty=true --branch production"
   },
   "devDependencies": {
+    "@nuxtjs/tailwindcss": "^6.11.2",
     "nuxt": "^3.10.0",
     "vue": "^3.4.15",
     "vue-router": "^4.2.5",
