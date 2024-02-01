@@ -1,6 +1,6 @@
 <template>
-    <div class="cover-image-card max-w-[500px] max-h-[500px] aspect-w-1 aspect-h-1">
-        <img :src="imageData.versions.webp['200']" @click="handleClick" />
+    <div class="w-80 h-80 m-8 aspect-square rounded-3xl overflow-hidden hover:scale-110 ease-in-out duration-300">
+        <img :src="imageData.versions.webp['200']" @click="handleClick" class="w-full h-full object-contain" />
     </div>
 </template>
 

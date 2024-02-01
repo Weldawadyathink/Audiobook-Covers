@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="bg-slate-700">
     <CoverImageCard v-for="(imageData, index) in images" :key="index" :image-data="imageData" />
   </div>
 </template>
