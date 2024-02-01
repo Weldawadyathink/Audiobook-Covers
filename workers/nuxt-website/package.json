@@ -30,6 +30,7 @@
     "eslint-plugin-nuxt": "^4.0.0",
     "eslint-plugin-vue": "^9.5.1",
     "postcss": "^8.4.17",
-    "prettier": "^2.7.1"
+    "prettier": "^2.7.1",
+    "wrangler": "^3.26.0"
   }
 }
