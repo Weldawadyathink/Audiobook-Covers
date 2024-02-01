@@ -1,7 +1,6 @@
 .venv
 *.zip
 /functions/*/package/
-.vscode/settings.json
 
 .DS_Store
 
