@@ -1,5 +1,6 @@
 <template>
-    <CoverImageCard v-for="(imageData, index) in imageList" :key="index" :image-data="imageData" />
+    <CoverImageCard v-for="(imageData, index) in imageList" :key="index" :image-data="imageData"
+    :current-flipped-card="flippedCard" @flipCard="handleCardFlip" />
 </template>
 
 <script>
@@ -8,6 +9,18 @@ export default {
     props: [
         'imageList',
     ],
+    data() {
+        return {
+            flippedCard: '',
+        }
+    },
+    methods: {
+        handleCardFlip(id) {
+            setTimeout(() => {
+                this.flippedCard = id;
+            }, 300);
+        },
+    },
 };
 </script>
 

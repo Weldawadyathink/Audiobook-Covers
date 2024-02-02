@@ -26,32 +26,49 @@
 
 import fileDownload from 'js-file-download';
 import Axios from 'axios';
+import { v4 as uuidv4 } from 'uuid';
 
 export default {
-    props: ['imageData'],
+
+    props: [
+        'imageData',
+        'currentFlippedCard',
+    ],
+
     data() {
         return {
             isFlipped: false,
             versionFormats: ['webp', 'jpeg', 'png', 'original'],
             sizeFormats: ['original', '200', '500', '1000'],
+            uniqueID: uuidv4(),
         };
     },
+
+    watch: {
+        currentFlippedCard(newVal) {
+            if (this.uniqueID !== newVal && this.isFlipped) {
+                this.isFlipped = false;
+            }
+        }
+    },
+
     methods: {
         flipCard() {
             this.isFlipped = !this.isFlipped;
+            this.$emit('flipCard', this.uniqueID);
         },
         downloadImage(format, size) {
             let urlBase = '';
             let downloadFileName = '';
             if (format == 'original') {
                 urlBase = this.imageData.filename;
-                downloadFileName = `${this.imageData.id}.${urlBase.split('.').pop()}`
+                downloadFileName = `${this.imageData.id}.${urlBase.split('.').pop()}`;
             } else {
                 urlBase = this.imageData.versions[format][size];
-                downloadFileName = `${this.imageData.id}.${format}`
+                downloadFileName = `${this.imageData.id}.${format}`;
             }
-            const url = `${urlBase}?cacheBust=${new Date().getTime()}`
-            console.log(url)
+            const url = `${urlBase}?cacheBust=${new Date().getTime()}`;
+            console.log(url);
             Axios.get(url, {
                 responseType: 'blob',
             }).then(res => {

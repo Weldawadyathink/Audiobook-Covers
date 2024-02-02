@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "axios": "^1.6.7",
-    "js-file-download": "^0.4.12"
+    "js-file-download": "^0.4.12",
+    "uuid": "^9.0.1"
   }
 }
