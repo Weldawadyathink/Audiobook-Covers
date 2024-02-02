@@ -9,7 +9,7 @@ import Axios from "axios";
 import { useRoute } from 'vue-router';
 
 export default {
-  name: "IndexPage",
+  name: "SimilarToPage",
   data() {
     return {
       images: null,

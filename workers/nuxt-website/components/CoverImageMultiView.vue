@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-wrap justify-center gap-6">
+  <div class="flex flex-wrap justify-center gap-6 p-12">
     <CoverImageCard
       v-for="(imageData, index) in imageList"
       :key="index"
