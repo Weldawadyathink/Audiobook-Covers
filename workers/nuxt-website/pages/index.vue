@@ -1,6 +1,6 @@
 <template>
   <div class="bg-slate-700 flex flex-wrap justify-center gap-6">
-    <CoverImageCard v-for="(imageData, index) in images" :key="index" :image-data="imageData" />
+    <CoverImageMultiView :image-list="images" />
   </div>
 </template>
 
