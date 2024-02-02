@@ -18,7 +18,6 @@ export default {
     const num_images = 10;
     const url = `https://api.audiobookcovers.com/cover/random?k=${num_images}&cacheBust=${new Date().getTime()}`;
     Axios.get(url).then((res) => {
-      console.log(res);
       this.images = res.data;
     });
   },

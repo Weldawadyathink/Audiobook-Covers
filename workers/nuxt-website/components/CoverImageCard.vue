@@ -3,7 +3,7 @@
     <div :class="{ flipped: isFlipped }" class="card w-full h-full">
       <div @click="flipCard" class="front">
         <img
-          :src="imageData.versions.webp['200']"
+          :src="imageData.versions.webp['1000']"
           class="w-full h-full object-contain"
         />
       </div>

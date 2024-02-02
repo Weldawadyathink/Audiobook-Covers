@@ -20,7 +20,6 @@ export default {
     const id = useRoute().params.id;
     const url = `https://api.audiobookcovers.com/cover/similar-to?id=${id}&k=${num_images}&cacheBust=${new Date().getTime()}`;
     Axios.get(url).then((res) => {
-      console.log(res);
       this.images = res.data;
     });
   },
