@@ -1,5 +1,6 @@
 <template>
-  <div>
+  <div class="flex flex-col">
+    <SearchBar @search="searchHandler" class="mx-10 my-6"/>
     <CoverImageMultiView :image-list="images" v-if="images" />
   </div>
 </template>
@@ -21,6 +22,11 @@ export default {
       this.images = res.data;
     });
   },
+  methods: {
+    searchHandler(results) {
+      this.images = results;
+    },
+  }
 };
 </script>
 
