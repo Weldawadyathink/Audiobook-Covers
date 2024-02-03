@@ -10,7 +10,7 @@
           ref="cardImage"
         />
       </div>
-      <div @click="flipCard" class="back bg-stone-700 border-red-800">
+      <div @click="flipCard" class="back bg-stone-700">
         <a :href="`/image/${imageData.id}`" @click.stop class="option-pill">
           Link to this image
         </a>
@@ -27,7 +27,7 @@
         </a>
         <a
           @click.stop
-          @click="downloadImage('original', 'original')"
+          @click="openDownloadModal"
           class="option-pill"
         >
           Download image file
@@ -35,6 +35,7 @@
       </div>
     </div>
   </div>
+  <ModalDownload v-if="downloadModalVisible" @close="closeDownloadModal" />
 </template>
 
 <script>
@@ -50,6 +51,7 @@ export default {
       isFlipped: false,
       boxShadowStyle: '0 0 15px rgba(0, 0, 0, 0.5)', // Default shadow style
       uniqueID: uuidv4(),
+      downloadModalVisible: false,
     };
   },
   watch: {
@@ -91,11 +93,17 @@ export default {
         this.boxShadowStyle = `0 0 15px rgba(${dominantColor[0]}, ${dominantColor[1]}, ${dominantColor[2]}, 0.5)`;
       }
     },
+    openDownloadModal() {
+      this.downloadModalVisible = true;
+    },
+    closeDownloadModal() {
+      this.downloadModalVisible = false;
+    },
   },
 };
 </script>
 
-<style>
+<style scoped>
 .back {
   transform: rotateY(180deg);
   z-index: 2;
@@ -121,6 +129,6 @@ export default {
 }
 
 .option-pill {
-  @apply block m-4 p-2 rounded-full bg-emerald-400 text-center;
+  @apply block m-4 p-2 rounded-full bg-green-500 text-center hover:bg-green-600 hover:scale-105 ease-in-out duration-100 text-white;
 }
 </style>
