@@ -1,13 +1,16 @@
 <template>
   <div class="hover:scale-110 ease-in-out duration-300 w-80 h-80 aspect-square">
     <div :class="{ flipped: isFlipped }" class="card w-full h-full">
-      <div @click="flipCard" class="front">
+      <div @click="flipCard" class="front" :style="{ boxShadow: boxShadowStyle }">
         <img
           :src="imageData.versions.webp['1000']"
+          crossorigin="anonymous"
           class="w-full h-full object-contain"
+          @load="applyShadow"
+          ref="cardImage"
         />
       </div>
-      <div @click="flipCard" class="back bg-gray-900 border-red-800">
+      <div @click="flipCard" class="back bg-stone-700 border-red-800">
         <a :href="`/image/${imageData.id}`" @click.stop class="option-pill">
           Link to this image
         </a>
@@ -38,19 +41,17 @@
 import fileDownload from "js-file-download";
 import Axios from "axios";
 import { v4 as uuidv4 } from "uuid";
+import ColorThief from 'colorthief';
 
 export default {
   props: ["imageData", "currentFlippedCard"],
-
   data() {
     return {
       isFlipped: false,
-      versionFormats: ["webp", "jpeg", "png", "original"],
-      sizeFormats: ["original", "200", "500", "1000"],
+      boxShadowStyle: '0 0 15px rgba(0, 0, 0, 0.5)', // Default shadow style
       uniqueID: uuidv4(),
     };
   },
-
   watch: {
     currentFlippedCard(newVal) {
       if (this.uniqueID !== newVal && this.isFlipped) {
@@ -58,7 +59,6 @@ export default {
       }
     },
   },
-
   methods: {
     flipCard() {
       this.isFlipped = !this.isFlipped;
@@ -75,12 +75,21 @@ export default {
         downloadFileName = `${this.imageData.id}.${format}`;
       }
       const url = `${urlBase}?cacheBust=${new Date().getTime()}`;
-      console.log(url);
       Axios.get(url, {
         responseType: "blob",
       }).then((res) => {
         fileDownload(res.data, downloadFileName);
       });
+    },
+    applyShadow() {
+      const colorThief = new ColorThief();
+      const img = this.$refs.cardImage;
+
+      // Make sure the image is loaded
+      if (img.complete) {
+        const dominantColor = colorThief.getColor(img);
+        this.boxShadowStyle = `0 0 15px rgba(${dominantColor[0]}, ${dominantColor[1]}, ${dominantColor[2]}, 0.5)`;
+      }
     },
   },
 };
@@ -94,7 +103,7 @@ export default {
 
 .front,
 .back {
-  @apply rounded-3xl overflow-hidden shadow-symmetrical shadow-white;
+  @apply rounded-3xl overflow-hidden;
   backface-visibility: hidden;
   position: absolute;
   width: 100%;
@@ -112,6 +121,6 @@ export default {
 }
 
 .option-pill {
-  @apply block m-4 p-2 rounded-full bg-emerald-400 text-center gap-6;
+  @apply block m-4 p-2 rounded-full bg-emerald-400 text-center;
 }
 </style>
