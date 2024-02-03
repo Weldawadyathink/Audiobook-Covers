@@ -85,7 +85,8 @@ export default {
 };
 </script>
 
-<style>
+<style module>
+
 .fira-code {
   font-family: "Fira Code", monospace;
   font-feature-settings: "liga" 1, "calt" 1;
