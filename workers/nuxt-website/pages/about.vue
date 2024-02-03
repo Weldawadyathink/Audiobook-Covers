@@ -1,5 +1,5 @@
 <template>
-  <div class="m-12 max-w-prose">
+  <div class="m-12 max-w-prose text-slate-50">
     <section>
       <h1>Image Processing</h1>
 
@@ -8,7 +8,7 @@
         All images are assigned a
         <a
           href="https://en.wikipedia.org/wiki/Universally_unique_identifier"
-          class="text-blue-500 underline hover:text-blue-800"
+          class="text-sky-300 hover:text-sky-500"
           >UUID</a
         >. This uuid serves as the filename for the file in all locations. If
         you want to find the same file in a different format or resolution,
@@ -71,7 +71,7 @@
     <h2>
       <a
         href="https://drive.google.com/drive/folders/1ksaJtXc4FTwFdIxFnkY5OfwC1DoExwVY?usp=sharing"
-        class="text-blue-500 hover:text-blue-800"
+        class="text-sky-300 hover:text-sky-500"
         target="_blank"
         >Complete Archive Download</a
       >

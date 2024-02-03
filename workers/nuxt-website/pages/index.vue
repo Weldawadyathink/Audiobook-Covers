@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-slate-700">
+  <div>
     <CoverImageMultiView :image-list="images" v-if="images" />
   </div>
 </template>
