@@ -47,7 +47,13 @@
 </template>
 
 <script>
+import fileDownload from "js-file-download";
+import Axios from "axios";
+
 export default {
+  props: {
+    downloadLinks: Object,
+  },
   data() {
     return {
       formatOptions: [
@@ -67,12 +73,6 @@ export default {
     };
   },
   watch: {
-    format(newFormat) {
-      console.log(newFormat);
-    },
-    size(newSize) {
-      console.log(newSize);
-    },
   },
   methods: {
     closeModal() {
@@ -92,7 +92,19 @@ export default {
       }
     },
     download() {
-
+      let urlBase = '';
+      if (this.format === 'original') {
+        urlBase = this.downloadLinks.filename;
+      } else {
+        urlBase = this.downloadLinks.versions[this.format][this.size];
+      }
+      const downloadFilename = urlBase.split("/").pop();
+      const url = `${urlBase}?cacheBust=${new Date().getTime()}`;
+      Axios.get(url, {
+        responseType: "blob",
+      }).then((res) => {
+        fileDownload(res.data, downloadFilename);
+      });
     }
   },
 };

@@ -35,12 +35,10 @@
       </div>
     </div>
   </div>
-  <ModalDownload v-if="downloadModalVisible" @close="closeDownloadModal" />
+  <ModalDownload v-if="downloadModalVisible" @close="closeDownloadModal" :download-links="imageData" />
 </template>
 
 <script>
-import fileDownload from "js-file-download";
-import Axios from "axios";
 import { v4 as uuidv4 } from "uuid";
 import ColorThief from 'colorthief';
 
@@ -65,23 +63,6 @@ export default {
     flipCard() {
       this.isFlipped = !this.isFlipped;
       this.$emit("flipCard", this.uniqueID);
-    },
-    downloadImage(format, size) {
-      let urlBase = "";
-      let downloadFileName = "";
-      if (format == "original") {
-        urlBase = this.imageData.filename;
-        downloadFileName = `${this.imageData.id}.${urlBase.split(".").pop()}`;
-      } else {
-        urlBase = this.imageData.versions[format][size];
-        downloadFileName = `${this.imageData.id}.${format}`;
-      }
-      const url = `${urlBase}?cacheBust=${new Date().getTime()}`;
-      Axios.get(url, {
-        responseType: "blob",
-      }).then((res) => {
-        fileDownload(res.data, downloadFileName);
-      });
     },
     applyShadow() {
       const colorThief = new ColorThief();
