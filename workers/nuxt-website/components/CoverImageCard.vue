@@ -94,7 +94,7 @@ export default {
 
 .front,
 .back {
-  @apply rounded-3xl overflow-hidden;
+  @apply rounded-3xl overflow-hidden shadow-symmetrical shadow-white;
   backface-visibility: hidden;
   position: absolute;
   width: 100%;

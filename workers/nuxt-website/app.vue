@@ -7,6 +7,6 @@
 
 <style>
 html, body {
-  @apply bg-neutral-700;
+  @apply bg-stone-900;
 }
 </style>
