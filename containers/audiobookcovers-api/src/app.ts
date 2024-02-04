@@ -29,7 +29,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 const router: Router = express.Router({ strict: false });
 
 
-app.get("/", (req: Request, res: Response) => {
+router.get("/", (req: Request, res: Response) => {
   res.send("Hello, world! This is an Express server using TypeScript.");
 });
 
