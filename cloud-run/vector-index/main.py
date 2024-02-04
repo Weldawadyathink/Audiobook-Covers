@@ -12,7 +12,7 @@ def index_one(model, db):
     cursor.execute(sql.SQL('''
         SELECT id
         FROM image
-        WHERE embedding_reindex IS NOT TRUE AND index_error IS NOT TRUE
+        WHERE embedding IS NOT NULL AND index_error IS NOT TRUE
         LIMIT 1
         FOR UPDATE SKIP LOCKED
     '''))
@@ -33,7 +33,7 @@ def index_one(model, db):
         return True
     vector = model.encode(image)
     unit_vector = vector / np.linalg.norm(vector)
-    cursor.execute(sql.SQL("UPDATE image SET embedding = %s, embedding_reindex = TRUE WHERE id = %s"), (unit_vector.tolist(), id))
+    cursor.execute(sql.SQL("UPDATE image SET embedding = %s WHERE id = %s"), (unit_vector.tolist(), id))
     db.commit()
     print(f"Added vector for {id}")
     return True
