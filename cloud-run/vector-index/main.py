@@ -4,16 +4,18 @@ import requests
 from PIL import Image, UnidentifiedImageError
 import psycopg2
 from psycopg2 import sql
+import numpy as np
 
-def get_model():
-    if os.environ.get("GOOGLE_CLOUD_RUN") is None:
-        return SentenceTransformer('clip-ViT-B-32')
-    # Use local model file if in google cloud run
-    return SentenceTransformer('./clip-ViT-B-32')
 
 def index_one(model, db):
     cursor = db.cursor()
-    cursor.execute(sql.SQL('SELECT id FROM image WHERE embedding IS NULL AND index_error IS NOT TRUE ORDER BY RANDOM() LIMIT 1'))
+    cursor.execute(sql.SQL('''
+        SELECT id
+        FROM image
+        WHERE embedding_reindex IS NOT TRUE AND index_error IS NOT TRUE
+        LIMIT 1
+        FOR UPDATE SKIP LOCKED
+    '''))
     response = cursor.fetchone()
     if not response:
         print("No more images to index")
@@ -29,16 +31,16 @@ def index_one(model, db):
         cursor.execute(sql.SQL("UPDATE image SET index_error = TRUE WHERE id = %s"), [id])
         db.commit()
         return True
-    vector = model.encode(image).tolist()
-    cursor.execute(sql.SQL("UPDATE image SET embedding = %s WHERE id = %s"), (vector, id))
+    vector = model.encode(image)
+    unit_vector = vector / np.linealg.norm(vector)
+    cursor.execute(sql.SQL("UPDATE image SET embedding = %s, embedding_reindex = TRUE WHERE id = %s"), (unit_vector.tolist(), id))
     db.commit()
     print(f"Added vector for {id}")
     return True
-    
-    
+
 
 def main():
-    model = get_model()
+    model = SentenceTransformer('./clip-ViT-B-32')
     db = psycopg2.connect(os.environ.get("DATABASE"))
     while index_one(model, db):
         pass
