@@ -35,7 +35,7 @@ router.get("/cover/bytext", (req: Request, res: Response) => {
   )
     .then((result: any) => result.rows)
     .then((items: any) => items.map(generateResponseObject))
-    .then((response_obj: ResponseObject[]) => 
+    .then((response_obj: ResponseObject[]) =>
       res.status(200).send(response_obj)
     )
     .catch((error: any) => {
@@ -68,7 +68,7 @@ router.get("/cover/ai-search", (req: Request, res: Response) => {
     .then((embedding: any) => query(db_query, [embedding, topK]))
     .then((result: any) => result.rows)
     .then((items: any) => items.map(generateResponseObject))
-    .then((response_obj: ResponseObject[]) => 
+    .then((response_obj: ResponseObject[]) =>
       res.status(200).send(response_obj)
     )
     .catch((error: any) => {
@@ -98,8 +98,8 @@ router.get("/cover/random", (req: Request, res: Response) => {
     )
     .catch((error: any) => {
       console.error(error);
-      res.status(500).send({error: "Internal server error"})
-    })
+      res.status(500).send({ error: "Internal server error" });
+    });
 });
 
 router.get("/cover/id", (req: Request, res: Response) => {
@@ -120,9 +120,7 @@ router.get("/cover/id", (req: Request, res: Response) => {
     .then((rows: any) =>
       rows.length === 0 ? [] : generateResponseObject(rows[0])
     )
-    .then((response_obj: any) =>
-      res.status(200).send(response_obj)
-    )
+    .then((response_obj: any) => res.status(200).send(response_obj))
     .catch((error: any) => {
       console.error(error);
       res.status(500).send({ error: "Internal server error" });
@@ -158,6 +156,29 @@ router.get("/cover/similar-to", (req: Request, res: Response) => {
       console.error(error);
       res.status(500).send({ error: "Internal server error" });
     });
-})
+});
+
+router.post("/cover/give-feedback", (req: Request, res: Response) => {
+  if (!req.query.id) {
+    return res.status(400).send({ error: 'Query parameter "id" is required.' });
+  }
+  if (!req.query.comment) {
+    return res
+      .status(400)
+      .send({ error: 'Query parameter "comment" is required.' });
+  }
+  const id = <string>req.query.id;
+  const comment = <string>req.query.comment;
+  const db_query = `
+    INSERT INTO feedback (image_id, comment)
+    VALUES ($1, $2)
+  `;
+  query(db_query, [id, comment])
+    .then(() => res.status(200).send({ status: "Comment submitted" }))
+    .catch((error: any) => {
+      console.error(error);
+      res.status(500).send({ error: "Internal server error" });
+    });
+});
 
 export { router };
