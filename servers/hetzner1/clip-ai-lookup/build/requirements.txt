@@ -1,6 +1,0 @@
-pillow
-sentence_transformers
-Flask
-gunicorn
-Werkzeug
-psycopg2-binary
