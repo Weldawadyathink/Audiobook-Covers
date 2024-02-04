@@ -32,7 +32,7 @@ def index_one(model, db):
         db.commit()
         return True
     vector = model.encode(image)
-    unit_vector = vector / np.linealg.norm(vector)
+    unit_vector = vector / np.linalg.norm(vector)
     cursor.execute(sql.SQL("UPDATE image SET embedding = %s, embedding_reindex = TRUE WHERE id = %s"), (unit_vector.tolist(), id))
     db.commit()
     print(f"Added vector for {id}")
