@@ -8,6 +8,7 @@ import express, {
 import { query } from "./db";
 import { generateResponseObject, Item, ResponseObject } from "./utils";
 import Axios from "axios";
+import { generateRandomUnitVector } from "./vectorTools";
 
 const router: Router = express.Router({ strict: false });
 
@@ -67,13 +68,38 @@ router.get("/cover/ai-search", (req: Request, res: Response) => {
     .then((embedding: any) => query(db_query, [embedding, topK]))
     .then((result: any) => result.rows)
     .then((items: any) => items.map(generateResponseObject))
-    .then((response_obj: [ResponseObject]) => {
-      res.status(200).send(response_obj);
-    })
+    .then((response_obj: ResponseObject[]) => 
+      res.status(200).send(response_obj)
+    )
     .catch((error: any) => {
       console.error(error);
-      res.status(500).send({ error: 'Internal server error' });
+      res.status(500).send({ error: "Internal server error" });
     });
+});
+
+router.get("/cover/random", (req: Request, res: Response) => {
+  const topK = parseInt(<string>req.query.k) || 50;
+  const vector = generateRandomUnitVector(512);
+
+  const db_query = `
+    SELECT
+      id,
+      extension,
+      source
+    FROM image
+    ORDER BY embedding <=> $1::vector
+    LIMIT $2
+  `;
+  query(db_query, [JSON.stringify(vector), topK])
+    .then((result: any) => result.rows)
+    .then((items: any) => items.map(generateResponseObject))
+    .then((response_obj: ResponseObject[]) =>
+      res.status(200).send(response_obj)
+    )
+    .catch((error: any) => {
+      console.error(error);
+      res.status(500).send({error: "Internal server error"})
+    })
 });
 
 export { router };
