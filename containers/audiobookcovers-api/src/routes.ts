@@ -7,6 +7,7 @@ import express, {
 } from "express";
 import { query } from "./db";
 import { generateResponseObject, Item, ResponseObject } from "./utils";
+import Axios from "axios";
 
 const router: Router = express.Router({ strict: false });
 
@@ -33,9 +34,46 @@ router.get("/cover/bytext", (req: Request, res: Response) => {
   )
     .then((result: any) => result.rows)
     .then((items: any) => items.map(generateResponseObject))
-    .then((response_obj: [ResponseObject]) =>
-      res.status(200).send(response_obj)
-    );
+    .then((response_obj: [ResponseObject]) => {
+      res.status(200).send(response_obj);
+    })
+    .catch((error: any) => {
+      console.error(error);
+      res.status(500).send({ error: "Internal server error" });
+    });
+});
+
+router.get("/cover/ai-search", (req: Request, res: Response) => {
+  if (!req.query.q) {
+    return res.status(400).send({ error: 'Query parameter "q" is required.' });
+  }
+  const searchString: string = <string>req.query.q;
+  const topK = parseInt(<string>req.query.k) || 50;
+
+  const url = `http://${process.env.CLIP_API_URL}/embedding/text?q=${searchString}`;
+  const db_query = `
+    SELECT
+      id,
+      extension,
+      source
+    FROM image
+    ORDER BY embedding <=> $1::vector
+    LIMIT $2
+  `;
+
+  Axios.get(url)
+    .then((result) => result.data)
+    .then((embedding: any) => JSON.stringify(embedding))
+    .then((embedding: any) => query(db_query, [embedding, topK]))
+    .then((result: any) => result.rows)
+    .then((items: any) => items.map(generateResponseObject))
+    .then((response_obj: [ResponseObject]) => {
+      res.status(200).send(response_obj);
+    })
+    .catch((error: any) => {
+      console.error(error);
+      res.status(500).send({ error: 'Internal server error' });
+    });
 });
 
 export { router };
