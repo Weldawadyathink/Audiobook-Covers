@@ -129,4 +129,35 @@ router.get("/cover/id", (req: Request, res: Response) => {
     });
 });
 
+router.get("/cover/similar-to", (req: Request, res: Response) => {
+  if (!req.query.id) {
+    return res.status(400).send({ error: 'Query parameter "id" is required.' });
+  }
+  const id = <string>req.query.id;
+  const topK = parseInt(<string>req.query.k) || 50;
+  const db_query = `
+    SELECT
+      id,
+      extension,
+      source
+    FROM image
+    ORDER BY embedding <=> (
+      SELECT embedding
+      FROM image
+      WHERE id = $1
+    )
+    LIMIT $2
+  `;
+  query(db_query, [id, topK])
+    .then((result: any) => result.rows)
+    .then((items: any) => items.map(generateResponseObject))
+    .then((response_obj: ResponseObject[]) =>
+      res.status(200).send(response_obj)
+    )
+    .catch((error: any) => {
+      console.error(error);
+      res.status(500).send({ error: "Internal server error" });
+    });
+})
+
 export { router };
