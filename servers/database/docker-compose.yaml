@@ -67,14 +67,6 @@ services:
       - /opt/docker-files/postgres/letsencrypt/live/hetzner-1.audiobookcovers.com/fullchain.pem:/keys/server.crt
       - /opt/docker-files/postgres/letsencrypt/live/hetzner-1.audiobookcovers.com/privkey.pem:/keys/server.key
 
-  adminer:
-    image: adminer
-    restart: always
-    ports:
-      - "8080:8080"
-    networks:
-      - pgnet
-
 networks:
   pgnet:
 
