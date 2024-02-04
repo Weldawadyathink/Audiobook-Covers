@@ -1,0 +1,34 @@
+version: '3.7'
+
+services:
+
+  clip:
+    image: weldawadyathink/openai-clip-server:latest
+    restart: always
+    networks:
+      - apinet
+  
+  api:
+    image: weldawadyathink/audiobookcovers-api:latest
+    restart: always
+    networks:
+      - apinet
+    environment:
+      DATABASE: ${DATABASE}
+      CLIP_API_URL: "clip:8080"
+  
+  proxy:
+    image: jc21/nginx-proxy-manager:latest
+    restart: always
+    networks:
+      - apinet
+    ports:
+      - 80:80
+      - 443:443
+      - 81:81
+    volumes:
+      - /opt/docker-files/api/proxy/data:/data
+      - /opt/docker-files/api/proxy/letsencrypt:/etc/letsencrypt
+
+networks:
+  apinet:
