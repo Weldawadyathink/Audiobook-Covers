@@ -15,13 +15,3 @@ export const query = async (text: string, params: Array<any>) => {
 export const getClient = () => {
   return pool.connect();
 };
-
-process.on("SIGINT", async () => {
-  console.log("SIGINT signal received: closing HTTP server");
-  try {
-    await pool.end();
-    console.log("Database pool has been closed");
-  } catch (error) {
-    console.error("Error closing the database pool", error);
-  }
-});
