@@ -31,6 +31,6 @@ ENV GUNICORN_WORKERS 1
 ENV GUNICORN_THREADS 1
 ENV GUNICORN_TIMEOUT 10
 
-EXPOSE 80
+EXPOSE 8080
 
-CMD exec gunicorn --bind :80 --workers $GUNICORN_WORKERS --threads $GUNICORN_THREADS --preload --timeout $GUNICORN_TIMEOUT main:app
+CMD exec gunicorn --bind :8080 --workers $GUNICORN_WORKERS --threads $GUNICORN_THREADS --preload --timeout $GUNICORN_TIMEOUT main:app
