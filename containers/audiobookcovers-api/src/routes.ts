@@ -35,9 +35,9 @@ router.get("/cover/bytext", (req: Request, res: Response) => {
   )
     .then((result: any) => result.rows)
     .then((items: any) => items.map(generateResponseObject))
-    .then((response_obj: [ResponseObject]) => {
-      res.status(200).send(response_obj);
-    })
+    .then((response_obj: ResponseObject[]) => 
+      res.status(200).send(response_obj)
+    )
     .catch((error: any) => {
       console.error(error);
       res.status(500).send({ error: "Internal server error" });
@@ -100,6 +100,33 @@ router.get("/cover/random", (req: Request, res: Response) => {
       console.error(error);
       res.status(500).send({error: "Internal server error"})
     })
+});
+
+router.get("/cover/id", (req: Request, res: Response) => {
+  if (!req.query.id) {
+    return res.status(400).send({ error: 'Query parameter "id" is required.' });
+  }
+  const id = <string>req.query.id;
+  const db_query = `
+    SELECT
+      id,
+      extension,
+      source
+    FROM image
+    WHERE id = $1
+  `;
+  query(db_query, [id])
+    .then((result: any) => result.rows)
+    .then((rows: any) =>
+      rows.length === 0 ? [] : generateResponseObject(rows[0])
+    )
+    .then((response_obj: any) =>
+      res.status(200).send(response_obj)
+    )
+    .catch((error: any) => {
+      console.error(error);
+      res.status(500).send({ error: "Internal server error" });
+    });
 });
 
 export { router };
