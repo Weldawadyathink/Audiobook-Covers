@@ -49,7 +49,7 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
 const router: Router = express.Router({ strict: false });
 
 router.get("/", (req: Request, res: Response) => {
-  res.send("Hello, world! This is an Express server using TypeScript.");
+  res.send("Hello Audiobook Enthusiasts!");
 });
 
 router.get("/cover/bytext", (req: Request, res: Response) => {
