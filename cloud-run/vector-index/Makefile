@@ -15,8 +15,8 @@ last_update: main.py Dockerfile requirements.txt Makefile
 		--set-secrets=DATABASE=neon-write:latest \
 		--task-timeout=30m \
 		--max-retries=3 \
-		--tasks=100 \
-		--parallelism=100 \
+		--tasks=1 \
+		--parallelism=1 \
 		--update-env-vars GOOGLE_CLOUD_RUN=True
 	@touch last_update
 
