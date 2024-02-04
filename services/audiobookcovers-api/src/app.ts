@@ -4,6 +4,8 @@ import { query } from "./db";
 
 const app: Application = express();
 
+app.set("trust proxy", true);
+
 // Handle CORS
 app.use((req: Request, res: Response, next: NextFunction) => {
   res.header("Access-Control-Allow-Origin", "*");
@@ -32,11 +34,12 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
     const status = res.statusCode;
     const user_agent = req.headers["user-agent"];
     const origin = req.headers["origin"];
+    const ip = req.ip;
     console.log(`Served ${path}, status code ${status} in ${duration}ms.`)
     await query(
-      `INSERT INTO api_log (url, endpoint, user_agent, origin, request_time, method, status_code)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [url, path, user_agent, origin, duration, method, status]
+      `INSERT INTO api_log (url, endpoint, user_agent, origin, request_time, method, status_code, ip)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [url, path, user_agent, origin, duration, method, status, ip]
     );
   });
   next();
