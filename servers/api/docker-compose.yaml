@@ -11,8 +11,6 @@ services:
       GUNICORN_WORKERS: 1
       GUNICORN_THREADS: 1
       GUNICORN_TIMEOUT: 10
-    ports:
-      - 8080:8080
   
   api:
     image: weldawadyathink/audiobookcovers-api:latest

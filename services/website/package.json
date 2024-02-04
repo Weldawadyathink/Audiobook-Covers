@@ -8,7 +8,7 @@
     "generate": "nuxi generate",
     "preview": "nuxi preview",
     "postinstall": "nuxi prepare",
-    "deploy": "nuxi generate && wrangler pages deploy .output/public --project-name audiobook-covers-website-nuxt --commit-dirty=true --branch production"
+    "deploy": "nuxi generate && wrangler pages deploy .output/public --project-name audiobook-covers-website --commit-dirty=true --branch production"
   },
   "devDependencies": {
     "@nuxtjs/tailwindcss": "^6.11.2",
