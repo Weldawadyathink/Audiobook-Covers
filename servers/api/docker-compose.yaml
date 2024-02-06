@@ -34,5 +34,15 @@ services:
       - /opt/docker-files/api/proxy/data:/data
       - /opt/docker-files/api/proxy/letsencrypt:/etc/letsencrypt
 
+  reddit-indexer:
+    image: weldawadyathink/audiobookcovers-reddit-scraper:latest
+    restart: always
+    networks:
+      - apinet
+    environment:
+      DATABASE: ${DATABASE}
+      PRAW_CLIENT_ID: ${PRAW_CLIENT_ID}
+      PRAW_CLIENT_SECRET: ${PRAW_CLIENT_SECRET}
+
 networks:
   apinet:
