@@ -76,11 +76,7 @@ def index_all_submissions():
     print("---------- Indexing Controversial Posts ----------")
     for submission in reddit.subreddit("audiobookcovers").controversial():
         index_submission(db, submission)
-        
-    print("---------- Indexing Gilded Posts ----------")
-    for submission in reddit.subreddit("audiobookcovers").gilded():
-        index_submission(db, submission)
-        
+  
     print("---------- Indexing Random Rising Posts ----------")
     for submission in reddit.subreddit("audiobookcovers").random_rising():
         index_submission(db, submission)

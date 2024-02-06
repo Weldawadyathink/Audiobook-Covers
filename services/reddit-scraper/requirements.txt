@@ -1,3 +1,4 @@
 psycopg2-binary
 praw
 python-dotenv
+beautifulsoup4
