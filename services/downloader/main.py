@@ -23,7 +23,7 @@ def process_one_image_file(file, reddit_post_id):
             id = str(uuid4())
             print(f"Adding image id {id} to database")
             source = f"https://reddit.com/{reddit_post_id}"
-            cloud_vision_text = get_image_text(image)
+            cloud_vision_text = get_image_text(file)
             extension = file.split(".")[-1]
             upload_image_variations(image, id, extension)
             add_image_to_database(id, source, extension, image_hash, cloud_vision_text)
@@ -34,7 +34,10 @@ def process_one_image_file(file, reddit_post_id):
 
 
 def download_from_url():
-    url_id, reddit_post_id, url = get_url_to_download()
+    next_url = get_url_to_download()
+    if next_url is None:
+        return
+    url_id, reddit_post_id, url = next_url
     if url[:4] != "http":
         log_invalid_url(url_id)
 
@@ -54,8 +57,10 @@ def download_from_url():
             
     log_complete_download(url_id)
     shutil.rmtree(download_folder)
+    # TODO: add recursive call
         
 
 
 if __name__ == "__main__":
+    # print(os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"))
     download_from_url()

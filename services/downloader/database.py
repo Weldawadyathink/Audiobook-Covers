@@ -50,7 +50,7 @@ def log_complete_download(url_id):
             cursor.execute(sql.SQL('''
                 UPDATE public.reddit_url
                 SET status = 'complete'
-                WHERE url_id = %s
+                WHERE id = %s
             '''), [
                 url_id,
             ])
