@@ -25,7 +25,7 @@ def process_one_image_file(file, reddit_post_id):
             source = f"https://reddit.com/{reddit_post_id}"
             cloud_vision_text = get_image_text(file)
             extension = file.split(".")[-1]
-            upload_image_variations(image, id, extension)
+            upload_image_variations(image, id, extension, file)
             add_image_to_database(id, source, extension, image_hash, cloud_vision_text)
         else:
             print("Image hash already in database")
