@@ -1,5 +1,10 @@
 from PIL import Image
 from io import BytesIO
+import imagehash
+
+
+def get_image_hash(image: Image) -> str:
+    return str(imagehash.colorhash(image, binbits=32))
 
 
 def get_all_image_versions(image: Image):

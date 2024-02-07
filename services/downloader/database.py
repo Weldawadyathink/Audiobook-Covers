@@ -9,6 +9,53 @@ if __name__ == "__main__":
 
 pool = ConnectionPool(conninfo=os.environ.get("DATABASE"), min_size=2, max_size=4, open=True)
 
+def is_image_hash_unique(image_hash):
+    """Checks an image hash is not in the database
+    Returns:
+        True if image hash is unique
+        False if a duplicate image hash exists
+    """
+    with pool.connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(sql.SQL('''
+                SELECT COUNT(*)
+                FROM image
+                WHERE hash = %s
+            '''), [
+                image_hash
+            ])
+            return int(cursor.fetchone()[0]) == 0
+
+
+def add_image_to_database(id, source, file_extension, image_hash, cloud_vision_text):
+    with pool.connection() as connection:
+        with connection.cursor() as cursor:
+            print(f"Execute SQL query to add {id} to images")
+            cursor.execute(sql.SQL('''
+                INSERT INTO image (id, source, extension, hash, cloud_vision_text)
+                VALUES (%s, %s, %s, %s, %s)
+            '''), [
+                str(id),
+                str(source),
+                str(file_extension),
+                str(image_hash),
+                str(cloud_vision_text),
+            ])
+
+
+def log_complete_download(url_id):
+    with pool.connection() as connection:
+        with connection.cursor() as cursor:
+            print(f"Execute SQL query to add {id} to images")
+            cursor.execute(sql.SQL('''
+                UPDATE public.reddit_url
+                SET status = 'complete'
+                WHERE url_id = %s
+            '''), [
+                url_id,
+            ])
+
+
 def get_url_to_download():
     """Get a url and other data needed to download images to the database
     Returns:
@@ -46,4 +93,4 @@ def log_download_error(url_id):
             ])
 
 if __name__ == "__main__":
-    print(get_url_to_download())
+    print(is_image_hash_unique("Hi there"))
