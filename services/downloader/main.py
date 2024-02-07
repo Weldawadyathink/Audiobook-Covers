@@ -47,7 +47,7 @@ def download_from_url():
     try:
         print(f"Attempting to download {url_id}")
         download(url, download_folder)
-    except Exception as e:
+    except:
         print(f"Failed to download from id {url_id}, url: {url}")
         log_download_error(url_id)
         return download_from_url()

@@ -14,7 +14,7 @@ services:
 
   reddit-downloader:
     image: weldawadyathink/audiobookcovers-image-downloader:latest
-    restart: no
+    restart: unless-stopped
     networks:
       - supportnet
     environment:

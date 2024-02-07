@@ -13,5 +13,4 @@ deploy: last_update
 last_update: $(SOURCE_FILES)
 	@set -e; \
 	docker buildx build --platform linux/amd64 -t $(FULL_TAG) . --push; \
-	docker push $(FULL_TAG); \
 	touch last_update
