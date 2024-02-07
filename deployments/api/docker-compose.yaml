@@ -4,7 +4,7 @@ services:
 
   clip:
     image: weldawadyathink/openai-clip-server:latest
-    restart: unless-stopped
+    restart: always
     networks:
       - apinet
     environment:
@@ -14,7 +14,7 @@ services:
   
   api:
     image: weldawadyathink/audiobookcovers-api:latest
-    restart: unless-stopped
+    restart: always
     networks:
       - apinet
     environment:
@@ -23,7 +23,7 @@ services:
   
   proxy:
     image: jc21/nginx-proxy-manager:latest
-    restart: unless-stopped
+    restart: always
     networks:
       - apinet
     ports:
