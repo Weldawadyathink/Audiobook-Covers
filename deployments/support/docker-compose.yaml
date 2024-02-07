@@ -2,43 +2,11 @@ version: '3.7'
 
 services:
 
-  clip:
-    image: weldawadyathink/openai-clip-server:latest
-    restart: unless-stopped
-    networks:
-      - apinet
-    environment:
-      GUNICORN_WORKERS: 1
-      GUNICORN_THREADS: 1
-      GUNICORN_TIMEOUT: 10
-  
-  api:
-    image: weldawadyathink/audiobookcovers-api:latest
-    restart: unless-stopped
-    networks:
-      - apinet
-    environment:
-      DATABASE: ${DATABASE}
-      CLIP_API_URL: "clip:8080"
-  
-  proxy:
-    image: jc21/nginx-proxy-manager:latest
-    restart: unless-stopped
-    networks:
-      - apinet
-    ports:
-      - 80:80
-      - 443:443
-      - 81:81
-    volumes:
-      - /opt/docker-files/api/proxy/data:/data
-      - /opt/docker-files/api/proxy/letsencrypt:/etc/letsencrypt
-
   reddit-indexer:
     image: weldawadyathink/audiobookcovers-reddit-scraper:latest
     restart: unless-stopped
     networks:
-      - apinet
+      - supportnet
     environment:
       DATABASE: ${DATABASE}
       PRAW_CLIENT_ID: ${PRAW_CLIENT_ID}
@@ -48,7 +16,7 @@ services:
     image: weldawadyathink/audiobookcovers-image-downloader:latest
     restart: no
     networks:
-      - apinet
+      - supportnet
     environment:
       DATABASE: ${DATABASE}
       AWS_S3_REGION_NAME: auto
@@ -59,4 +27,4 @@ services:
       GOOGLE_APPLICATION_CREDENTIALS_JSON: ${GOOGLE_APPLICATION_CREDENTIALS_JSON}
 
 networks:
-  apinet:
+  supportnet:
