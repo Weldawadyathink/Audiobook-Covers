@@ -1,8 +1,6 @@
 from google.cloud import vision
 from google.cloud.vision_v1 import types
 import re
-import boto3
-from botocore.exceptions import ClientError
 import os
 import io
 import json

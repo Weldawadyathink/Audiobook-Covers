@@ -1,11 +1,6 @@
-import psycopg
 from psycopg import sql
 from psycopg_pool import ConnectionPool
 import os
-from dotenv import load_dotenv
-
-if __name__ == "__main__":
-    load_dotenv()
 
 pool = ConnectionPool(conninfo=os.environ.get("DATABASE"), min_size=2, max_size=4, open=True)
 
@@ -101,6 +96,3 @@ def log_download_error(url_id):
             '''), [
                 url_id,
             ])
-
-if __name__ == "__main__":
-    print(is_image_hash_unique("Hi there"))

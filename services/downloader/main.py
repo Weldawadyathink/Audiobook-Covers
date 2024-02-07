@@ -1,7 +1,3 @@
-from dotenv import load_dotenv
-if __name__ == "__main__":
-    load_dotenv()
-
 from downloader import download
 from database import get_url_to_download, log_download_error, is_image_hash_unique, add_image_to_database, log_complete_download, log_invalid_url
 from uuid import uuid4
@@ -62,5 +58,4 @@ def download_from_url():
 
 
 if __name__ == "__main__":
-    # print(os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"))
     download_from_url()
