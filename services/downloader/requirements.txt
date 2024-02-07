@@ -6,3 +6,4 @@ pillow
 imagehash
 google-cloud-vision
 boto3
+schedule

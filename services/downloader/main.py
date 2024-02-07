@@ -7,6 +7,8 @@ from image_tools import get_image_hash
 from cloud_vision import get_image_text
 import shutil
 import os
+import schedule
+import time
 
 
 base_download_folder = '.'
@@ -32,11 +34,15 @@ def process_one_image_file(file, reddit_post_id):
 def download_from_url():
     next_url = get_url_to_download()
     if next_url is None:
-        return
+        print("No urls available to download")
+        return True
+    
     url_id, reddit_post_id, url = next_url
     if url[:4] != "http":
         log_invalid_url(url_id)
-
+        print(f"Marking ID {url_id} URL {url} as invalid")
+        return download_from_url()
+    
     download_folder = f'{base_download_folder}/{str(uuid4())}'
     try:
         print(f"Attempting to download {url_id}")
@@ -44,7 +50,7 @@ def download_from_url():
     except Exception as e:
         print(f"Failed to download from id {url_id}, url: {url}")
         log_download_error(url_id)
-        return
+        return download_from_url()
     
     for dirpath, dirnames, filenames in os.walk(download_folder):
         for filename in filenames:
@@ -53,9 +59,18 @@ def download_from_url():
             
     log_complete_download(url_id)
     shutil.rmtree(download_folder)
-    # TODO: add recursive call
+    return download_from_url()
         
 
 
 if __name__ == "__main__":
-    download_from_url()
+    schedule.every().hour.do(download_from_url)
+    schedule.run_all()
+    while True:
+        n = schedule.idle_seconds()
+        if n is None:
+            time.sleep(60)
+            continue
+        elif n > 0:
+            time.sleep(n)
+        schedule.run_pending()
