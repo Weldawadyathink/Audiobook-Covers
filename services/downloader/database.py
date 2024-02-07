@@ -30,7 +30,6 @@ def is_image_hash_unique(image_hash):
 def add_image_to_database(id, source, file_extension, image_hash, cloud_vision_text):
     with pool.connection() as connection:
         with connection.cursor() as cursor:
-            print(f"Execute SQL query to add {id} to images")
             cursor.execute(sql.SQL('''
                 INSERT INTO image (id, source, extension, hash, cloud_vision_text)
                 VALUES (%s, %s, %s, %s, %s)
@@ -46,7 +45,6 @@ def add_image_to_database(id, source, file_extension, image_hash, cloud_vision_t
 def log_complete_download(url_id):
     with pool.connection() as connection:
         with connection.cursor() as cursor:
-            print(f"Execute SQL query to add {id} to images")
             cursor.execute(sql.SQL('''
                 UPDATE public.reddit_url
                 SET status = 'complete'
