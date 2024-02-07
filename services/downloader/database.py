@@ -56,6 +56,18 @@ def log_complete_download(url_id):
             ])
 
 
+def log_invalid_url(url_id):
+    with pool.connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(sql.SQL('''
+                UPDATE public.reddit_url
+                SET status = 'invalid_url'
+                WHERE url_id = %s
+            '''), [
+                url_id
+            ])
+
+
 def get_url_to_download():
     """Get a url and other data needed to download images to the database
     Returns:

@@ -3,7 +3,7 @@ if __name__ == "__main__":
     load_dotenv()
 
 from downloader import download
-from database import get_url_to_download, log_download_error, is_image_hash_unique, add_image_to_database, log_complete_download
+from database import get_url_to_download, log_download_error, is_image_hash_unique, add_image_to_database, log_complete_download, log_invalid_url
 from uuid import uuid4
 from PIL import Image
 from s3 import upload_image_variations
@@ -35,6 +35,9 @@ def process_one_image_file(file, reddit_post_id):
 
 def download_from_url():
     url_id, reddit_post_id, url = get_url_to_download()
+    if url[:4] != "http":
+        log_invalid_url(url_id)
+
     download_folder = f'{base_download_folder}/{str(uuid4())}'
     try:
         print(f"Attempting to download {url_id}")
