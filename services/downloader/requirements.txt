@@ -1,2 +1,7 @@
 yt-dlp
 gallery-dl
+psycopg[binary]
+psycopg[pool]
+pillow
+imagehash
+google-cloud-vision

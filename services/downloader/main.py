@@ -1,4 +1,6 @@
 from downloader import download
+import psycopg
+from psycopg import sql
 
 if __name__ == "__main__":
     test_urls = [
