@@ -5,6 +5,8 @@ if __name__ == "__main__":
 from downloader import download
 from database import get_url_to_download, log_download_error
 from uuid import uuid4
+from PIL import Image
+from s3 import upload_image
 
 
 base_download_folder = '.'
@@ -19,14 +21,9 @@ def download_from_url():
     except Exception as e:
         print(e)
         log_download_error(url_id)
+        return
         
 
 
 if __name__ == "__main__":
     download_from_url()
-    # test_urls = [
-    #     "https://imgur.com/gallery/l9lg0Zl",
-    # ]
-    # for url in test_urls:
-    #     download(url)
-

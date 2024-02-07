@@ -6,3 +6,4 @@ pillow
 imagehash
 google-cloud-vision
 dotenv
+boto3

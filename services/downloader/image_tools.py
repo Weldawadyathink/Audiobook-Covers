@@ -1,6 +1,29 @@
 from PIL import Image
 from io import BytesIO
 
+
+def get_all_image_versions(image: Image):
+    for size in ['original', 200, 500, 1000]:
+        if size == 'original':
+            resized_image = image
+        else:
+            resized_image = reduce_image_size(image, size)
+        
+        for img_format in ['jpg', 'png', 'webp']:
+            match img_format:
+                case 'jpg':
+                    image_bytes = get_jpeg_bytes(resized_image)
+                    content_type = 'image/jpeg'
+                case 'png':
+                    image_bytes = get_png_bytes(resized_image)
+                    content_type = 'image/png'
+                case 'webp':
+                    image_bytes = get_webp_bytes(resized_image)
+                    content_type = 'image/webp'
+            
+            yield (img_format, size, image_bytes, content_type)
+
+
 def reduce_image_size(image, horizontal_pixels):
     """
     Reduces the size of an image.
