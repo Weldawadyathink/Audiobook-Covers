@@ -5,3 +5,4 @@ psycopg[pool]
 pillow
 imagehash
 google-cloud-vision
+dotenv
