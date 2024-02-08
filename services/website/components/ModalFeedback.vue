@@ -58,6 +58,10 @@ export default {
           name: "This image is corrupt",
           payload: "corrupt",
         },
+        {
+          name: "This is not a book cover",
+          payload: "not-book-cover"
+        },
       ],
     };
   },
