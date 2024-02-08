@@ -36,3 +36,4 @@ services:
 
 networks:
   apinet:
+    name: apinet

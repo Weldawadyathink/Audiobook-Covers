@@ -2,6 +2,16 @@ version: '3.7'
 
 services:
 
+  embedding-indexer:
+    image: weldawadyathink/audiobookcovers-embedding-indexer:latest
+    restart: unless-stopped
+    networks:
+      - apinet
+    environment:
+      DATABASE: ${DATABASE}
+      CLIP_API_URL: http://clip:8080
+
+
   reddit-indexer:
     image: weldawadyathink/audiobookcovers-reddit-scraper:latest
     restart: unless-stopped
@@ -28,3 +38,5 @@ services:
 
 networks:
   supportnet:
+  apinet:
+    external: true
