@@ -1,11 +1,16 @@
 import { query } from "./db";
+import Axios from "axios";
 
 export const reindex = async () => {
   const results = await query(
+    // TODO: Remove limit
     `
-    SELECT id 
-    FROM image 
-    WHERE embedding IS NULL
+    SELECT id
+    FROM image
+    WHERE
+      embedding IS NULL
+      AND NOT index_error
+    LIMIT 1
   `,
     []
   );
@@ -13,5 +18,26 @@ export const reindex = async () => {
 };
 
 const indexItem = async (id: string) => {
-  console.log(`Indexing item id ${id}`)
-}
+  console.log(`Indexing item id ${id}`);
+  const image_url = `https://download.audiobookcovers.com/png/1000/${id}.png`;
+  const clip_base_url = process.env.CLIP_API_URL || "http://localhost:8080";
+  const clip_url = `${clip_base_url}/embedding/image/url?url=${encodeURIComponent(
+    image_url
+  )}`;
+  const embeddingInsertQuery = `
+  UPDATE image
+  SET test_embedding = $1::vector
+  WHERE id = $2
+  `;
+  const indexErrorQuery = `
+  UPDATE image
+  SET index_error = true
+  WHERE id = $1
+  `;
+  Axios.get(clip_url)
+    .then((result) => JSON.stringify(result.data))
+    .then((embedding) => {
+      query(embeddingInsertQuery, [embedding, id]);
+    })
+    .catch(() => query(indexErrorQuery, [id]));
+};

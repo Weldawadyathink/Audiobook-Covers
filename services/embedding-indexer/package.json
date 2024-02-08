@@ -11,6 +11,7 @@
   "author": "Spenser Bushey",
   "license": "ISC",
   "devDependencies": {
+    "@types/axios": "^0.14.0",
     "@types/node": "^20.11.16",
     "@types/node-cron": "^3.0.11",
     "@types/pg": "^8.11.0",
