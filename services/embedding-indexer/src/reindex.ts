@@ -2,19 +2,19 @@ import { query } from "./db";
 import Axios from "axios";
 
 export const reindex = async () => {
+  console.log("Starting embedding reindex");
   const results = await query(
-    // TODO: Remove limit
     `
     SELECT id
     FROM image
     WHERE
       embedding IS NULL
       AND NOT index_error
-    LIMIT 1
   `,
     []
   );
-  results.rows.map((row) => indexItem(row.id));
+  await Promise.all(results.rows.map((row) => indexItem(row.id)));
+  console.log("Completed embedding index");
 };
 
 const indexItem = async (id: string) => {
@@ -26,7 +26,7 @@ const indexItem = async (id: string) => {
   )}`;
   const embeddingInsertQuery = `
   UPDATE image
-  SET test_embedding = $1::vector
+  SET embedding = $1::vector
   WHERE id = $2
   `;
   const indexErrorQuery = `
@@ -34,7 +34,7 @@ const indexItem = async (id: string) => {
   SET index_error = true
   WHERE id = $1
   `;
-  Axios.get(clip_url)
+  return Axios.get(clip_url)
     .then((result) => JSON.stringify(result.data))
     .then((embedding) => {
       query(embeddingInsertQuery, [embedding, id]);

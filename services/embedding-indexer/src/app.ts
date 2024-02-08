@@ -1,4 +1,9 @@
-import cron from "node-cron";
 import { reindex } from "./reindex";
+import { CronJob } from "cron";
 
-reindex()
+const job = CronJob.from({
+  cronTime: "0 */15 * * * *",
+  onTick: reindex,
+  start: true,
+  runOnInit: true,
+});
