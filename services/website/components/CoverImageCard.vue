@@ -32,10 +32,18 @@
         >
           Download image file
         </a>
+        <a
+          @click.stop
+          @click="openFeedbackModal"
+          class="option-pill"
+        >
+          Send feedback
+        </a>
       </div>
     </div>
   </div>
   <ModalDownload v-if="downloadModalVisible" @close="closeDownloadModal" :download-links="imageData" />
+  <ModalFeedback v-if="feedbackModalVisible" @close="closeDownloadModal" :image-id="imageData.id" />
 </template>
 
 <script>
@@ -50,6 +58,7 @@ export default {
       boxShadowStyle: '0 0 15px rgba(0, 0, 0, 0.5)', // Default shadow style
       uniqueID: uuidv4(),
       downloadModalVisible: false,
+      feedbackModalVisible: false,
     };
   },
   watch: {
@@ -79,6 +88,12 @@ export default {
     },
     closeDownloadModal() {
       this.downloadModalVisible = false;
+    },
+    openFeedbackModal() {
+      this.feedbackModalVisible = true;
+    },
+    closeFeedbackModal() {
+      this.feedbackModalVisible = false;
     },
   },
 };
