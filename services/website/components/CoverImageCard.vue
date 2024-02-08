@@ -43,7 +43,7 @@
     </div>
   </div>
   <ModalDownload v-if="downloadModalVisible" @close="closeDownloadModal" :download-links="imageData" />
-  <ModalFeedback v-if="feedbackModalVisible" @close="closeDownloadModal" :image-id="imageData.id" />
+  <ModalFeedback v-if="feedbackModalVisible" @close="closeFeedbackModal" :image-id="imageData.id" />
 </template>
 
 <script>
