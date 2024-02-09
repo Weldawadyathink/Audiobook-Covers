@@ -118,7 +118,6 @@ router.get("/cover/id", (req: Request, res: Response) => {
     FROM image
     WHERE
       id = $1
-      AND include_in_search
   `;
   query(db_query, [id])
     .then((result: any) => result.rows)
