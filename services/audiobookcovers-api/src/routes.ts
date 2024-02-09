@@ -30,7 +30,8 @@ router.get("/cover/bytext", (req: Request, res: Response) => {
     FROM image
     WHERE
       to_tsvector('english', cloud_vision_text) @@
-      to_tsquery('english', $1);`,
+      to_tsquery('english', $1)
+      AND include_in_search`,
     [formattedSearchString]
   )
     .then((result: any) => result.rows)
@@ -58,6 +59,7 @@ router.get("/cover/ai-search", (req: Request, res: Response) => {
       extension,
       source
     FROM image
+    WHERE include_in_search
     ORDER BY embedding <=> $1::vector
     LIMIT $2
   `;
@@ -87,6 +89,7 @@ router.get("/cover/random", (req: Request, res: Response) => {
       extension,
       source
     FROM image
+    WHERE include_in_search
     ORDER BY embedding <=> $1::vector
     LIMIT $2
   `;
@@ -113,7 +116,9 @@ router.get("/cover/id", (req: Request, res: Response) => {
       extension,
       source
     FROM image
-    WHERE id = $1
+    WHERE
+      id = $1
+      AND include_in_search
   `;
   query(db_query, [id])
     .then((result: any) => result.rows)
@@ -139,6 +144,7 @@ router.get("/cover/similar-to", (req: Request, res: Response) => {
       extension,
       source
     FROM image
+    WHERE include_in_search
     ORDER BY embedding <=> (
       SELECT embedding
       FROM image
