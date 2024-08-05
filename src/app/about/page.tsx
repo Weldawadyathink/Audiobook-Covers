@@ -9,10 +9,10 @@ export default function Page() {
         <Link href="https://reddit.com/r/audiobookcovers">
           /r/audiobookcovers
         </Link>{" "}
-        for custom artwork for my audiobooks, but reddit's search is notoriously
+        for custom artwork for my audiobooks, but reddit&apos;s search is notoriously
         bad. I wanted a way to search for and download new artwork quickly and
         easily, without worrying about different image hosts, getting the
-        highest image quality, or reddit's interface. This started out as a
+        highest image quality, or reddit&apos;s interface. This started out as a
         personal project to archive the subreddit, but quickly grew into a
         website to contribute back to the community.
       </p>
