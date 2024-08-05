@@ -1,0 +1,1 @@
+ALTER TABLE "audiobook-covers-next_image" ADD COLUMN "blurhash" text;

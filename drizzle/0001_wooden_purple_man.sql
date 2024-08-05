@@ -1,0 +1,1 @@
+ALTER TABLE "audiobook-covers-next_image" DROP CONSTRAINT "audiobook-covers-next_image_hash_unique";

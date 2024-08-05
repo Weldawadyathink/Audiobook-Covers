@@ -1,3 +1,0 @@
-pgbouncer user auth setup: https://www.2ndquadrant.com/en/blog/pg-phriday-securing-pgbouncer/
-
-docker run -it --rm --name certbot -v "./letsencrypt:/etc/letsencrypt" -p 80:80 certbot/certbot certonly --standalone -n -d hetzner-1.audiobookcovers.com --email admin@audiobookcovers.com --agree-tos -v

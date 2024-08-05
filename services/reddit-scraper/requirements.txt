@@ -1,5 +1,0 @@
-psycopg2-binary
-praw
-python-dotenv
-beautifulsoup4
-schedule
