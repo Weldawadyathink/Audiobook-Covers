@@ -2,7 +2,6 @@ import "@/styles/globals.css";
 
 import { Gemunu_Libre } from "next/font/google";
 import { type Metadata } from "next";
-
 import { TRPCReactProvider } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -10,6 +9,8 @@ import { GoogleAnalytics } from "@next/third-parties/google";
 import { GoogleAdsense } from "@/components/GoogleAdsense";
 import { env } from "@/env";
 import React from "react";
+import { Analytics } from "@vercel/analytics/react";
+import Script from "next/script";
 
 export const metadata: Metadata = {
   title: "Audiobook Covers",
@@ -64,9 +65,19 @@ export default function RootLayout({
             <div className="min-h-screen">{children}</div>
           </div>
         </TRPCReactProvider>
-        <GoogleAnalytics gaId={env.GOOGLE_ANALYTICS_ID} />
       </body>
-      <GoogleAdsense />
+      {env.NODE_ENV === "production" && (
+        <>
+          <Analytics />
+          <Script
+            async
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-${env.GOOGLE_ADSENSE_ID}`}
+            crossOrigin="anonymous"
+            strategy="afterInteractive"
+          />
+          <GoogleAnalytics gaId={env.GOOGLE_ANALYTICS_ID} />
+        </>
+      )}
     </html>
   );
 }
