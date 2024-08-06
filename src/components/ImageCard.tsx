@@ -52,7 +52,7 @@ export function ImageCard(props: { imageData: ImageData; className?: string }) {
       >
         <Link href={`/image/${props.imageData.id}`}>
           <Image
-            src={props.imageData.url}
+            src={props.imageData.optimized}
             alt="Audiobook cover image"
             fill={true}
             placeholder="blur"

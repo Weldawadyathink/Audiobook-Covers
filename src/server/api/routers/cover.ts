@@ -11,6 +11,7 @@ export interface ImageData {
   url: string;
   blurhash: string;
   source: string;
+  optimized: string;
 }
 
 export interface ImageDataWithRanking extends ImageData {
@@ -25,11 +26,13 @@ function generateImageData(dbData: {
   source: string | null;
 }): ImageData {
   const url = `https://f001.backblazeb2.com/file/com-audiobookcovers/original/${dbData.id}.${dbData.extension}`;
+  const optimized = `https://f001.backblazeb2.com/file/com-audiobookcovers/optimized/${dbData.id}.jpg`;
   return {
     id: dbData.id,
     url: url,
     blurhash: dbData.blurhash!,
     source: dbData.source!,
+    optimized: optimized,
   };
 }
 
@@ -41,12 +44,14 @@ function generateImageDataWithRanking(dbData: {
   similarity: unknown;
 }): ImageDataWithRanking {
   const url = `https://f001.backblazeb2.com/file/com-audiobookcovers/original/${dbData.id}.${dbData.extension}`;
+  const optimized = `https://f001.backblazeb2.com/file/com-audiobookcovers/optimized/${dbData.id}.jpg`;
   return {
     id: dbData.id,
     url: url,
     blurhash: dbData.blurhash!,
     source: dbData.source!,
     similarity: dbData.similarity as number,
+    optimized: optimized,
   };
 }
 
