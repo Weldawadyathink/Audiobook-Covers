@@ -25,8 +25,8 @@ function generateImageData(dbData: {
   blurhash: string | null;
   source: string | null;
 }): ImageData {
-  const url = `https://f001.backblazeb2.com/file/com-audiobookcovers/original/${dbData.id}.${dbData.extension}`;
-  const optimized = `https://f001.backblazeb2.com/file/com-audiobookcovers/optimized/${dbData.id}.jpg`;
+  const url = `https://audiobookcovers.global.ssl.fastly.net/file/com-audiobookcovers/original/${dbData.id}.${dbData.extension}`;
+  const optimized = `https://audiobookcovers.global.ssl.fastly.net/file/com-audiobookcovers/optimized/${dbData.id}.jpg`;
   return {
     id: dbData.id,
     url: url,
@@ -43,8 +43,8 @@ function generateImageDataWithRanking(dbData: {
   source: string | null;
   similarity: unknown;
 }): ImageDataWithRanking {
-  const url = `https://f001.backblazeb2.com/file/com-audiobookcovers/original/${dbData.id}.${dbData.extension}`;
-  const optimized = `https://f001.backblazeb2.com/file/com-audiobookcovers/optimized/${dbData.id}.jpg`;
+  const url = `https://audiobookcovers.global.ssl.fastly.net/file/com-audiobookcovers/original/${dbData.id}.${dbData.extension}`;
+  const optimized = `https://audiobookcovers.global.ssl.fastly.net/file/com-audiobookcovers/optimized/${dbData.id}.jpg`;
   return {
     id: dbData.id,
     url: url,
