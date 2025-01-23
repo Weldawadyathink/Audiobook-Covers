@@ -1,24 +1,50 @@
-# Audiobook-Covers
+# React + TypeScript + Vite
 
-Audiobook-Covers is a project that downloads and archives audiobook covers from [reddit.com/r/audiobookcovers](https://www.reddit.com/r/audiobookcovers/), stores them in a local database, and performs OCR using Google Cloud Vision API. The project also includes deployment scripts for Cloudflare R2, S3 compatible services, and Elasticsearch. The Cloudflare Worker serves as a serverless API for search, and Cloudflare Pages hosts a website for search functionality and API documentation.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-The purpose of this project is to create a centralized and searchable archive of audiobook covers for enthusiasts, researchers, and developers.
+Currently, two official plugins are available:
 
-The official host for this project is at [audiobookcovers.com](https://audiobookcovers.com)
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-## Limitations and Future Improvements
+## Expanding the ESLint configuration
 
-* Currently, only downloads compatible with bdfr (bulk downloader for reddit) are supported. Planned improvements include downloading links to Google Drive, Imgur albums, and other photo links from within comments.
+If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
 
-## Contributing
+- Configure the top-level `parserOptions` property like this:
 
-* Report issues or request features using GitHub Issues.
-* Submit bug fixes or improvements via pull requests.
+```js
+export default tseslint.config({
+  languageOptions: {
+    // other options...
+    parserOptions: {
+      project: ['./tsconfig.node.json', './tsconfig.app.json'],
+      tsconfigRootDir: import.meta.dirname,
+    },
+  },
+})
+```
 
-## License
+- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
+- Optionally add `...tseslint.configs.stylisticTypeChecked`
+- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
 
-This project is licensed under the GNU General Public License v3.
+```js
+// eslint.config.js
+import react from 'eslint-plugin-react'
 
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=Weldawadyathink/Audiobook-Covers&type=Date)](https://star-history.com/#Weldawadyathink/Audiobook-Covers&Date)
+export default tseslint.config({
+  // Set the react version
+  settings: { react: { version: '18.3' } },
+  plugins: {
+    // Add the react plugin
+    react,
+  },
+  rules: {
+    // other rules...
+    // Enable its recommended rules
+    ...react.configs.recommended.rules,
+    ...react.configs['jsx-runtime'].rules,
+  },
+})
+```
