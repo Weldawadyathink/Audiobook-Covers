@@ -4,9 +4,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev-server": "deno run -A ./src/server/index.ts",
+    "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "serve": "NODE_ENV=production deno run -A ./src/server/index.ts"
   },
   "dependencies": {
     "@hono/trpc-server": "^0.3.4",
