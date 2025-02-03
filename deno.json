@@ -2,10 +2,10 @@
   "tasks": {
     "dev": "vite",
     "dev-server": "deno run -A ./src/server/index.ts",
-    "build": "vite build",
-    "lint": "eslint .",
+    "build": "vite build && deno compile --check --frozen -A ./src/server/index.ts --output server",
     "preview": "vite preview",
-    "serve": "NODE_ENV=production deno run -A ./src/server/index.ts"
+    "serve": "NODE_ENV=production deno run -A ./src/server/index.ts",
+    "docker-build": "docker build . -t audiobookcovers"
   },
   "imports": {
     "@hono/trpc-server": "npm:@hono/trpc-server@^0.3.4",
