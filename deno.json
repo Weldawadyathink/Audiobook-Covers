@@ -1,0 +1,22 @@
+{
+  "tasks": {
+    "dev": "vite",
+    "dev-server": "deno run -A ./src/server/index.ts",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "serve": "NODE_ENV=production deno run -A ./src/server/index.ts"
+  },
+  "imports": {
+    "@hono/trpc-server": "npm:@hono/trpc-server@^0.3.4",
+    "@trx/deno-bundle": "jsr:@trx/deno-bundle@^0.1.0",
+    "@trpc/server": "npm:@trpc/server@^10.45.2",
+    "hono": "npm:hono@^4.6.20",
+    "react": "npm:react@^19.0.0",
+    "react-dom": "npm:react-dom@^19.0.0",
+    "zod": "npm:zod@^3.24.1",
+    "@vitejs/plugin-react-swc": "npm:@vitejs/plugin-react-swc@^3.7.2",
+    "vite": "npm:vite@^6.0.11"
+  },
+  "nodeModulesDir": "auto"
+}
