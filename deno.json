@@ -8,6 +8,7 @@
     "docker-build": "docker build . -t audiobookcovers"
   },
   "imports": {
+    "@deno/vite-plugin": "npm:@deno/vite-plugin@^1.0.3",
     "@hono/trpc-server": "npm:@hono/trpc-server@^0.3.4",
     "@trx/deno-bundle": "jsr:@trx/deno-bundle@^0.1.0",
     "@trpc/server": "npm:@trpc/server@^10.45.2",
