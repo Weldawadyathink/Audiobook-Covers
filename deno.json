@@ -19,5 +19,13 @@
     "@vitejs/plugin-react-swc": "npm:@vitejs/plugin-react-swc@^3.7.2",
     "vite": "npm:vite@^6.0.11"
   },
-  "nodeModulesDir": "auto"
+  "nodeModulesDir": "auto",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxFactory": "React.createElement",
+    "jsxFragmentFactory": "React.Fragment",
+    "jsxImportSource": "npm:react@^19.0.0",
+    "jsxImportSourceTypes": "npm:@types/react@^19.0.0",
+    "lib": ["dom", "dom.iterable", "dom.asynciterable", "deno.ns"]
+  }
 }
