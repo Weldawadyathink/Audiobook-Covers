@@ -14,12 +14,12 @@ app.use(
   })
 );
 
-const isProduction = Deno.env.get("NODE_ENV") == "production";
-if (isProduction) {
+const isDevServer = Deno.env.get("NODE_ENV") == "development";
+if (isDevServer) {
+  console.log("Starting development server");
+} else {
   console.log("Starting production server, serving from /dist");
   app.get("/*", serveStatic({ root: "./dist/" }));
-} else {
-  console.log("Starting development server");
 }
 
 Deno.serve(app.fetch);
