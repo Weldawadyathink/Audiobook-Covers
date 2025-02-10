@@ -21,6 +21,8 @@
   },
   "imports": {
     "@deno/vite-plugin": "npm:@deno/vite-plugin@^1.0.3",
+    "@radix-ui/react-label": "npm:@radix-ui/react-label@^2.1.2",
+    "@radix-ui/react-separator": "npm:@radix-ui/react-separator@^1.1.2",
     "@radix-ui/react-slot": "npm:@radix-ui/react-slot@^1.1.2",
     "@std/http": "jsr:@std/http@^1.0.13",
     "@tailwindcss/vite": "npm:@tailwindcss/vite@^4.0.6",

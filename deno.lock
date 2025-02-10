@@ -11,6 +11,8 @@
     "jsr:@std/path@^1.0.8": "1.0.8",
     "jsr:@std/streams@^1.0.9": "1.0.9",
     "npm:@deno/vite-plugin@^1.0.3": "1.0.3_vite@6.1.0",
+    "npm:@radix-ui/react-label@^2.1.2": "2.1.2_@types+react@19.0.8_react@19.0.0_react-dom@19.0.0__react@19.0.0",
+    "npm:@radix-ui/react-separator@^1.1.2": "1.1.2_@types+react@19.0.8_react@19.0.0_react-dom@19.0.0__react@19.0.0",
     "npm:@radix-ui/react-slot@^1.1.2": "1.1.2_@types+react@19.0.8_react@19.0.0",
     "npm:@tailwindcss/vite@^4.0.6": "4.0.6_vite@6.1.0__@types+node@22.5.4_@types+node@22.5.4_lightningcss@1.29.1",
     "npm:@tanstack/react-query@^5.66.0": "5.66.0_react@19.0.0",
@@ -412,6 +414,33 @@
       "dependencies": [
         "@types/react",
         "react"
+      ]
+    },
+    "@radix-ui/react-label@2.1.2_@types+react@19.0.8_react@19.0.0_react-dom@19.0.0__react@19.0.0": {
+      "integrity": "sha512-zo1uGMTaNlHehDyFQcDZXRJhUPDuukcnHz0/jnrup0JA6qL+AFpAnty+7VKa9esuU5xTblAZzTGYJKSKaBxBhw==",
+      "dependencies": [
+        "@radix-ui/react-primitive",
+        "@types/react",
+        "react",
+        "react-dom"
+      ]
+    },
+    "@radix-ui/react-primitive@2.0.2_@types+react@19.0.8_react@19.0.0_react-dom@19.0.0__react@19.0.0": {
+      "integrity": "sha512-Ec/0d38EIuvDF+GZjcMU/Ze6MxntVJYO/fRlCPhCaVUyPY9WTalHJw54tp9sXeJo3tlShWpy41vQRgLRGOuz+w==",
+      "dependencies": [
+        "@radix-ui/react-slot",
+        "@types/react",
+        "react",
+        "react-dom"
+      ]
+    },
+    "@radix-ui/react-separator@1.1.2_@types+react@19.0.8_react@19.0.0_react-dom@19.0.0__react@19.0.0": {
+      "integrity": "sha512-oZfHcaAp2Y6KFBX6I5P1u7CQoy4lheCGiYj+pGFrHy8E/VNRb5E39TkTr3JrV520csPBTZjkuKFdEsjS5EUNKQ==",
+      "dependencies": [
+        "@radix-ui/react-primitive",
+        "@types/react",
+        "react",
+        "react-dom"
       ]
     },
     "@radix-ui/react-slot@1.1.2_@types+react@19.0.8_react@19.0.0": {
@@ -1199,6 +1228,8 @@
     "dependencies": [
       "jsr:@std/http@^1.0.13",
       "npm:@deno/vite-plugin@^1.0.3",
+      "npm:@radix-ui/react-label@^2.1.2",
+      "npm:@radix-ui/react-separator@^1.1.2",
       "npm:@radix-ui/react-slot@^1.1.2",
       "npm:@tailwindcss/vite@^4.0.6",
       "npm:@tanstack/react-query@^5.66.0",
