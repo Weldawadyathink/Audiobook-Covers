@@ -1,25 +1,24 @@
-import { Hono } from "npm:hono";
-import { trpcServer } from "npm:@hono/trpc-server";
+import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
+import { createContext } from "./context.ts";
 import { appRouter } from "./router.ts";
-import { serveStatic } from "npm:hono/deno";
+import { serveDir } from "@std/http/file-server";
 
-const app = new Hono();
+function handler(request: any) {
+  const url = new URL(request.url);
+  const pathname = url.pathname;
 
-app.get("/test", (c) => c.text("Hono!"));
+  if (pathname.startsWith("/trpc")) {
+    return fetchRequestHandler({
+      endpoint: "/trpc",
+      req: request,
+      router: appRouter,
+      createContext,
+    });
+  }
 
-app.use(
-  "/trpc/*",
-  trpcServer({
-    router: appRouter,
-  })
-);
-
-const isDevServer = Deno.env.get("NODE_ENV") == "development";
-if (isDevServer) {
-  console.log("Starting development server");
-} else {
-  console.log("Starting production server, serving from /dist");
-  app.get("/*", serveStatic({ root: "./dist/" }));
+  return serveDir(request, {
+    fsRoot: "dist",
+    urlRoot: "",
+  });
 }
-
-Deno.serve(app.fetch);
+Deno.serve({ port: 8000 }, handler);

@@ -22,5 +22,3 @@ COPY --from=builder /app/server ./server
 EXPOSE 8000
 ENV NODE_ENV=production
 CMD [ "/app/server" ]
-
-# FROM builder AS final

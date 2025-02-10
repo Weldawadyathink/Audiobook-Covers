@@ -2,20 +2,31 @@
   "tasks": {
     "dev": "vite",
     "dev-server": "NODE_ENV=development deno run --watch -A ./src/server/index.ts",
-    "build": "vite build && deno compile --check --frozen -A ./src/server/index.ts --output server",
-    "preview": "vite preview",
-    "serve": "deno run -A ./src/server/index.ts",
-    "docker-build": "docker build . -t audiobookcovers"
+    "build": {
+      "command": "vite build && deno compile --check --frozen -A ./src/server/index.ts --output server",
+      "dependencies": [
+        "clean",
+        "check"
+      ]
+    },
+    "docker-build": {
+      "command": "docker build . -t audiobookcovers",
+      "dependencies": [
+        "clean"
+      ]
+    },
+    "docker-run": "docker run -it --rm audiobookcovers",
+    "clean": "rm -rf ./dist server",
+    "check": "deno lint && deno fmt"
   },
   "imports": {
     "@deno/vite-plugin": "npm:@deno/vite-plugin@^1.0.3",
-    "@hono/trpc-server": "npm:@hono/trpc-server@^0.3.4",
+    "@std/http": "jsr:@std/http@^1.0.13",
     "@tanstack/react-query": "npm:@tanstack/react-query@^5.66.0",
     "@trpc/client": "npm:@trpc/client@^11.0.0-rc.730",
     "@trpc/react-query": "npm:@trpc/react-query@^11.0.0-rc.730",
     "@trpc/server": "npm:@trpc/server@^11.0.0-rc.730",
     "@vitejs/plugin-react": "npm:@vitejs/plugin-react@^4.3.4",
-    "hono": "npm:hono@^4.6.20",
     "react": "npm:react@^19.0.0",
     "react-dom": "npm:react-dom@^19.0.0",
     "zod": "npm:zod@^3.24.1",
@@ -24,10 +35,20 @@
   "nodeModulesDir": "auto",
   "compilerOptions": {
     "jsx": "react-jsx",
-    "jsxFactory": "React.createElement",
-    "jsxFragmentFactory": "React.Fragment",
     "jsxImportSource": "npm:react@^19.0.0",
     "jsxImportSourceTypes": "npm:@types/react@^19.0.0",
-    "lib": ["dom", "dom.iterable", "dom.asynciterable", "deno.ns"]
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "dom.asynciterable",
+      "deno.ns"
+    ]
+  },
+  "lint": {
+    "rules": {
+      "exclude": [
+        "no-explicit-any"
+      ]
+    }
   }
 }
