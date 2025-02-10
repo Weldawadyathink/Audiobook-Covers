@@ -1,7 +1,7 @@
 {
   "tasks": {
     "dev": "vite",
-    "dev-server": "NODE_ENV=development deno run -A ./src/server/index.ts",
+    "dev-server": "NODE_ENV=development deno run --watch -A ./src/server/index.ts",
     "build": "vite build && deno compile --check --frozen -A ./src/server/index.ts --output server",
     "preview": "vite preview",
     "serve": "deno run -A ./src/server/index.ts",
