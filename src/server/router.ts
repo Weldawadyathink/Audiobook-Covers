@@ -10,6 +10,7 @@ export const appRouter = router({
   hello: publicProcedure.input(z.string().nullish()).query(({ input }) => {
     return `Hello ${input ?? "World"}!`;
   }),
+  greeting: publicProcedure.query(() => "hello tRPC v10!"),
 });
 
 export type AppRouter = typeof appRouter;
