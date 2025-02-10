@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { api } from "../utils/trpc.tsx";
+import { Button } from "../components/ui/Button.tsx";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -15,6 +16,7 @@ function Index() {
       <h1 className="text-blue-500">
         If this is blue, tailwind is working!
       </h1>
+      <Button onClick={() => console.log("Button pressed")}>Test button</Button>
     </div>
   );
 }
