@@ -4,7 +4,7 @@ import deno from "@deno/vite-plugin";
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), deno()],
+  plugins: [react() as any, deno()],
   server: {
     proxy: {
       "/trpc": "http://localhost:8000",
