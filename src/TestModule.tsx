@@ -7,7 +7,6 @@ export function TestModule() {
   const [count, setCount] = useState(0);
 
   const query = api.greeting.useQuery();
-  console.log(query);
 
   return (
     <>
