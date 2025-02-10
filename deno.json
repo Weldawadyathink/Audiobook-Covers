@@ -22,6 +22,7 @@
   "imports": {
     "@deno/vite-plugin": "npm:@deno/vite-plugin@^1.0.3",
     "@std/http": "jsr:@std/http@^1.0.13",
+    "@tailwindcss/vite": "npm:@tailwindcss/vite@^4.0.6",
     "@tanstack/react-query": "npm:@tanstack/react-query@^5.66.0",
     "@tanstack/react-router": "npm:@tanstack/react-router@^1.102.1",
     "@tanstack/router-devtools": "npm:@tanstack/router-devtools@^1.102.1",
@@ -32,6 +33,7 @@
     "@vitejs/plugin-react": "npm:@vitejs/plugin-react@^4.3.4",
     "react": "npm:react@^19.0.0",
     "react-dom": "npm:react-dom@^19.0.0",
+    "tailwindcss": "npm:tailwindcss@^4.0.6",
     "zod": "npm:zod@^3.24.1",
     "vite": "npm:vite@^6.0.11"
   },
