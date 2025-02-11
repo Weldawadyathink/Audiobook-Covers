@@ -1,21 +1,58 @@
-import Replicate from "replicate";
+const quantized = false; // change to `true` for a much smaller model (e.g. 87mb vs 345mb for image model), but lower accuracy
+import {
+  AutoProcessor,
+  AutoTokenizer,
+  CLIPTextModelWithProjection,
+  CLIPVisionModelWithProjection,
+  RawImage,
+} from "npm:@huggingface/transformers";
 
-interface ReplicateClipReturnObject {
-  input: string;
-  embedding: Array<number>;
+export const dimensions: number = 512;
+
+const imageProcessor = await AutoProcessor.from_pretrained(
+  "Xenova/clip-vit-base-patch16",
+);
+const visionModel = await CLIPVisionModelWithProjection.from_pretrained(
+  "Xenova/clip-vit-base-patch16",
+);
+const tokenizer = await AutoTokenizer.from_pretrained(
+  "Xenova/clip-vit-base-patch16",
+);
+const textModel = await CLIPTextModelWithProjection.from_pretrained(
+  "Xenova/clip-vit-base-patch16",
+);
+
+function cosineSimilarity(A: number[], B: number[]) {
+  if (A.length !== B.length) throw new Error("A.length !== B.length");
+  let dotProduct = 0,
+    mA = 0,
+    mB = 0;
+  for (let i = 0; i < A.length; i++) {
+    dotProduct += A[i] * B[i];
+    mA += A[i] * A[i];
+    mB += B[i] * B[i];
+  }
+  mA = Math.sqrt(mA);
+  mB = Math.sqrt(mB);
+  const similarity = dotProduct / (mA * mB);
+  return similarity;
 }
 
-export async function runSingleClip(input: string) {
-  const replicate = new Replicate({
-    auth: Deno.env.get("REPLICATE_API_TOKEN"),
-  });
-  const [output] = (await replicate.run(
-    "andreasjansson/clip-features:75b33f253f7714a281ad3e9b28f63e3232d583716ef6718f2e46641077ea040a",
-    {
-      input: {
-        inputs: input,
-      },
-    },
-  )) as Array<ReplicateClipReturnObject>;
-  return output!;
+export async function getImageEmbedding(imageLocation: string) {
+  const image = await RawImage.read(imageLocation);
+  const imageInputs = await imageProcessor(image);
+  const { image_embeds } = await visionModel(imageInputs);
+  return image_embeds.data;
 }
+
+async function tests() {
+  console.log("Generating embedding for local image file");
+  const result = await getImageEmbedding("./test_image.png");
+  console.log(
+    `Embedding created with ${result.length} dimensions. First value: ${
+      result[0]
+    }`,
+  );
+}
+
+await tests();

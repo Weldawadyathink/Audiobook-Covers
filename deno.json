@@ -22,6 +22,7 @@
   "imports": {
     "@deno/vite-plugin": "npm:@deno/vite-plugin@^1.0.3",
     "@duckdb/node-api": "npm:@duckdb/node-api@^1.2.0-alpha.14",
+    "@huggingface/transformers": "npm:@huggingface/transformers@^3.3.3",
     "@radix-ui/react-label": "npm:@radix-ui/react-label@^2.1.2",
     "@radix-ui/react-separator": "npm:@radix-ui/react-separator@^1.1.2",
     "@radix-ui/react-slot": "npm:@radix-ui/react-slot@^1.1.2",
@@ -42,7 +43,6 @@
     "lucide-react": "npm:lucide-react@^0.475.0",
     "react": "npm:react@^19.0.0",
     "react-dom": "npm:react-dom@^19.0.0",
-    "replicate": "npm:replicate@^1.0.1",
     "sharp": "npm:sharp@^0.33.5",
     "tailwind-merge": "npm:tailwind-merge@^3.0.1",
     "tailwindcss": "npm:tailwindcss@^4.0.6",

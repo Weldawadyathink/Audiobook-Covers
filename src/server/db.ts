@@ -7,6 +7,9 @@ import {
   listValue,
 } from "@duckdb/node-api";
 
+// import { dimensions } from "./utils/clip.ts";
+const dimensions = 768; // Model used on replicate had different dimensionality
+
 const global = globalThis as unknown as {
   db: undefined | DuckDBInstance;
   connection: undefined | DuckDBConnection;
@@ -48,7 +51,7 @@ export async function getCoverVectorSearch(vector: Array<number>) {
   const db = await getDbConnection();
   const statement = await db.prepare(`
     SELECT * FROM image
-    ORDER BY array_distance(embedding, $1::FLOAT[768])
+    ORDER BY array_distance(embedding, $1::FLOAT[${dimensions.toString()}])
     LIMIT 10
   `);
   statement.bindList(1, listValue(vector), LIST(FLOAT));
@@ -57,7 +60,6 @@ export async function getCoverVectorSearch(vector: Array<number>) {
 }
 
 export async function getRandomCoversWithVector(): Promise<Array<ImageData>> {
-  const dimensions = 768;
   const vector: number[] = [];
   for (let i = 0; i < dimensions; i++) {
     // Generate a random number between -1 and 1
@@ -75,4 +77,23 @@ export async function getRandomCovers(): Promise<Array<ImageData>> {
   return result.getRowObjects().map(updateOutputData);
 }
 
-console.log(await getRandomCoversWithVector());
+async function tests() {
+  let result: any = null;
+  console.log("Getting random covers with SQL random");
+  result = await getRandomCovers();
+  console.log(
+    `Returned ${result.length} covers. The first vector has ${
+      result[0].embedding.length
+    } dimensions`,
+  );
+
+  console.log("Getting random covers using vector search");
+  result = await getRandomCoversWithVector();
+  console.log(
+    `Returned ${result.length} covers. The first vector has ${
+      result[0].embedding.length
+    } dimensions`,
+  );
+}
+
+await tests();
