@@ -35,7 +35,7 @@ export interface ImageData {
   blurhash: string;
 }
 
-function updateOutputData(data: Record<string, DuckDBValue>): ImageData {
+function formatAsImageData(data: Record<string, DuckDBValue>): ImageData {
   return {
     id: data.id as any,
     source: data.source as any,
@@ -56,7 +56,7 @@ export async function getCoverVectorSearch(vector: Array<number>) {
   `);
   statement.bindList(1, listValue(vector), LIST(FLOAT));
   const result = await statement.runAndReadAll();
-  return result.getRowObjects().map(updateOutputData);
+  return result.getRowObjects().map(formatAsImageData);
 }
 
 export async function getRandomCoversWithVector(): Promise<Array<ImageData>> {
@@ -74,7 +74,7 @@ export async function getRandomCovers(): Promise<Array<ImageData>> {
   const result = await db.runAndReadAll(`
     SELECT * FROM image ORDER BY random() LIMIT 10;
   `);
-  return result.getRowObjects().map(updateOutputData);
+  return result.getRowObjects().map(formatAsImageData);
 }
 
 async function tests() {
