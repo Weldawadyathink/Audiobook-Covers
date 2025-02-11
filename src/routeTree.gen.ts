@@ -10,85 +10,180 @@
 
 // Import Routes
 
-import { Route as rootRoute } from "./routes/__root";
-import { Route as AboutImport } from "./routes/about";
-import { Route as IndexImport } from "./routes/index";
+import { Route as rootRoute } from './routes/__root'
+import { Route as ContributeImport } from './routes/contribute'
+import { Route as ApidocsImport } from './routes/apidocs'
+import { Route as AboutImport } from './routes/about'
+import { Route as IndexImport } from './routes/index'
+import { Route as ImageSearchImport } from './routes/image/search'
+import { Route as ImageImageIdImport } from './routes/image/$imageId'
 
 // Create/Update Routes
 
-const AboutRoute = AboutImport.update({
-  id: "/about",
-  path: "/about",
+const ContributeRoute = ContributeImport.update({
+  id: '/contribute',
+  path: '/contribute',
   getParentRoute: () => rootRoute,
-} as any);
+} as any)
+
+const ApidocsRoute = ApidocsImport.update({
+  id: '/apidocs',
+  path: '/apidocs',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const AboutRoute = AboutImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => rootRoute,
+} as any)
 
 const IndexRoute = IndexImport.update({
-  id: "/",
-  path: "/",
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRoute,
-} as any);
+} as any)
+
+const ImageSearchRoute = ImageSearchImport.update({
+  id: '/image/search',
+  path: '/image/search',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const ImageImageIdRoute = ImageImageIdImport.update({
+  id: '/image/$imageId',
+  path: '/image/$imageId',
+  getParentRoute: () => rootRoute,
+} as any)
 
 // Populate the FileRoutesByPath interface
 
-declare module "@tanstack/react-router" {
+declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    "/": {
-      id: "/";
-      path: "/";
-      fullPath: "/";
-      preLoaderRoute: typeof IndexImport;
-      parentRoute: typeof rootRoute;
-    };
-    "/about": {
-      id: "/about";
-      path: "/about";
-      fullPath: "/about";
-      preLoaderRoute: typeof AboutImport;
-      parentRoute: typeof rootRoute;
-    };
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexImport
+      parentRoute: typeof rootRoute
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutImport
+      parentRoute: typeof rootRoute
+    }
+    '/apidocs': {
+      id: '/apidocs'
+      path: '/apidocs'
+      fullPath: '/apidocs'
+      preLoaderRoute: typeof ApidocsImport
+      parentRoute: typeof rootRoute
+    }
+    '/contribute': {
+      id: '/contribute'
+      path: '/contribute'
+      fullPath: '/contribute'
+      preLoaderRoute: typeof ContributeImport
+      parentRoute: typeof rootRoute
+    }
+    '/image/$imageId': {
+      id: '/image/$imageId'
+      path: '/image/$imageId'
+      fullPath: '/image/$imageId'
+      preLoaderRoute: typeof ImageImageIdImport
+      parentRoute: typeof rootRoute
+    }
+    '/image/search': {
+      id: '/image/search'
+      path: '/image/search'
+      fullPath: '/image/search'
+      preLoaderRoute: typeof ImageSearchImport
+      parentRoute: typeof rootRoute
+    }
   }
 }
 
 // Create and export the route tree
 
 export interface FileRoutesByFullPath {
-  "/": typeof IndexRoute;
-  "/about": typeof AboutRoute;
+  '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/apidocs': typeof ApidocsRoute
+  '/contribute': typeof ContributeRoute
+  '/image/$imageId': typeof ImageImageIdRoute
+  '/image/search': typeof ImageSearchRoute
 }
 
 export interface FileRoutesByTo {
-  "/": typeof IndexRoute;
-  "/about": typeof AboutRoute;
+  '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/apidocs': typeof ApidocsRoute
+  '/contribute': typeof ContributeRoute
+  '/image/$imageId': typeof ImageImageIdRoute
+  '/image/search': typeof ImageSearchRoute
 }
 
 export interface FileRoutesById {
-  __root__: typeof rootRoute;
-  "/": typeof IndexRoute;
-  "/about": typeof AboutRoute;
+  __root__: typeof rootRoute
+  '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/apidocs': typeof ApidocsRoute
+  '/contribute': typeof ContributeRoute
+  '/image/$imageId': typeof ImageImageIdRoute
+  '/image/search': typeof ImageSearchRoute
 }
 
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath;
-  fullPaths: "/" | "/about";
-  fileRoutesByTo: FileRoutesByTo;
-  to: "/" | "/about";
-  id: "__root__" | "/" | "/about";
-  fileRoutesById: FileRoutesById;
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/apidocs'
+    | '/contribute'
+    | '/image/$imageId'
+    | '/image/search'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | '/about'
+    | '/apidocs'
+    | '/contribute'
+    | '/image/$imageId'
+    | '/image/search'
+  id:
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/apidocs'
+    | '/contribute'
+    | '/image/$imageId'
+    | '/image/search'
+  fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute;
-  AboutRoute: typeof AboutRoute;
+  IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
+  ApidocsRoute: typeof ApidocsRoute
+  ContributeRoute: typeof ContributeRoute
+  ImageImageIdRoute: typeof ImageImageIdRoute
+  ImageSearchRoute: typeof ImageSearchRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
-};
+  ApidocsRoute: ApidocsRoute,
+  ContributeRoute: ContributeRoute,
+  ImageImageIdRoute: ImageImageIdRoute,
+  ImageSearchRoute: ImageSearchRoute,
+}
 
 export const routeTree = rootRoute
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>();
+  ._addFileTypes<FileRouteTypes>()
 
 /* ROUTE_MANIFEST_START
 {
@@ -97,7 +192,11 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
-        "/about"
+        "/about",
+        "/apidocs",
+        "/contribute",
+        "/image/$imageId",
+        "/image/search"
       ]
     },
     "/": {
@@ -105,6 +204,18 @@ export const routeTree = rootRoute
     },
     "/about": {
       "filePath": "about.tsx"
+    },
+    "/apidocs": {
+      "filePath": "apidocs.tsx"
+    },
+    "/contribute": {
+      "filePath": "contribute.tsx"
+    },
+    "/image/$imageId": {
+      "filePath": "image/$imageId.tsx"
+    },
+    "/image/search": {
+      "filePath": "image/search.tsx"
     }
   }
 }
