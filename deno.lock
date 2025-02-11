@@ -11,6 +11,7 @@
     "jsr:@std/path@^1.0.8": "1.0.8",
     "jsr:@std/streams@^1.0.9": "1.0.9",
     "npm:@deno/vite-plugin@^1.0.3": "1.0.3_vite@6.1.0",
+    "npm:@duckdb/node-api@^1.2.0-alpha.14": "1.2.0-alpha.14",
     "npm:@radix-ui/react-label@^2.1.2": "2.1.2_@types+react@19.0.8_react@19.0.0_react-dom@19.0.0__react@19.0.0",
     "npm:@radix-ui/react-separator@^1.1.2": "1.1.2_@types+react@19.0.8_react@19.0.0_react-dom@19.0.0__react@19.0.0",
     "npm:@radix-ui/react-slot@^1.1.2": "1.1.2_@types+react@19.0.8_react@19.0.0",
@@ -240,6 +241,37 @@
       "integrity": "sha512-As059Zjde6oaUw7+WXhu2WpnjnBzjUCs5+j21S1ilQRIorN+sCrArXpdSDsCXXnHQbCU1SHjVrjcca49YOuwIg==",
       "dependencies": [
         "vite@6.1.0"
+      ]
+    },
+    "@duckdb/node-api@1.2.0-alpha.14": {
+      "integrity": "sha512-emLbLac4DuKbQO4q3Aafsn//OQbe8lMiLxxzgKPz/tgRzyOWYdiowissfWwVbhJ/JNy8Us5W+oFcGRSUWm7saA==",
+      "dependencies": [
+        "@duckdb/node-bindings"
+      ]
+    },
+    "@duckdb/node-bindings-darwin-arm64@1.2.0-alpha.14": {
+      "integrity": "sha512-DUnWLs+r5ePntaxld+mk/lxDwIT8PBrXY8yMnzb5HTWSFdcHWF2UIeuMhLFgVcyQnm7r5pRjd36XeffMQPVFGQ=="
+    },
+    "@duckdb/node-bindings-darwin-x64@1.2.0-alpha.14": {
+      "integrity": "sha512-RqzFF/4yZseNAK6dv3kNL+YUgkTsqFrLTAmgG65YTN8YWHv5VYBtb9NKETb5gZi9GVQ4+d5cc5tuKOXXPRhB3w=="
+    },
+    "@duckdb/node-bindings-linux-arm64@1.2.0-alpha.14": {
+      "integrity": "sha512-1EcGTDiwtas0eJeFWmzZsKqHCDBrt1TBPnL2il9s9mKYYcbBYkwtsVCgtO5BH8XmgNEM4WxVfGtR6KwJ90ymoA=="
+    },
+    "@duckdb/node-bindings-linux-x64@1.2.0-alpha.14": {
+      "integrity": "sha512-B9EfSZosrMhFVdgi3WKV854Vj8tnE4ywW3aXqNQ73qLZ4gBnKdiZYXdpt9Eed4qJv4cvQ4PWege3TThD/SOv8A=="
+    },
+    "@duckdb/node-bindings-win32-x64@1.2.0-alpha.14": {
+      "integrity": "sha512-v565LwMjVoV4Tn/D2RazmQhesKnl3cUHO/VXP1gS46sLsEdXMkNjDUNa4RiGy0LCWT+SPKsaAex8BJoPHXVTMg=="
+    },
+    "@duckdb/node-bindings@1.2.0-alpha.14": {
+      "integrity": "sha512-S6L2JRnuC6yqMYgPUW81fnpFEMtbnFBHil/hXafAMKlZs3093NNAKTikU2H1sMQVDUKhAluPOaJ2AAs1k1Ixbw==",
+      "dependencies": [
+        "@duckdb/node-bindings-darwin-arm64",
+        "@duckdb/node-bindings-darwin-x64",
+        "@duckdb/node-bindings-linux-arm64",
+        "@duckdb/node-bindings-linux-x64",
+        "@duckdb/node-bindings-win32-x64"
       ]
     },
     "@emnapi/runtime@1.3.1": {
@@ -1449,6 +1481,7 @@
     "dependencies": [
       "jsr:@std/http@^1.0.13",
       "npm:@deno/vite-plugin@^1.0.3",
+      "npm:@duckdb/node-api@^1.2.0-alpha.14",
       "npm:@radix-ui/react-label@^2.1.2",
       "npm:@radix-ui/react-separator@^1.1.2",
       "npm:@radix-ui/react-slot@^1.1.2",
