@@ -7,9 +7,6 @@
 /dist
 .vite
 
-# Server executable
-./server
-
 # testing
 /coverage
 
@@ -50,3 +47,4 @@ yarn-error.log*
 # idea files
 .idea
 server
+!/src/server/
