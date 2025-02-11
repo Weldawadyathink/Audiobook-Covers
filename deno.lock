@@ -25,8 +25,10 @@
     "npm:@types/node@*": "22.5.4",
     "npm:@types/react@19": "19.0.8",
     "npm:@vitejs/plugin-react@^4.3.4": "4.3.4_vite@6.1.0_@babel+core@7.26.8",
+    "npm:blurhash@^2.0.5": "2.0.5",
     "npm:class-variance-authority@~0.7.1": "0.7.1",
     "npm:clsx@^2.1.1": "2.1.1",
+    "npm:extract-colors@^4.1.1": "4.1.1",
     "npm:lucide-react@0.475": "0.475.0_react@19.0.0",
     "npm:react-dom@19": "19.0.0_react@19.0.0",
     "npm:react@19": "19.0.0",
@@ -782,6 +784,9 @@
     "binary-extensions@2.3.0": {
       "integrity": "sha512-Ceh+7ox5qe7LJuLHoY0feh3pHuUDHAcRUeyL2VYghZwfpkNIy/+8Ocg0a3UuSoYzavmylwuLWQOf3hl0jjMMIw=="
     },
+    "blurhash@2.0.5": {
+      "integrity": "sha512-cRygWd7kGBQO3VEhPiTgq4Wc43ctsM+o46urrmPOiuAe+07fzlSB9OJVdpgDL0jPqXUVQ9ht7aq7kxOeJHRK+w=="
+    },
     "braces@3.0.3": {
       "integrity": "sha512-yQbXgO/OSZVD2IsiLlro+7Hf6Q18EJrKSEsdoMzKePKXct3gvD8oLcOQdIzGupr5Fj+EDe8gO/lxc1BzfMpxvA==",
       "dependencies": [
@@ -911,6 +916,9 @@
     },
     "escalade@3.2.0": {
       "integrity": "sha512-WUj2qlxaQtO4g6Pq5c29GTcWGDyd8itL8zTlipgECz3JesAiiOKotd8JU6otB3PACgG6xkJUyVhboMS+bje/jA=="
+    },
+    "extract-colors@4.1.1": {
+      "integrity": "sha512-Gi56cSrlCWr1DnX+0hN6c12auiAtQwyq5SI1GXb/jxmKKADGbshOYvfOq8YPCicBi9LdBLJstCUu0r1HzjlNXg=="
     },
     "fill-range@7.1.1": {
       "integrity": "sha512-YsGpe3WHLK8ZYi4tWDg2Jy3ebRz2rXowDxnld4bkQB00cc/1Zw9AWnC0i9ztDJitivtQvaI9KaLyKrc+hBW0yg==",
@@ -1241,8 +1249,10 @@
       "npm:@trpc/server@^11.0.0-rc.730",
       "npm:@types/react@19",
       "npm:@vitejs/plugin-react@^4.3.4",
+      "npm:blurhash@^2.0.5",
       "npm:class-variance-authority@~0.7.1",
       "npm:clsx@^2.1.1",
+      "npm:extract-colors@^4.1.1",
       "npm:lucide-react@0.475",
       "npm:react-dom@19",
       "npm:react@19",
