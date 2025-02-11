@@ -51,7 +51,7 @@ export async function getCoverVectorSearch(vector: Array<number>) {
   const db = await getDbConnection();
   const statement = await db.prepare(`
     SELECT * FROM image
-    ORDER BY array_distance(embedding, $1::FLOAT[${dimensions.toString()}])
+    ORDER BY array_cosine_distance(embedding, $1::FLOAT[${dimensions.toString()}])
     LIMIT 10
   `);
   statement.bindList(1, listValue(vector), LIST(FLOAT));
