@@ -1,16 +1,14 @@
-const quantized = false; // change to `true` for a much smaller model (e.g. 87mb vs 345mb for image model), but lower accuracy
 import {
   AutoProcessor,
   AutoTokenizer,
-  CLIPModel,
   CLIPTextModelWithProjection,
   CLIPVisionModelWithProjection,
   RawImage,
-} from "npm:@huggingface/transformers";
+} from "@huggingface/transformers";
 
 export const dimensions: number = 512;
 
-const model_id = "Marqo/marqo-fashionCLIP";
+const model_id = "Benny1923/metaclip-b16-fullcc2.5b";
 
 const tokenizer = await AutoTokenizer.from_pretrained(model_id);
 console.log("loaded tokenizer into memory");
@@ -32,13 +30,13 @@ export async function getImageEmbedding(imageLocation: string) {
   const image = await RawImage.read(imageLocation);
   const imageInputs = await processor(image);
   const { image_embeds } = await vision_model(imageInputs);
-  return image_embeds.normalize().data;
+  return [...image_embeds.normalize().data];
 }
 
 export async function getTextEmbedding(input: string) {
   const tokens = tokenizer(input, { padding: "max_length", truncation: true });
   const { text_embeds } = await text_model(tokens);
-  return text_embeds.normalize().data;
+  return [...text_embeds.normalize().data];
 }
 
 async function tests() {
@@ -70,4 +68,4 @@ async function tests() {
   );
 }
 
-await tests();
+// await tests();

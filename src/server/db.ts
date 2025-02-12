@@ -15,7 +15,7 @@ const global = globalThis as unknown as {
   connection: undefined | DuckDBConnection;
 };
 
-async function getDbConnection() {
+export async function getDbConnection() {
   if (!global.db) {
     global.db = await DuckDBInstance.create("images.db");
   }
@@ -96,4 +96,4 @@ async function tests() {
   );
 }
 
-await tests();
+// await tests();

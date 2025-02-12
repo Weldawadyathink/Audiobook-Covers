@@ -49,3 +49,4 @@ yarn-error.log*
 server
 !/src/server/
 images.db
+images
