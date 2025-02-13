@@ -12,10 +12,16 @@ import {
 export const dimensions: number = 512;
 
 export const models = {
-  "Benny1923/metaclip-b16-fullcc2.5b": { dimensions: 512 },
-  "Xenova/clip-vit-large-patch14": { dimensions: 768 },
-  "Xenova/mobileclip_blt": { dimensions: 512 },
-} as const;
+  "Benny1923/metaclip-b16-fullcc2.5b": {
+    dimensions: 512,
+    dbColumn: "metaclip_b16",
+  },
+  "Xenova/clip-vit-large-patch14": {
+    dimensions: 768,
+    dbColumn: "vit_large_patch14",
+  },
+  "Xenova/mobileclip_blt": { dimensions: 512, dbColumn: "mobileclip_blt" },
+};
 
 export type ModelOptions = keyof typeof models;
 
@@ -45,10 +51,15 @@ function getGlobalModels(modelName: ModelOptions) {
   return global.models[modelName];
 }
 
-async function getTextModel(modelName: ModelOptions): Promise<{
+// IMPORTANT: If running many enbeddings in parallel, call a single instance of get model to prevent multiple copies
+// being loaded into memory
+export async function getTextModel(modelName: ModelOptions): Promise<{
   tokenizer: PreTrainedTokenizer;
   textModel: PreTrainedModel;
 }> {
+  if (!(modelName in models)) {
+    throw new Error("Model name not recognized");
+  }
   let { tokenizer, textModel } = getGlobalModels(modelName);
   if (!tokenizer) {
     tokenizer = await AutoTokenizer.from_pretrained(modelName);
@@ -68,10 +79,15 @@ async function getTextModel(modelName: ModelOptions): Promise<{
   };
 }
 
-async function getVisionModel(modelName: ModelOptions): Promise<{
+// IMPORTANT: If running many enbeddings in parallel, call a single instance of get model to prevent multiple copies
+// being loaded into memory
+export async function getVisionModel(modelName: ModelOptions): Promise<{
   processor: Processor;
   visionModel: PreTrainedModel;
 }> {
+  if (!(modelName in models)) {
+    throw new Error("Model name not recognized");
+  }
   let { processor, visionModel } = getGlobalModels(modelName);
   if (!processor) {
     processor = await AutoProcessor.from_pretrained(modelName, {});
@@ -113,7 +129,7 @@ export async function getTextEmbedding(
   return [...text_embeds.normalize().data] as Array<number>;
 }
 
-async function tests() {
+async function _tests() {
   for (const modelName of Object.keys(models)) {
     let result: any = null;
 
@@ -149,4 +165,4 @@ async function tests() {
   }
 }
 
-// await tests();
+// await _tests();

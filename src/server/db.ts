@@ -7,9 +7,6 @@ import {
   listValue,
 } from "@duckdb/node-api";
 
-// import { dimensions } from "./utils/clip.ts";
-const dimensions = 768; // Model used on replicate had different dimensionality
-
 const global = globalThis as unknown as {
   db: undefined | DuckDBInstance;
   connection: undefined | DuckDBConnection;
@@ -77,7 +74,7 @@ export async function getRandomCovers(): Promise<Array<ImageData>> {
   return result.getRowObjects().map(formatAsImageData);
 }
 
-async function tests() {
+async function _tests() {
   let result: any = null;
   console.log("Getting random covers with SQL random");
   result = await getRandomCovers();
@@ -96,4 +93,4 @@ async function tests() {
   );
 }
 
-// await tests();
+// await _tests();

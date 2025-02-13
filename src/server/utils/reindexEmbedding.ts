@@ -1,51 +1,77 @@
 import { getDbConnection } from "../db.ts";
-import { dimensions, getImageEmbedding } from "./clip.ts";
+import {
+  getImageEmbedding,
+  getVisionModel,
+  type ModelOptions,
+  models,
+} from "./clip.ts";
 import { FLOAT, LIST, listValue } from "@duckdb/node-api";
 
-async function getImageIds() {
+async function reindexPicture(data: {
+  id: string;
+  extension: string;
+  modelName: ModelOptions;
+}) {
+  const imagePath = `./images/original/${data.id}.${data.extension}`;
+  if (!(data.modelName in models)) {
+    throw new Error("Model name not recognized");
+  }
+  const modelData = models[data.modelName];
+  const vector = await getImageEmbedding(imagePath, data.modelName);
+  const db = await getDbConnection();
+  // This is not sql injection safe, but none of these are user defined values
+  const statement = await db.prepare(`
+    UPDATE image
+    SET "${modelData.dbColumn}" = $1::FLOAT[${modelData.dimensions}]
+    WHERE id = '${data.id}'
+  `);
+  statement.bindList(1, listValue(vector), LIST(FLOAT));
+  await statement.run();
+}
+
+async function getImageIds(limit: number, nullColumn: string) {
   const db = await getDbConnection();
   const results = await db.runAndReadAll(`
     SELECT id, extension
     FROM image
-    WHERE metaclip IS NULL
---     LIMIT 1000
+    WHERE "${nullColumn}" IS NULL
+    LIMIT ${limit}
   `);
-  return results.getRows();
+  return results.getRowObjects() as [{ id: string; extension: string }];
 }
 
-async function getLocalImageEmbedding(data: [string, string]) {
-  const [id, extension] = data;
-  const imagePath = `./images/original/${id}.${extension}`;
-  const vector = await getImageEmbedding(imagePath);
-  return {
-    id: id,
-    extension: extension,
-    vector: vector,
-  };
-}
-
-async function setEmbeddingInDb(
-  data: Awaited<ReturnType<typeof getLocalImageEmbedding>>,
+async function reindexAllImagesForModel(
+  modelName: ModelOptions,
+  batchSize: number,
 ) {
-  const db = await getDbConnection();
-  const statement = await db.prepare(`
-    UPDATE image
-    SET metaclip = $1::FLOAT[${dimensions.toString()}]
-    WHERE id = $2;
-  `);
-  statement.bindList(1, listValue(data.vector), LIST(FLOAT));
-  statement.bindVarchar(2, data.id);
-  await statement.run();
+  if (!(modelName in models)) {
+    throw new Error("Model name not recognized");
+  }
+  const modelData = models[modelName];
+
+  let images: Array<{ id: string; extension: string }> = [];
+  do {
+    images = await getImageIds(batchSize, modelData.dbColumn);
+    console.log(`Indexing ${images.length} images with ${modelName}`);
+    await Promise.all(
+      images.map((image) =>
+        reindexPicture({
+          id: image.id,
+          extension: image.extension,
+          modelName: modelName,
+        })
+      ),
+    );
+  } while (images.length != 0);
+  console.log(`Indexing with ${modelName} complete`);
 }
 
 async function main() {
-  const ids = await getImageIds() as unknown as Array<[string, string]>;
-  console.log(`Starting embedding on ${ids.length} images`);
-  const promises = ids.map((data) =>
-    getLocalImageEmbedding(data).then(setEmbeddingInDb)
-  );
-  await Promise.all(promises);
-  console.log(`Finished embedding on ${ids.length} images`);
+  for (const [model, _] of Object.entries(models)) {
+    await getVisionModel(model as ModelOptions);
+    await reindexAllImagesForModel(model as ModelOptions, 500);
+  }
+  console.log(`Completed database reindex`);
 }
 
 await main();

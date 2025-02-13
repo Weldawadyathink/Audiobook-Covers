@@ -50,3 +50,4 @@ server
 !/src/server/
 images.db
 images
+images.db.wal
