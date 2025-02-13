@@ -3,6 +3,9 @@ import {
   AutoTokenizer,
   CLIPTextModelWithProjection,
   CLIPVisionModelWithProjection,
+  type PreTrainedModel,
+  type PreTrainedTokenizer,
+  type Processor,
   RawImage,
 } from "@huggingface/transformers";
 
@@ -19,10 +22,10 @@ export type ModelOptions = keyof typeof models;
 const global = globalThis as unknown as {
   models: {
     [K in ModelOptions]?: {
-      tokenizer: undefined | AutoTokenizer;
-      textModel: undefined | CLIPTextModelWithProjection;
-      processor: undefined | AutoProcessor;
-      visionModel: undefined | CLIPVisionModelWithProjection;
+      tokenizer: undefined | PreTrainedTokenizer;
+      textModel: undefined | PreTrainedModel;
+      processor: undefined | Processor;
+      visionModel: undefined | PreTrainedModel;
     };
   };
 };
@@ -43,8 +46,8 @@ function getGlobalModels(modelName: ModelOptions) {
 }
 
 async function getTextModel(modelName: ModelOptions): Promise<{
-  tokenizer: AutoTokenizer;
-  textModel: CLIPTextModelWithProjection;
+  tokenizer: PreTrainedTokenizer;
+  textModel: PreTrainedModel;
 }> {
   let { tokenizer, textModel } = getGlobalModels(modelName);
   if (!tokenizer) {
@@ -66,8 +69,8 @@ async function getTextModel(modelName: ModelOptions): Promise<{
 }
 
 async function getVisionModel(modelName: ModelOptions): Promise<{
-  processor: AutoProcessor;
-  visionModel: CLIPVisionModelWithProjection;
+  processor: Processor;
+  visionModel: PreTrainedModel;
 }> {
   let { processor, visionModel } = getGlobalModels(modelName);
   if (!processor) {
@@ -146,4 +149,4 @@ async function tests() {
   }
 }
 
-await tests();
+// await tests();
