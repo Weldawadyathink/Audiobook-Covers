@@ -17,15 +17,19 @@
     "npm:@radix-ui/react-label@^2.1.2": "2.1.2_react@19.0.0_react-dom@19.0.0__react@19.0.0",
     "npm:@radix-ui/react-separator@^1.1.2": "1.1.2_react@19.0.0_react-dom@19.0.0__react@19.0.0",
     "npm:@radix-ui/react-slot@^1.1.2": "1.1.2_react@19.0.0",
+    "npm:@tabler/icons-react@^3.30.0": "3.30.0_react@19.0.0",
     "npm:@tailwindcss/vite@^4.0.6": "4.0.6_vite@6.1.0__lightningcss@1.29.1_lightningcss@1.29.1",
     "npm:@tanstack/react-query@^5.66.0": "5.66.0_react@19.0.0",
     "npm:@tanstack/react-router@^1.102.1": "1.102.1_react@19.0.0_react-dom@19.0.0__react@19.0.0",
-    "npm:@tanstack/router-devtools@^1.102.1": "1.102.1_@tanstack+react-router@1.102.1__react@19.0.0__react-dom@19.0.0___react@19.0.0_react@19.0.0_react-dom@19.0.0__react@19.0.0",
+    "npm:@tanstack/react-router@^1.104.1": "1.104.1_react@19.0.0_react-dom@19.0.0__react@19.0.0",
+    "npm:@tanstack/router-devtools@^1.104.3": "1.104.3_@tanstack+react-router@1.104.1__react@19.0.0__react-dom@19.0.0___react@19.0.0_react@19.0.0_react-dom@19.0.0__react@19.0.0",
     "npm:@tanstack/router-plugin@^1.102.1": "1.102.2_@tanstack+react-router@1.102.1__react@19.0.0__react-dom@19.0.0___react@19.0.0_vite@6.1.0__lightningcss@1.29.1_@babel+core@7.26.8_react@19.0.0_react-dom@19.0.0__react@19.0.0",
     "npm:@trpc/client@^11.0.0-rc.730": "11.0.0-rc.755_@trpc+server@11.0.0-rc.755__typescript@5.7.3_typescript@5.7.3",
     "npm:@trpc/react-query@^11.0.0-rc.730": "11.0.0-rc.755_@tanstack+react-query@5.66.0__react@19.0.0_@trpc+client@11.0.0-rc.755__@trpc+server@11.0.0-rc.755___typescript@5.7.3__typescript@5.7.3_@trpc+server@11.0.0-rc.755__typescript@5.7.3_react@19.0.0_react-dom@19.0.0__react@19.0.0_typescript@5.7.3",
     "npm:@trpc/server@^11.0.0-rc.730": "11.0.0-rc.755_typescript@5.7.3",
     "npm:@types/node@*": "22.5.4",
+    "npm:@types/react-dom@*": "19.0.3_@types+react@19.0.8",
+    "npm:@types/react@*": "19.0.8",
     "npm:@types/react@19": "19.0.8",
     "npm:@vitejs/plugin-react@^4.3.4": "4.3.4_vite@6.1.0__lightningcss@1.29.1_@babel+core@7.26.8",
     "npm:blurhash@^2.0.5": "2.0.5",
@@ -33,7 +37,9 @@
     "npm:clsx@^2.1.1": "2.1.1",
     "npm:extract-colors@^4.1.1": "4.1.1",
     "npm:lucide-react@0.475": "0.475.0_react@19.0.0",
+    "npm:react-blurhash@0.3": "0.3.0_blurhash@2.0.5_react@19.0.0",
     "npm:react-dom@19": "19.0.0_react@19.0.0",
+    "npm:react-parallax-tilt@^1.7.282": "1.7.282_react@19.0.0_react-dom@19.0.0__react@19.0.0",
     "npm:react@19": "19.0.0",
     "npm:sharp@~0.33.5": "0.33.5",
     "npm:tailwind-merge@^3.0.1": "3.0.1",
@@ -695,6 +701,16 @@
     "@rollup/rollup-win32-x64-msvc@4.34.6": {
       "integrity": "sha512-0PVwmgzZ8+TZ9oGBmdZoQVXflbvuwzN/HRclujpl4N/q3i+y0lqLw8n1bXA8ru3sApDjlmONaNAuYr38y1Kr9w=="
     },
+    "@tabler/icons-react@3.30.0_react@19.0.0": {
+      "integrity": "sha512-9KZ9D1UNAyjlLkkYp2HBPHdf6lAJ2aelDqh8YYAnnmLF3xwprWKxxW8+zw5jlI0IwdfN4XFFuzqePkaw+DpIOg==",
+      "dependencies": [
+        "@tabler/icons",
+        "react"
+      ]
+    },
+    "@tabler/icons@3.30.0": {
+      "integrity": "sha512-c8OKLM48l00u9TFbh2qhSODMONIzML8ajtCyq95rW8vzkWcBrKRPM61tdkThz2j4kd5u17srPGIjqdeRUZdfdw=="
+    },
     "@tailwindcss/node@4.0.6": {
       "integrity": "sha512-jb6E0WeSq7OQbVYcIJ6LxnZTeC4HjMvbzFBMCrQff4R50HBlo/obmYNk6V2GCUXDeqiXtvtrQgcIbT+/boB03Q==",
       "dependencies": [
@@ -780,7 +796,20 @@
       "dependencies": [
         "@tanstack/history",
         "@tanstack/react-store",
-        "@tanstack/router-core",
+        "@tanstack/router-core@1.102.0",
+        "jsesc",
+        "react",
+        "react-dom",
+        "tiny-invariant",
+        "tiny-warning"
+      ]
+    },
+    "@tanstack/react-router@1.104.1_react@19.0.0_react-dom@19.0.0__react@19.0.0": {
+      "integrity": "sha512-c/l6TNRuUP6FTmHKyDwTGdxU0bCQhZM7QeKq/Utkyzj2i8awjWLILhBTsCXhLGY1JZtDl4dXixNgXGBiNo8Cnw==",
+      "dependencies": [
+        "@tanstack/history",
+        "@tanstack/react-store",
+        "@tanstack/router-core@1.104.1",
         "jsesc",
         "react",
         "react-dom",
@@ -804,10 +833,17 @@
         "@tanstack/store"
       ]
     },
-    "@tanstack/router-devtools@1.102.1_@tanstack+react-router@1.102.1__react@19.0.0__react-dom@19.0.0___react@19.0.0_react@19.0.0_react-dom@19.0.0__react@19.0.0": {
-      "integrity": "sha512-EwOq/ZZem0W5p6B819Isf8JxTnlmJlZ90IHLd7S8N6WvFiFKqlvwxwYYcubVXAn/cmIxgGCuY6cPn2MHwkJnPw==",
+    "@tanstack/router-core@1.104.1": {
+      "integrity": "sha512-8nP/V5paP+S/17rlw+B2F12R2bB9PixU/+qnD2QdCjK1ajnG4qA0pVN3VSTQe2oCKND6GPZpm2ikmQWumwss9Q==",
       "dependencies": [
-        "@tanstack/react-router",
+        "@tanstack/history",
+        "@tanstack/store"
+      ]
+    },
+    "@tanstack/router-devtools@1.104.3_@tanstack+react-router@1.104.1__react@19.0.0__react-dom@19.0.0___react@19.0.0_react@19.0.0_react-dom@19.0.0__react@19.0.0": {
+      "integrity": "sha512-30lN9Q26IJ9fcuYXk29jp381/6R6FFoMdvhJj2AYl4esNeJ4I0PfMdqmVRLHe/Q/WEgPp6XIZvZulZfbYeBYZA==",
+      "dependencies": [
+        "@tanstack/react-router@1.104.1_react@19.0.0_react-dom@19.0.0__react@19.0.0",
         "clsx",
         "goober",
         "react",
@@ -817,7 +853,7 @@
     "@tanstack/router-generator@1.102.2_@tanstack+react-router@1.102.1__react@19.0.0__react-dom@19.0.0___react@19.0.0_react@19.0.0_react-dom@19.0.0__react@19.0.0": {
       "integrity": "sha512-nZjEQDqKCNBGDWfOFYe4++5YorBJJPSCzjCQtTzGoOrTuugA8Y/R1+k87eBz/AH3qdZFvBNqL3ipozbBbNpe1A==",
       "dependencies": [
-        "@tanstack/react-router",
+        "@tanstack/react-router@1.102.1_react@19.0.0_react-dom@19.0.0__react@19.0.0",
         "@tanstack/virtual-file-routes",
         "prettier",
         "tsx",
@@ -833,7 +869,7 @@
         "@babel/template",
         "@babel/traverse",
         "@babel/types",
-        "@tanstack/react-router",
+        "@tanstack/react-router@1.102.1_react@19.0.0_react-dom@19.0.0__react@19.0.0",
         "@tanstack/router-generator",
         "@tanstack/router-utils",
         "@tanstack/virtual-file-routes",
@@ -931,6 +967,12 @@
       "integrity": "sha512-FDuKUJQm/ju9fT/SeX/6+gBzoPzlVCzfzmGkwKvRHQVxi4BntVbyIwf6a4Xn62mrvndLiml6z/UBXIdEVjQLXg==",
       "dependencies": [
         "undici-types@6.19.8"
+      ]
+    },
+    "@types/react-dom@19.0.3_@types+react@19.0.8": {
+      "integrity": "sha512-0Knk+HJiMP/qOZgMyNFamlIjw9OFCsyC2ZbigmEEyXXixgre6IQpm/4V+r3qH4GC1JPvRJKInw+on2rV6YZLeA==",
+      "dependencies": [
+        "@types/react"
       ]
     },
     "@types/react@19.0.8": {
@@ -1456,11 +1498,25 @@
         "long"
       ]
     },
+    "react-blurhash@0.3.0_blurhash@2.0.5_react@19.0.0": {
+      "integrity": "sha512-XlKr4Ns1iYFRnk6DkAblNbAwN/bTJvxTVoxMvmTcURdc5oLoXZwqAF9N3LZUh/HT+QFlq5n6IS6VsDGsviYAiQ==",
+      "dependencies": [
+        "blurhash",
+        "react"
+      ]
+    },
     "react-dom@19.0.0_react@19.0.0": {
       "integrity": "sha512-4GV5sHFG0e/0AD4X+ySy6UJd3jVl1iNsNHdpad0qhABJ11twS3TTBnseqsKurKcsNqCEFeGL3uLpVChpIO3QfQ==",
       "dependencies": [
         "react",
         "scheduler"
+      ]
+    },
+    "react-parallax-tilt@1.7.282_react@19.0.0_react-dom@19.0.0__react@19.0.0": {
+      "integrity": "sha512-mCNRwjnocs+0CDx9ZNKtqx67oyLiHfsF0nPuxDtRlOu/1ESdxwrZxp/AKDpbKtcYQh54yOlSZDN46In+Xoqs8g==",
+      "dependencies": [
+        "react",
+        "react-dom"
       ]
     },
     "react-refresh@0.14.2": {
@@ -1737,14 +1793,17 @@
       "npm:@radix-ui/react-label@^2.1.2",
       "npm:@radix-ui/react-separator@^1.1.2",
       "npm:@radix-ui/react-slot@^1.1.2",
+      "npm:@tabler/icons-react@^3.30.0",
       "npm:@tailwindcss/vite@^4.0.6",
       "npm:@tanstack/react-query@^5.66.0",
-      "npm:@tanstack/react-router@^1.102.1",
-      "npm:@tanstack/router-devtools@^1.102.1",
+      "npm:@tanstack/react-router@^1.104.1",
+      "npm:@tanstack/router-devtools@^1.104.3",
       "npm:@tanstack/router-plugin@^1.102.1",
       "npm:@trpc/client@^11.0.0-rc.730",
       "npm:@trpc/react-query@^11.0.0-rc.730",
       "npm:@trpc/server@^11.0.0-rc.730",
+      "npm:@types/react-dom@*",
+      "npm:@types/react@*",
       "npm:@types/react@19",
       "npm:@vitejs/plugin-react@^4.3.4",
       "npm:blurhash@^2.0.5",
@@ -1752,7 +1811,9 @@
       "npm:clsx@^2.1.1",
       "npm:extract-colors@^4.1.1",
       "npm:lucide-react@0.475",
+      "npm:react-blurhash@0.3",
       "npm:react-dom@19",
+      "npm:react-parallax-tilt@^1.7.282",
       "npm:react@19",
       "npm:sharp@~0.33.5",
       "npm:tailwind-merge@^3.0.1",

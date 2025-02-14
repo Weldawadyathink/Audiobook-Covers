@@ -163,9 +163,7 @@ export function getBlurhashUrl(inputHash: string) {
   const blurHashToDataURL = (hash: string, width = 32, height = 32) => {
     const rgba = decode(hash, width, height);
     const pngString = png(width, height, rgba);
-    const base64 = typeof window === "undefined"
-      ? Buffer.from(getPngArray(pngString)).toString("base64")
-      : btoa(pngString);
+    const base64 = btoa(pngString);
 
     return `data:image/png;base64,${base64}`;
   };
