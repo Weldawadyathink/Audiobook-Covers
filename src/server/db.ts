@@ -6,6 +6,7 @@ import {
   LIST,
   listValue,
 } from "@duckdb/node-api";
+import { type ModelOptions, models } from "./utils/clip.ts";
 
 const global = globalThis as unknown as {
   db: undefined | DuckDBInstance;
@@ -27,7 +28,6 @@ export interface ImageData {
   source: string;
   extension: string;
   hash: string;
-  embedding: Array<number>;
   searchable: boolean;
   blurhash: string;
 }
@@ -38,17 +38,32 @@ function formatAsImageData(data: Record<string, DuckDBValue>): ImageData {
     source: data.source as any,
     extension: data.extension as any,
     hash: data.hash as any,
-    embedding: (data.embedding as any).items as any,
     searchable: data.searchable as any,
     blurhash: data.blurhash as any,
   };
 }
 
-export async function getCoverVectorSearch(vector: Array<number>) {
+export async function getCoverWithVectorSearch(
+  vector: Array<number>,
+  modelName: ModelOptions,
+) {
+  const modelData = models[modelName];
   const db = await getDbConnection();
+
+  // Not sql injection safe, but data comes from clip.ts, so not an issue
   const statement = await db.prepare(`
-    SELECT * FROM image
-    ORDER BY array_cosine_distance(embedding, $1::FLOAT[${dimensions.toString()}])
+    SELECT 
+      id,
+      source,
+      extension,
+      hash,
+      searchable,
+      blurhash
+    FROM image
+    ORDER BY array_cosine_distance(
+      "${modelData.dbColumn}",
+      $1::FLOAT[${modelData.dimensions.toString()}]
+    )
     LIMIT 10
   `);
   statement.bindList(1, listValue(vector), LIST(FLOAT));
@@ -56,14 +71,22 @@ export async function getCoverVectorSearch(vector: Array<number>) {
   return result.getRowObjects().map(formatAsImageData);
 }
 
-export async function getRandomCoversWithVector(): Promise<Array<ImageData>> {
+export async function getRandomCoversWithVector(
+  modelName?: ModelOptions,
+): Promise<ImageData[]> {
+  let model = modelName;
+  if (!modelName) {
+    model = Object.keys(models)[0] as ModelOptions;
+  }
+  const modelData = models[model!];
   const vector: number[] = [];
-  for (let i = 0; i < dimensions; i++) {
+  for (let i = 0; i < modelData.dimensions; i++) {
     // Generate a random number between -1 and 1
     const randomValue = Math.random() * 2 - 1;
     vector.push(randomValue);
   }
-  return await getCoverVectorSearch(vector);
+  // DB uses cosine comparison, so vector distance does not matter, only a random direction
+  return await getCoverWithVectorSearch(vector, model!);
 }
 
 export async function getRandomCovers(): Promise<Array<ImageData>> {
@@ -79,18 +102,14 @@ async function _tests() {
   console.log("Getting random covers with SQL random");
   result = await getRandomCovers();
   console.log(
-    `Returned ${result.length} covers. The first vector has ${
-      result[0].embedding.length
-    } dimensions`,
+    `Returned ${result.length} covers. First image id: ${result[0].id}`,
   );
 
   console.log("Getting random covers using vector search");
   result = await getRandomCoversWithVector();
   console.log(
-    `Returned ${result.length} covers. The first vector has ${
-      result[0].embedding.length
-    } dimensions`,
+    `Returned ${result.length} covers. First image id: ${result[0].id}`,
   );
 }
 
-// await _tests();
+await _tests();
