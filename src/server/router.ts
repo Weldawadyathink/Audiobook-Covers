@@ -1,12 +1,9 @@
-import { initTRPC } from "@trpc/server";
 import { z } from "zod";
-
-const t = initTRPC.create();
-
-const publicProcedure = t.procedure;
-const router = t.router;
+import { coverRouter } from "./routers/cover.ts";
+import { publicProcedure, router } from "./trpc.ts";
 
 export const appRouter = router({
+  cover: coverRouter,
   hello: publicProcedure.input(z.string().nullish()).query(({ input }) => {
     return `Hello ${input ?? "World"}!`;
   }),

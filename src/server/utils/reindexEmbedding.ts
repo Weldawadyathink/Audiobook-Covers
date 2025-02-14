@@ -1,4 +1,4 @@
-import { getDbConnection } from "../db.ts";
+import { getDbConnection } from "./db.ts";
 import {
   getImageEmbedding,
   getVisionModel,
