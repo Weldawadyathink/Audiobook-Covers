@@ -24,9 +24,10 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
     })
   );
 
+  // Deno throws a fit about queryClient type, but it is functional anyway
   return (
     <QueryClientProvider client={queryClient}>
-      <api.Provider client={trpcClient} queryClient={queryClient}>
+      <api.Provider client={trpcClient} queryClient={queryClient as any}>
         {props.children}
       </api.Provider>
     </QueryClientProvider>
