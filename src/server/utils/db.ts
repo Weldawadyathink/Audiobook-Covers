@@ -23,7 +23,7 @@ export async function getDbConnection() {
   return global.connection;
 }
 
-export interface ImageData {
+export interface DBImageData {
   id: string;
   source: string;
   extension: string;
@@ -32,7 +32,7 @@ export interface ImageData {
   blurhash: string;
 }
 
-function formatAsImageData(data: Record<string, DuckDBValue>): ImageData {
+function formatAsImageData(data: Record<string, DuckDBValue>): DBImageData {
   return {
     id: data.id as any,
     source: data.source as any,
@@ -73,7 +73,7 @@ export async function getCoverWithVectorSearch(
 
 export async function getRandomCoversWithVector(
   modelName?: ModelOptions,
-): Promise<ImageData[]> {
+): Promise<DBImageData[]> {
   let model = modelName;
   if (!modelName) {
     model = Object.keys(models)[0] as ModelOptions;
@@ -89,7 +89,7 @@ export async function getRandomCoversWithVector(
   return await getCoverWithVectorSearch(vector, model!);
 }
 
-export async function getRandomCovers(): Promise<Array<ImageData>> {
+export async function getRandomCovers(): Promise<Array<DBImageData>> {
   const db = await getDbConnection();
   const result = await db.runAndReadAll(`
     SELECT * FROM image ORDER BY random() LIMIT 10;
@@ -112,4 +112,4 @@ async function _tests() {
   );
 }
 
-await _tests();
+// await _tests();
