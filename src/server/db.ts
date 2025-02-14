@@ -6,7 +6,7 @@ import {
   LIST,
   listValue,
 } from "@duckdb/node-api";
-import { type ModelOptions, models } from "./utils/clip.ts";
+import { type ModelOptions, models } from "./utils/models.ts";
 
 const global = globalThis as unknown as {
   db: undefined | DuckDBInstance;
