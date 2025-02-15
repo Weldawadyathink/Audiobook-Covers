@@ -12,6 +12,7 @@
     "jsr:@std/streams@^1.0.9": "1.0.9",
     "npm:@deno/vite-plugin@^1.0.3": "1.0.3_vite@6.1.0__lightningcss@1.29.1",
     "npm:@duckdb/node-api@^1.2.0-alpha.14": "1.2.0-alpha.14",
+    "npm:@hookform/resolvers@^4.1.0": "4.1.0_react-hook-form@7.54.2__react@19.0.0_react@19.0.0",
     "npm:@huggingface/transformers@*": "3.3.3",
     "npm:@huggingface/transformers@^3.3.3": "3.3.3",
     "npm:@radix-ui/react-label@^2.1.2": "2.1.2_react@19.0.0_react-dom@19.0.0__react@19.0.0",
@@ -39,6 +40,7 @@
     "npm:lucide-react@0.475": "0.475.0_react@19.0.0",
     "npm:react-blurhash@0.3": "0.3.0_blurhash@2.0.5_react@19.0.0",
     "npm:react-dom@19": "19.0.0_react@19.0.0",
+    "npm:react-hook-form@^7.54.2": "7.54.2_react@19.0.0",
     "npm:react-parallax-tilt@^1.7.282": "1.7.282_react@19.0.0_react-dom@19.0.0__react@19.0.0",
     "npm:react@19": "19.0.0",
     "npm:sharp@~0.33.5": "0.33.5",
@@ -432,6 +434,13 @@
     },
     "@esbuild/win32-x64@0.24.2": {
       "integrity": "sha512-7VTgWzgMGvup6aSqDPLiW5zHaxYJGTO4OokMjIlrCtf+VpEL+cXKtCvg723iguPYI5oaUNdS+/V7OU2gvXVWEg=="
+    },
+    "@hookform/resolvers@4.1.0_react-hook-form@7.54.2__react@19.0.0_react@19.0.0": {
+      "integrity": "sha512-fX/uHKb+OOCpACLc6enuTQsf0ZpRrKbeBBPETg5PCPLCIYV6osP2Bw6ezuclM61lH+wBF9eXcuC0+BFh9XOEnQ==",
+      "dependencies": [
+        "caniuse-lite",
+        "react-hook-form"
+      ]
     },
     "@huggingface/jinja@0.3.3": {
       "integrity": "sha512-vQQr2JyWvVFba3Lj9es4q9vCl1sAc74fdgnEMoX8qHrXtswap9ge9uO3ONDzQB0cQ0PUyaKY2N6HaVbTBvSXvw=="
@@ -1512,6 +1521,12 @@
         "scheduler"
       ]
     },
+    "react-hook-form@7.54.2_react@19.0.0": {
+      "integrity": "sha512-eHpAUgUjWbZocoQYUHposymRb4ZP6d0uwUnooL2uOybA9/3tPUvoAKqEWK1WaSiTxxOfTpffNZP7QwlnM3/gEg==",
+      "dependencies": [
+        "react"
+      ]
+    },
     "react-parallax-tilt@1.7.282_react@19.0.0_react-dom@19.0.0__react@19.0.0": {
       "integrity": "sha512-mCNRwjnocs+0CDx9ZNKtqx67oyLiHfsF0nPuxDtRlOu/1ESdxwrZxp/AKDpbKtcYQh54yOlSZDN46In+Xoqs8g==",
       "dependencies": [
@@ -1789,6 +1804,7 @@
       "jsr:@std/http@^1.0.13",
       "npm:@deno/vite-plugin@^1.0.3",
       "npm:@duckdb/node-api@^1.2.0-alpha.14",
+      "npm:@hookform/resolvers@^4.1.0",
       "npm:@huggingface/transformers@^3.3.3",
       "npm:@radix-ui/react-label@^2.1.2",
       "npm:@radix-ui/react-separator@^1.1.2",
@@ -1813,6 +1829,7 @@
       "npm:lucide-react@0.475",
       "npm:react-blurhash@0.3",
       "npm:react-dom@19",
+      "npm:react-hook-form@^7.54.2",
       "npm:react-parallax-tilt@^1.7.282",
       "npm:react@19",
       "npm:sharp@~0.33.5",
