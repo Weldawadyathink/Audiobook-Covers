@@ -43,6 +43,7 @@
     "clsx": "npm:clsx@^2.1.1",
     "extract-colors": "npm:extract-colors@^4.1.1",
     "lucide-react": "npm:lucide-react@^0.475.0",
+    "node-image-hash": "npm:node-image-hash@^1.1.0",
     "react": "npm:react@^19.0.0",
     "react-blurhash": "npm:react-blurhash@^0.3.0",
     "react-dom": "npm:react-dom@^19.0.0",

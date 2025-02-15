@@ -1,10 +1,6 @@
 import { getDbConnection } from "./db.ts";
-import {
-  getImageEmbedding,
-  getVisionModel,
-  type ModelOptions,
-  models,
-} from "./clip.ts";
+import { getImageEmbedding, getVisionModel } from "./clip.ts";
+import { type ModelOptions, models } from "./models.ts";
 import { FLOAT, LIST, listValue } from "@duckdb/node-api";
 
 async function reindexPicture(data: {
