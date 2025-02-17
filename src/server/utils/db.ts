@@ -43,6 +43,25 @@ function formatAsImageData(data: Record<string, DuckDBValue>): DBImageData {
   };
 }
 
+export async function getCoverById(id: string) {
+  const db = await getDbConnection();
+
+  const statement = await db.prepare(`
+    SELECT 
+      id,
+      source,
+      extension,
+      hash,
+      searchable,
+      blurhash
+    FROM image
+    WHERE id = $1
+  `);
+  statement.bindVarchar(1, id);
+  const result = await statement.runAndReadAll();
+  return result.getRowObjects().map(formatAsImageData)[0];
+}
+
 export async function getCoverWithVectorSearch(
   vector: Array<number>,
   modelName: ModelOptions,

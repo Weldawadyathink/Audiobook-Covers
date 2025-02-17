@@ -2,6 +2,7 @@ import { publicProcedure, router } from "../trpc.ts";
 import { ModelOptions, models } from "../utils/models.ts";
 import {
   type DBImageData,
+  getCoverById,
   getCoverWithVectorSearch,
   getRandomCovers,
 } from "../utils/db.ts";
@@ -47,6 +48,13 @@ export const coverRouter = router({
     const data = await getRandomCovers();
     return shapeImageData(data);
   }),
+  getById: publicProcedure
+    .input(z.string().min(1))
+    .query(async ({ input }): Promise<ImageData> => {
+      console.log(`getById: ${input}`);
+      const data = await getCoverById(input);
+      return shapeImageData([data])[0];
+    }),
   vectorSearchWithString: publicProcedure
     // This stupid TS stuff shouldn't be necessary
     // Oh, it's because Object.keys might return a zero length array
