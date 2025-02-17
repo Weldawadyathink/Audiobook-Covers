@@ -60,6 +60,7 @@ export async function getCoverWithVectorSearch(
       searchable,
       blurhash
     FROM image
+    WHERE searchable IS TRUE
     ORDER BY array_cosine_distance(
       "${modelData.dbColumn}",
       $1::FLOAT[${modelData.dimensions.toString()}]
