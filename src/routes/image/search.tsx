@@ -1,11 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { Input } from "../../components/ui/Input.tsx";
 import { Button } from "../../components/ui/Button.tsx";
-import { api } from "../../utils/trpc.tsx";
-import { ImageCard } from "../../components/ImageCard.tsx";
-import { Spinner } from "../../components/Spinner.tsx";
 import { z } from "zod";
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import {
   Form,
@@ -24,7 +20,6 @@ const formSchema = z.object({
 });
 
 function RouteComponent() {
-  const [query, setQuery] = useState("");
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -32,16 +27,16 @@ function RouteComponent() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    setQuery(values.q);
-  }
+  const navigate = useNavigate();
 
-  const images = api.cover.vectorSearchWithString.useQuery({
-    modelName: "Benny1923/metaclip-b16-fullcc2.5b",
-    queryString: query,
-  }, {
-    enabled: () => query !== "",
-  });
+  function onSubmit(values: z.infer<typeof formSchema>) {
+    // setQuery(values.q);
+    console.log(`Performing navigation to ${values.q}`);
+    navigate({
+      to: "/image/search/$searchString",
+      params: { searchString: values.q },
+    });
+  }
 
   return (
     <div className="mx-6">
@@ -68,15 +63,7 @@ function RouteComponent() {
           <Button type="submit">Submit</Button>
         </form>
       </Form>
-      {images.isLoading && <Spinner />}
-      {images.isSuccess && (
-        <div className="flex flex-wrap justify-center gap-6 p-12">
-          {images.data.length === 0 && <p>Could not find any results</p>}
-          {images.data.map((image) => (
-            <ImageCard key={image.id} imageData={image} className="w-56" />
-          ))}
-        </div>
-      )}
+      <Outlet />
     </div>
   );
 }
