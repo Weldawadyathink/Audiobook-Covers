@@ -15,12 +15,28 @@ const global = globalThis as unknown as {
 
 export async function getDbConnection() {
   if (!global.db) {
-    global.db = await DuckDBInstance.create("images.db");
+    global.db = await DuckDBInstance.create();
   }
   if (!global.connection) {
     global.connection = await global.db.connect();
   }
   return global.connection;
+}
+
+async function initDatabase() {
+  console.log("Loading database from parquet to memory");
+  const db = await getDbConnection();
+  const importCommand = await Deno.readTextFile("database/load.sql");
+  await db.run(importCommand);
+  console.log("Database loaded successfully");
+}
+await initDatabase();
+
+export async function flushDatabase() {
+  console.log("Flushing database to parquet file");
+  const db = await getDbConnection();
+  await db.run(`COPY image TO 'database/image.parquet';`);
+  console.log("Database flushed successfully");
 }
 
 export interface DBImageData {

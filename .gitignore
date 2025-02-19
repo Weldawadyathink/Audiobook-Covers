@@ -51,3 +51,5 @@ server
 images.db
 images
 images.db.wal
+*.parquet
+database/*.json
