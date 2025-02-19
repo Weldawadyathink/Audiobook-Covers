@@ -66,14 +66,24 @@ export const coverRouter = router({
     )
     // TODO: add ranking data
     .query(async ({ input }): Promise<ImageData[]> => {
-      console.log(`vectorSearchWithString: ${input.modelName}`);
+      // console.log(`Starting vector search with ${input.modelName}`);
+      const embedStart = performance.now();
       const vector = await getTextEmbedding(
         input.queryString,
         input.modelName as ModelOptions,
       );
+      const dbStart = performance.now();
       const results = await getCoverWithVectorSearch(
         vector,
         input.modelName as ModelOptions,
+      );
+      const finish = performance.now();
+      console.log(
+        `Completed search with ${input.modelName}. Embed time: ${
+          dbStart - embedStart
+        }ms, DB time: ${finish - dbStart}ms, Total time: ${
+          finish - embedStart
+        }ms`,
       );
       return shapeImageData(results);
     }),

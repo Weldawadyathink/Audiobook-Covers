@@ -84,7 +84,7 @@ export async function getCoverWithVectorSearch(
       "${modelData.dbColumn}",
       $1::FLOAT[${modelData.dimensions.toString()}]
     )
-    LIMIT 10
+    LIMIT 25
   `);
   statement.bindList(1, listValue(vector), LIST(FLOAT));
   const result = await statement.runAndReadAll();
