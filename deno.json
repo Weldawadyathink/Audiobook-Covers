@@ -17,7 +17,8 @@
     },
     "docker-run": "docker run -it --rm audiobookcovers",
     "clean": "rm -rf ./dist server",
-    "check": "deno lint && deno fmt"
+    "check": "deno lint && deno fmt",
+    "reinstall": "rm -rf node_modules && deno i --allow-scripts"
   },
   "imports": {
     "@deno/vite-plugin": "npm:@deno/vite-plugin@^1.0.4",
