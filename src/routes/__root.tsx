@@ -1,5 +1,6 @@
 import { createRootRoute, Link, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
+import { Separator } from "../components/ui/Separator.tsx";
 
 export const Route = createRootRoute({
   component: () => (
@@ -24,7 +25,7 @@ export const Route = createRootRoute({
           Contribute
         </Link>
       </div>
-      <hr />
+      <Separator />
       <Outlet />
       <TanStackRouterDevtools />
     </>
