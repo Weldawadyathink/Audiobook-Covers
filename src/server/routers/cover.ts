@@ -11,8 +11,9 @@ import { getTextEmbedding, getTextModel } from "../utils/clip.ts";
 
 // Preload models into memory
 await Promise.all([
-  getTextModel("Benny1923/metaclip-b16-fullcc2.5b"),
-  getTextModel("Xenova/clip-vit-large-patch14"),
+  // Only load models that are actively used for search
+  // getTextModel("Benny1923/metaclip-b16-fullcc2.5b"),
+  // getTextModel("Xenova/clip-vit-large-patch14"),
   getTextModel("Xenova/mobileclip_blt"),
 ]);
 
