@@ -15,9 +15,6 @@ export const Route = createRootRoute({
         <Link to="/image/search" className="[&.active]:font-bold">
           Search
         </Link>
-        <Link to="/image/imageIdExample" className="[&.active]:font-bold">
-          Sample Image by ID
-        </Link>
         <Link to="/apidocs" className="[&.active]:font-bold">
           API
         </Link>
