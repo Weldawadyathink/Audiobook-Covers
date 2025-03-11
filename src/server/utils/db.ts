@@ -128,7 +128,7 @@ export async function getRandomCoversWithVector(
 export async function getRandomCovers(): Promise<Array<DBImageData>> {
   const db = await getDbConnection();
   const result = await db.runAndReadAll(`
-    SELECT * FROM image ORDER BY random() LIMIT 10;
+    SELECT * FROM image ORDER BY random() LIMIT 24;
   `);
   return result.getRowObjects().map(formatAsImageData);
 }
