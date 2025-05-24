@@ -1,0 +1,3 @@
+[submodule "models/mobileclip"]
+	path = models/mobileclip
+	url = git@hf.co:Xenova/mobileclip_blt

@@ -11,3 +11,4 @@ _fresh/
 node_modules/
 vendor/
 
+*.parquet
