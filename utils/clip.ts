@@ -36,7 +36,7 @@ function getGlobalModels(modelName: ModelOptions) {
   return global.models[modelName];
 }
 
-// IMPORTANT: If running many enbeddings in parallel, call a single instance of get model to prevent multiple copies
+// IMPORTANT: If running many embeddings in parallel, call preloadModel to prevent multiple copies
 // being loaded into memory
 export async function getTextModel(modelName: ModelOptions): Promise<{
   tokenizer: PreTrainedTokenizer;
@@ -67,7 +67,7 @@ export async function getTextModel(modelName: ModelOptions): Promise<{
   };
 }
 
-// IMPORTANT: If running many enbeddings in parallel, call a single instance of get model to prevent multiple copies
+// IMPORTANT: If running many embeddings in parallel, call preloadModel to prevent multiple copies
 // being loaded into memory
 export async function getVisionModel(modelName: ModelOptions): Promise<{
   processor: Processor;
