@@ -1,5 +1,5 @@
 import { define } from "../utils.ts";
-import Cover from "../components/Cover.tsx";
+import ImageCard from "../components/ImageCard.tsx";
 
 export default define.page(() => {
   const data = {
@@ -10,7 +10,7 @@ export default define.page(() => {
   };
   return (
     <>
-      <Cover
+      <ImageCard
         className="max-w-96"
         imageData={data}
       />

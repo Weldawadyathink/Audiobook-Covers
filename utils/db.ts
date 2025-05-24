@@ -132,13 +132,13 @@ export async function getRandomCovers(): Promise<Array<DBImageData>> {
 
 async function _tests() {
   let result: any = null;
-  console.log("Getting random covers with SQL random");
+  console.log("Getting random images with SQL random");
   result = await getRandomCovers();
   console.log(
     `Returned ${result.length} covers. First image id: ${result[0].id}`,
   );
 
-  console.log("Getting random covers using vector search");
+  console.log("Getting random images using vector search");
   result = await getRandomCoversWithVector();
   console.log(
     `Returned ${result.length} covers. First image id: ${result[0].id}`,

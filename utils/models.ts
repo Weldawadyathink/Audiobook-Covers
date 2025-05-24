@@ -26,4 +26,6 @@ export const models = {
   },
 };
 
+export const defaultModel = "mobileclip";
+
 export type ModelOptions = keyof typeof models;

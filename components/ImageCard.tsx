@@ -1,16 +1,15 @@
 import { cn } from "./utils.ts";
+import type { ImageData } from "../utils/imageSearcher.ts";
 
-export interface ImageData {
-  url: string;
-  blurhash: string;
-}
-
-export default function Cover(props: {
+export default function ImageCard(props: {
   imageData: ImageData;
   className?: string;
 }) {
   return (
-    <div className={cn(props.className, "relative aspect-square")}>
+    <a
+      href={`/images/${props.imageData.id}`}
+      className={cn(props.className, "relative aspect-square")}
+    >
       <img
         className="w-full h-full absolute inset-0"
         src={props.imageData.blurhash}
@@ -21,6 +20,6 @@ export default function Cover(props: {
         className="w-full h-full absolute inset-0"
         src={props.imageData.url}
       />
-    </div>
+    </a>
   );
 }
