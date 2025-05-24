@@ -18,10 +18,12 @@
     "**/_fresh/*"
   ],
   "imports": {
+    "clsx": "npm:clsx@^2.1.1",
     "fresh": "jsr:@fresh/core@^2.0.0-alpha.34",
     "@fresh/plugin-tailwind": "jsr:@fresh/plugin-tailwind@^0.0.1-alpha.7",
     "preact": "npm:preact@^10.26.6",
     "@preact/signals": "npm:@preact/signals@^2.0.4",
+    "tailwind-merge": "npm:tailwind-merge@^3.3.0",
     "tailwindcss": "npm:tailwindcss@^3.4.3"
   },
   "compilerOptions": {
