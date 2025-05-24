@@ -129,39 +129,36 @@ export async function getTextEmbedding(
 }
 
 if (import.meta.main) {
-  for (let modelName of Object.keys(models)) {
-    modelName = "mobileclip";
-    let result: any = null;
+  const modelName = "mobileclip";
+  let result: any = null;
 
-    result = await getImageEmbedding(
-      "./test_image.png",
-      modelName as ModelOptions,
-    );
-    console.log(
-      `Embedding created with ${modelName}. ${result.length} dimensions. First value: ${
-        result[0]
-      }`,
-    );
+  result = await getImageEmbedding(
+    "./test_image.png",
+    modelName as ModelOptions,
+  );
+  console.log(
+    `Embedding created with ${modelName}. ${result.length} dimensions. First value: ${
+      result[0]
+    }`,
+  );
 
-    result = await getImageEmbedding(
-      "https://huggingface.co/datasets/Xenova/transformers.js-docs/resolve/main/football-match.jpg",
-      modelName as ModelOptions,
-    );
-    console.log(
-      `Embedding created with ${modelName}. ${result.length} dimensions. First value: ${
-        result[0]
-      }`,
-    );
+  result = await getImageEmbedding(
+    "https://huggingface.co/datasets/Xenova/transformers.js-docs/resolve/main/football-match.jpg",
+    modelName as ModelOptions,
+  );
+  console.log(
+    `Embedding created with ${modelName}. ${result.length} dimensions. First value: ${
+      result[0]
+    }`,
+  );
 
-    result = await getTextEmbedding(
-      "Hello World!",
-      modelName as ModelOptions,
-    );
-    console.log(
-      `Embedding created with ${modelName}. ${result.length} dimensions. First value: ${
-        result[0]
-      }`,
-    );
-    break;
-  }
+  result = await getTextEmbedding(
+    "Hello World!",
+    modelName as ModelOptions,
+  );
+  console.log(
+    `Embedding created with ${modelName}. ${result.length} dimensions. First value: ${
+      result[0]
+    }`,
+  );
 }
