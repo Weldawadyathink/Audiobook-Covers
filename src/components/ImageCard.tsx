@@ -14,9 +14,11 @@ export function ImageCard(
     imageData: ImageData;
     className?: string;
     hideSourceBadge?: boolean;
+    maxAngle?: number;
+    zoomScale?: number;
   },
 ) {
-  const maxAngle = 7;
+  const maxAngle = props.maxAngle || 7;
   const [isHovered, setIsHovered] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -34,7 +36,7 @@ export function ImageCard(
 
   return (
     <Tilt
-      scale={1.15}
+      scale={props.zoomScale || 1.15}
       transitionSpeed={900}
       tiltMaxAngleX={maxAngle}
       tiltMaxAngleY={maxAngle}

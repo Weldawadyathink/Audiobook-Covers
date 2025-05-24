@@ -5,7 +5,7 @@ import { Separator } from "../components/ui/Separator.tsx";
 export const Route = createRootRoute({
   component: () => (
     <>
-      <div className="p-2 flex gap-2">
+      <div className="m-2 flex gap-2">
         <Link to="/" className="[&.active]:font-bold">
           Home
         </Link>{" "}
@@ -22,8 +22,10 @@ export const Route = createRootRoute({
           Contribute
         </Link>
       </div>
-      <Separator />
-      <Outlet />
+      <Separator className="m-2" />
+      <div className="m-2">
+        <Outlet />
+      </div>
       <TanStackRouterDevtools />
     </>
   ),
