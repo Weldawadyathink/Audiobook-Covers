@@ -1,92 +1,45 @@
 {
   "tasks": {
-    "dev": "vite",
-    "dev-server": "NODE_ENV=development deno run --watch -A ./src/server/index.ts",
-    "build": {
-      "command": "vite build && deno compile --check --frozen -A ./src/server/index.ts --output server",
-      "dependencies": [
-        "clean",
-        "check"
-      ]
-    },
-    "docker-build": {
-      "command": "docker build . -t audiobookcovers",
-      "dependencies": [
-        "clean"
-      ]
-    },
-    "docker-run": "docker run -it --rm audiobookcovers",
-    "clean": "rm -rf ./dist server",
-    "check": "deno lint && deno fmt",
-    "reinstall": "rm -rf node_modules && deno i --allow-scripts"
-  },
-  "imports": {
-    "@deno/vite-plugin": "npm:@deno/vite-plugin@^1.0.4",
-    "@duckdb/node-api": "npm:@duckdb/node-api@^1.2.0-alpha.14",
-    "@hookform/resolvers": "npm:@hookform/resolvers@^4.1.0",
-    "@huggingface/transformers": "npm:@huggingface/transformers@^3.3.3",
-    "@radix-ui/react-label": "npm:@radix-ui/react-label@^2.1.2",
-    "@radix-ui/react-separator": "npm:@radix-ui/react-separator@^1.1.2",
-    "@radix-ui/react-slot": "npm:@radix-ui/react-slot@^1.1.2",
-    "@std/http": "jsr:@std/http@^1.0.13",
-    "@tabler/icons-react": "npm:@tabler/icons-react@^3.30.0",
-    "@tailwindcss/vite": "npm:@tailwindcss/vite@^4.0.7",
-    "@tanstack/react-query": "npm:@tanstack/react-query@^5.66.7",
-    "@tanstack/react-router": "npm:@tanstack/react-router@^1.106.0",
-    "@tanstack/router-devtools": "npm:@tanstack/router-devtools@^1.106.0",
-    "@tanstack/router-plugin": "npm:@tanstack/router-plugin@^1.106.0",
-    "@trpc/client": "npm:@trpc/client@^11.0.0-rc.795",
-    "@trpc/react-query": "npm:@trpc/react-query@^11.0.0-rc.795",
-    "@trpc/server": "npm:@trpc/server@^11.0.0-rc.795",
-    "@vitejs/plugin-react": "npm:@vitejs/plugin-react@^4.3.4",
-    "blurhash": "npm:blurhash@^2.0.5",
-    "class-variance-authority": "npm:class-variance-authority@^0.7.1",
-    "clsx": "npm:clsx@^2.1.1",
-    "extract-colors": "npm:extract-colors@^4.1.1",
-    "lucide-react": "npm:lucide-react@^0.475.0",
-    "node-image-hash": "npm:node-image-hash@^1.1.0",
-    "react": "npm:react@^19.0.0",
-    "react-blurhash": "npm:react-blurhash@^0.3.0",
-    "react-dom": "npm:react-dom@^19.0.0",
-    "react-hook-form": "npm:react-hook-form@^7.54.2",
-    "react-parallax-tilt": "npm:react-parallax-tilt@^1.7.284",
-    "react-use-downloader": "npm:react-use-downloader@^1.2.8",
-    "sharp": "npm:sharp@^0.33.5",
-    "tailwind-merge": "npm:tailwind-merge@^3.0.1",
-    "tailwindcss": "npm:tailwindcss@^4.0.7",
-    "tailwindcss-animate": "npm:tailwindcss-animate@^1.0.7",
-    "zod": "npm:zod@^3.24.2",
-    "vite": "npm:vite@^6.1.1"
-  },
-  "nodeModulesDir": "auto",
-  "compilerOptions": {
-    "types": [
-      "npm:@types/react",
-      "npm:@types/react-dom"
-    ],
-    "jsx": "react-jsx",
-    "jsxImportSource": "npm:react@^19.0.0",
-    "jsxImportSourceTypes": "npm:@types/react@^19.0.0",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "dom.asynciterable",
-      "deno.ns"
-    ]
+    "check": "deno fmt --check . && deno lint . && deno check **/*.ts && deno check **/*.tsx",
+    "dev": "deno run -A --watch=static/,routes/ dev.ts",
+    "build": "deno run -A dev.ts build",
+    "start": "deno run -A main.ts",
+    "update": "deno run -A -r jsr:@fresh/update ."
   },
   "lint": {
     "rules": {
-      "exclude": [
-        "no-explicit-any"
+      "tags": [
+        "fresh",
+        "recommended"
       ]
-    },
-    "exclude": [
-      "src/routeTree.gen.ts"
-    ]
+    }
   },
-  "fmt": {
-    "exclude": [
-      "src/routeTree.gen.ts"
+  "exclude": [
+    "**/_fresh/*"
+  ],
+  "imports": {
+    "fresh": "jsr:@fresh/core@^2.0.0-alpha.34",
+    "@fresh/plugin-tailwind": "jsr:@fresh/plugin-tailwind@^0.0.1-alpha.7",
+    "preact": "npm:preact@^10.26.6",
+    "@preact/signals": "npm:@preact/signals@^2.0.4",
+    "tailwindcss": "npm:tailwindcss@^3.4.3"
+  },
+  "compilerOptions": {
+    "lib": [
+      "dom",
+      "dom.asynciterable",
+      "dom.iterable",
+      "deno.ns"
+    ],
+    "jsx": "precompile",
+    "jsxImportSource": "preact",
+    "jsxPrecompileSkipElements": [
+      "a",
+      "img",
+      "source",
+      "body",
+      "html",
+      "head"
     ]
   }
 }

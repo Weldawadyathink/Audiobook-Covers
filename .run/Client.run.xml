@@ -1,5 +1,0 @@
-<component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Client" type="DenoConfigurationType" inputPath="$PROJECT_DIR$/node_modules/.deno/vite@6.1.1_1/node_modules/vite/bin/vite.js" programParameters="run -A">
-    <method v="2" />
-  </configuration>
-</component>

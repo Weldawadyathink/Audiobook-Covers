@@ -1,5 +1,0 @@
-<component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Reindex Vectors" type="DenoConfigurationType" inputPath="$PROJECT_DIR$/src/server/utils/reindexEmbedding.ts" programParameters="run -A">
-    <method v="2" />
-  </configuration>
-</component>
