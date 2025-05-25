@@ -1,6 +1,7 @@
 import { cn } from "../components/utils.ts";
-import type { ImageData } from "../utils/imageSearcher.ts";
 import { useState } from "preact/hooks";
+import { JSX } from "preact";
+import { ImageData } from "../utils/imageData.ts";
 
 export default function ImageCard(props: {
   imageData: ImageData;
@@ -8,9 +9,16 @@ export default function ImageCard(props: {
 }) {
   const image = props.imageData;
   const [isLoaded, setIsLoaded] = useState(false);
+  const style: JSX.CSSProperties = {
+    boxShadow:
+      `0 0 20px hsla(${image.primaryColor.hue}, ${image.primaryColor.saturation}%, ${
+        image.primaryColor.lightness * 0.6
+      }%, 0.5)`,
+  };
   return (
     <a
       href={`/images/${image.id}`}
+      style={style}
       className={cn(
         props.className,
         "relative aspect-square cursor-pointer rounded-3xl overflow-hidden hover:scale-105 duration-500 ease-in-out hover:z-10",
