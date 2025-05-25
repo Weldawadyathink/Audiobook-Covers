@@ -1,5 +1,5 @@
 import { define } from "../../utils.ts";
-import ImageCard from "../../components/ImageCard.tsx";
+import ImageCard from "../../islands/ImageCard.tsx";
 
 export default define.page((props) => {
   props.params.id;

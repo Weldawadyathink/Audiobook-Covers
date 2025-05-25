@@ -1,6 +1,6 @@
-import { define } from "../../utils.ts";
-import ImageCard from "../../components/ImageCard.tsx";
-import { getRandom } from "../../utils/imageSearcher.ts";
+import { define } from "../utils.ts";
+import ImageCard from "../islands/ImageCard.tsx";
+import { getRandom } from "../utils/imageSearcher.ts";
 
 export default define.page(async () => {
   const images = await getRandom();

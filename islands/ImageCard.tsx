@@ -1,11 +1,13 @@
-import { cn } from "./utils.ts";
+import { cn } from "../components/utils.ts";
 import type { ImageData } from "../utils/imageSearcher.ts";
+import { useState } from "preact/hooks";
 
 export default function ImageCard(props: {
   imageData: ImageData;
   className?: string;
 }) {
   const image = props.imageData;
+  const [isLoaded, setIsLoaded] = useState(false);
   return (
     <a
       href={`/images/${image.id}`}
@@ -33,9 +35,14 @@ export default function ImageCard(props: {
           sizes="(max-width: 600px) 100vw, (max-width: 960px) 50vw, 33vw"
         />
         <img
-          className="w-full h-full absolute inset-0"
+          loading="lazy"
+          className={cn(
+            "w-full h-full absolute inset-0 duration-500 ease-in-out",
+            isLoaded ? "opacity-100" : "opacity-0",
+          )}
+          onLoad={() => setIsLoaded(true)}
           src={image.jpeg["320"]}
-          alt="audiobook cover image"
+          // alt="audiobook cover image" // Not technically accessible, but this site is image focused anyway
         />
       </picture>
     </a>
