@@ -5,19 +5,38 @@ export default function ImageCard(props: {
   imageData: ImageData;
   className?: string;
 }) {
+  const image = props.imageData;
   return (
     <a
-      href={`/images/${props.imageData.id}`}
+      href={`/images/${image.id}`}
       className={cn(props.className, "relative aspect-square")}
     >
       <img
         className="w-full h-full absolute inset-0"
-        src={props.imageData.blurhashUrl}
+        src={image.blurhashUrl}
         alt="Blurred loading image"
         aria-hidden="true"
       />
-      <picture className="w-full h-full absolute inset-0">
-        <img src={props.imageData.url} alt="audiobook cover image" />
+      <picture>
+        <source
+          type="image/webp"
+          srcset={`${image.webp["320"]} 320w, ${image.webp["640"]} 640w, ${
+            image.webp["1280"]
+          } 1280w`}
+          sizes="(max-width: 600px) 100vw, (max-width: 960px) 50vw, 33vw"
+        />
+        <source
+          type="image/jpeg"
+          srcset={`${image.jpeg["320"]} 320w, ${image.jpeg["640"]} 640w, ${
+            image.jpeg["1280"]
+          } 1280w`}
+          sizes="(max-width: 600px) 100vw, (max-width: 960px) 50vw, 33vw"
+        />
+        <img
+          className="w-full h-full absolute inset-0"
+          src={image.jpeg["320"]}
+          alt="audiobook cover image"
+        />
       </picture>
     </a>
   );

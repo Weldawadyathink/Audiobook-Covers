@@ -13,20 +13,40 @@ export interface ImageData {
   url: string;
   blurhashUrl: string;
   source: string;
-  optimized: string;
+  jpeg: {
+    320: string;
+    640: string;
+    1280: string;
+  };
+  webp: {
+    320: string;
+    640: string;
+    1280: string;
+  };
 }
+
+const imageUrlPrefix =
+  "https://audiobookcovers.global.ssl.fastly.net/file/com-audiobookcovers";
 
 function shapeImageData(data: DBImageData[]): ImageData[] {
   // Converts database format to frontend compatible format
+  // TODO: Add avif format
   return data.map((image): ImageData => {
     return {
       id: image.id,
       blurhashUrl: getBlurhashUrl(image.blurhash),
       source: image.source,
-      url:
-        `https://audiobookcovers.global.ssl.fastly.net/file/com-audiobookcovers/original/${image.id}.${image.extension}`,
-      optimized:
-        `https://audiobookcovers.global.ssl.fastly.net/file/com-audiobookcovers/optimized/${image.id}.jpg`,
+      url: `${imageUrlPrefix}/original/${image.id}.${image.extension}`,
+      jpeg: {
+        320: `${imageUrlPrefix}/jpeg/320/${image.id}.jpg`,
+        640: `${imageUrlPrefix}/jpeg/640/${image.id}.jpg`,
+        1280: `${imageUrlPrefix}/jpeg/1280/${image.id}.jpg`,
+      },
+      webp: {
+        320: `${imageUrlPrefix}/webp/320/${image.id}.webp`,
+        640: `${imageUrlPrefix}/webp/640/${image.id}.webp`,
+        1280: `${imageUrlPrefix}/webp/1280/${image.id}.webp`,
+      },
     };
   });
 }
