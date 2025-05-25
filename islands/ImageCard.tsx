@@ -11,7 +11,10 @@ export default function ImageCard(props: {
   return (
     <a
       href={`/images/${image.id}`}
-      className={cn(props.className, "relative aspect-square")}
+      className={cn(
+        props.className,
+        "relative aspect-square cursor-pointer rounded-3xl overflow-hidden hover:scale-105 duration-500 ease-in-out hover:z-10",
+      )}
     >
       <img
         className="w-full h-full absolute inset-0"
@@ -35,6 +38,7 @@ export default function ImageCard(props: {
           sizes="(max-width: 600px) 100vw, (max-width: 960px) 50vw, 33vw"
         />
         <img
+          alt="audiobook cover image"
           loading="lazy"
           className={cn(
             "w-full h-full absolute inset-0 duration-500 ease-in-out",
