@@ -38,7 +38,7 @@ jobs:
         uses: denoland/deployctl@v1
         with:
           project: "audiobook-covers"
-          entrypoint: "main.tsx"
+          entrypoint: "main.ts"
           root: "."
           
           
