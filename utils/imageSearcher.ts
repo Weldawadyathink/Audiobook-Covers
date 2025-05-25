@@ -6,11 +6,12 @@ import {
 } from "./db.ts";
 import { getTextEmbedding, getTextModel } from "./clip.ts";
 import { defaultModel, ModelOptions } from "./models.ts";
+import { getBlurhashUrl } from "./blurhash.ts";
 
 export interface ImageData {
   id: string;
   url: string;
-  blurhash: string;
+  blurhashUrl: string;
   source: string;
   optimized: string;
 }
@@ -20,7 +21,7 @@ function shapeImageData(data: DBImageData[]): ImageData[] {
   return data.map((image): ImageData => {
     return {
       id: image.id,
-      blurhash: image.blurhash,
+      blurhashUrl: getBlurhashUrl(image.blurhash),
       source: image.source,
       url:
         `https://audiobookcovers.global.ssl.fastly.net/file/com-audiobookcovers/original/${image.id}.${image.extension}`,

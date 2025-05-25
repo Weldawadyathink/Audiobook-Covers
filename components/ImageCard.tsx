@@ -12,14 +12,13 @@ export default function ImageCard(props: {
     >
       <img
         className="w-full h-full absolute inset-0"
-        src={props.imageData.blurhash}
+        src={props.imageData.blurhashUrl}
         alt="Blurred loading image"
         aria-hidden="true"
       />
-      <img
-        className="w-full h-full absolute inset-0"
-        src={props.imageData.url}
-      />
+      <picture className="w-full h-full absolute inset-0">
+        <img src={props.imageData.url} alt="audiobook cover image" />
+      </picture>
     </a>
   );
 }
