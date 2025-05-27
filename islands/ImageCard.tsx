@@ -1,7 +1,7 @@
 import { cn } from "../components/utils.ts";
 import { useState } from "preact/hooks";
 import { JSX } from "preact";
-import { ImageData } from "../utils/imageData.ts";
+import { ImageData } from "../server/imageData.ts";
 
 export default function ImageCard(props: {
   imageData: ImageData;

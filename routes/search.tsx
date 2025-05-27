@@ -1,6 +1,6 @@
 import { define } from "../utils.ts";
 import ImageCard from "../islands/ImageCard.tsx";
-import { vectorSearchByString } from "../utils/imageSearcher.ts";
+import { vectorSearchByString } from "../server/imageSearcher.ts";
 
 export default define.page(async (props) => {
   const query = props.url.searchParams.get("q");
