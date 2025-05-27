@@ -12,7 +12,27 @@ export default function App({ Component }: PageProps) {
       </head>
       <body>
         <div className="fixed inset-0 z-[-1] bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900 via-purple-900 to-slate-900" />
-        <Component />
+        <div className="m-2 flex gap-2">
+          <a href="/" className="[&.active]:font-bold">
+            Home
+          </a>{" "}
+          <a href="/about" className="[&.active]:font-bold">
+            About
+          </a>
+          <a href="/image/search" className="[&.active]:font-bold">
+            Search
+          </a>
+          <a href="/apidocs" className="[&.active]:font-bold">
+            API
+          </a>
+          <a href="/contribute" className="[&.active]:font-bold">
+            Contribute
+          </a>
+        </div>
+        {/*<Separator className="m-2" />*/}
+        <div className="m-2">
+          <Component />
+        </div>
       </body>
     </html>
   );

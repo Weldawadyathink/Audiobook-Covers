@@ -32,6 +32,12 @@ async function getPrimaryImageColor(blurhashUrl: string) {
   const data = [...pixels.data];
   const [width, height] = pixels.shape;
   const colors = await extractColors({ data, width, height });
+  const color = colors[0];
+
+  // Library uses 0-1, convert to levels compatible with css
+  color.hue = color.hue * 360;
+  color.saturation = color.saturation * 100;
+  color.lightness = color.lightness * 100;
   return colors[0];
 }
 
