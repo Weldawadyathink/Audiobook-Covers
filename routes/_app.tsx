@@ -19,7 +19,7 @@ export default function App({ Component }: PageProps) {
           <a href="/about" className="[&.active]:font-bold">
             About
           </a>
-          <a href="/image/search" className="[&.active]:font-bold">
+          <a href="/search" className="[&.active]:font-bold">
             Search
           </a>
           <a href="/apidocs" className="[&.active]:font-bold">
