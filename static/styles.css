@@ -1,12 +1,3 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-picture.lazyload {
-  opacity: 0;
-  transition: opacity 0.5s ease-in-out;
-}
-
-picture.lazyload.loaded {
-  opacity: 1;
-}
