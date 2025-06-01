@@ -4174,7 +4174,6 @@
       "npm:get-pixels@^3.3.3",
       "npm:node-image-hash@^1.1.0",
       "npm:preact@^10.26.6",
-      "npm:sharp@~0.34.2",
       "npm:tailwind-merge@^3.3.0",
       "npm:tailwindcss@^4.1.7"
     ]
