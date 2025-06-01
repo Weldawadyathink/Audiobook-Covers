@@ -18,7 +18,6 @@
     "**/_fresh/*"
   ],
   "imports": {
-    "@duckdb/node-api": "npm:@duckdb/node-api@^1.3.0-alpha.21",
     "@huggingface/transformers": "npm:@huggingface/transformers@^3.5.1",
     "blurhash": "npm:blurhash@^2.0.5",
     "clsx": "npm:clsx@^2.1.1",

@@ -4459,7 +4459,6 @@
     "dependencies": [
       "jsr:@fresh/core@^2.0.0-alpha.34",
       "jsr:@fresh/plugin-tailwind@^0.0.1-alpha.7",
-      "npm:@duckdb/node-api@^1.3.0-alpha.21",
       "npm:@huggingface/transformers@^3.5.1",
       "npm:@preact/signals@^2.0.4",
       "npm:blurhash@^2.0.5",
