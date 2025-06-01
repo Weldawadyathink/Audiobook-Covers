@@ -27,6 +27,7 @@
     "node-image-hash": "npm:node-image-hash@^1.1.0",
     "preact": "npm:preact@^10.26.6",
     "@preact/signals": "npm:@preact/signals@^2.0.4",
+    "sharp": "npm:sharp@^0.34.2",
     "tailwind-merge": "npm:tailwind-merge@^3.3.0",
     "tailwindcss": "npm:tailwindcss@^4.1.7"
   },
