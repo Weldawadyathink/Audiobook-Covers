@@ -22,7 +22,7 @@ export const models = {
     dimensions: 512,
     dbColumn: "mobileclip_blt",
     huggingfaceId: "Xenova/mobileclip_blt",
-    localPath: "./models/mobileclip",
+    // localPath: "./models/mobileclip",
   },
 };
 

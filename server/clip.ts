@@ -45,8 +45,9 @@ export async function getTextModel(modelName: ModelOptions): Promise<{
   if (!(modelName in models)) {
     throw new Error("Model name not recognized");
   }
-  const modelToLoad = models[modelName].localPath ||
-    models[modelName].huggingfaceId;
+  // const modelToLoad = models[modelName].localPath ||
+  //   models[modelName].huggingfaceId;
+  const modelToLoad = "Xenova/clip-vit-large-patch14";
   let { tokenizer, textModel } = getGlobalModels(modelName);
 
   if (!tokenizer) {
