@@ -57,6 +57,7 @@ export async function getTextModel(modelName: ModelOptions): Promise<{
   if (!textModel) {
     textModel = await CLIPTextModelWithProjection.from_pretrained(modelToLoad, {
       dtype: "fp32",
+      device: "cpu",
     });
     global.models[modelName]!.textModel = textModel;
     console.log(`Loaded text model for ${modelName} into memory`);
