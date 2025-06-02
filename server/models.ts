@@ -2,7 +2,14 @@
 // The website may need access to models data directly, so this entire function
 // must never have server code.
 
-export const models = {
+export type ModelDefinition = {
+  dimensions: number;
+  dbColumn: string;
+  huggingfaceId: string;
+  localPath?: string | null;
+};
+
+export const models: { [key: string]: ModelDefinition } = {
   "Benny1923/metaclip-b16-fullcc2.5b": {
     // Good quality search results
     dimensions: 512,
