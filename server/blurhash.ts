@@ -1,5 +1,5 @@
 import { decode, encode } from "blurhash";
-import sharp from "sharp";
+// import sharp from "sharp";
 
 export { isBlurhashValid } from "blurhash";
 

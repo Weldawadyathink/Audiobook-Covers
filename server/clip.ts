@@ -1,71 +1,71 @@
-// import {
-//   AutoProcessor,
-//   AutoTokenizer,
-//   CLIPTextModelWithProjection,
-//   CLIPVisionModelWithProjection,
-//   type PreTrainedModel,
-//   type PreTrainedTokenizer,
-//   type Processor,
-//   RawImage,
-// } from "@huggingface/transformers";
+import {
+  AutoProcessor,
+  AutoTokenizer,
+  CLIPTextModelWithProjection,
+  CLIPVisionModelWithProjection,
+  type PreTrainedModel,
+  type PreTrainedTokenizer,
+  type Processor,
+  RawImage,
+} from "@huggingface/transformers";
 import { type ModelOptions, models } from "./models.ts";
 
-// const global = globalThis as unknown as {
-//   models: {
-//     [K in ModelOptions]?: {
-//       tokenizer: undefined | PreTrainedTokenizer;
-//       textModel: undefined | PreTrainedModel;
-//       processor: undefined | Processor;
-//       visionModel: undefined | PreTrainedModel;
-//     };
-//   };
-// };
+const global = globalThis as unknown as {
+  models: {
+    [K in ModelOptions]?: {
+      tokenizer: undefined | PreTrainedTokenizer;
+      textModel: undefined | PreTrainedModel;
+      processor: undefined | Processor;
+      visionModel: undefined | PreTrainedModel;
+    };
+  };
+};
 
 function getGlobalModels(modelName: ModelOptions) {
-  // if (!global.models) {
-  //   global.models = {};
-  // }
-  // if (!global.models[modelName]) {
-  //   global.models[modelName] = {
-  //     tokenizer: undefined,
-  //     textModel: undefined,
-  //     processor: undefined,
-  //     visionModel: undefined,
-  //   };
-  // }
-  // return global.models[modelName];
+  if (!global.models) {
+    global.models = {};
+  }
+  if (!global.models[modelName]) {
+    global.models[modelName] = {
+      tokenizer: undefined,
+      textModel: undefined,
+      processor: undefined,
+      visionModel: undefined,
+    };
+  }
+  return global.models[modelName];
 }
 
 // IMPORTANT: If running many embeddings in parallel, call preloadModel to prevent multiple copies
 // being loaded into memory
-// export async function getTextModel(modelName: ModelOptions): Promise<{
-//   tokenizer: PreTrainedTokenizer;
-//   textModel: PreTrainedModel;
-// }> {
-//   if (!(modelName in models)) {
-//     throw new Error("Model name not recognized");
-//   }
-//   const modelToLoad = models[modelName].localPath ||
-//     models[modelName].huggingfaceId;
-//   let { tokenizer, textModel } = getGlobalModels(modelName);
-//
-//   if (!tokenizer) {
-//     tokenizer = await AutoTokenizer.from_pretrained(modelToLoad);
-//     global.models[modelName]!.tokenizer = tokenizer;
-//     console.log(`Loaded tokenizer for ${modelName} into memory`);
-//   }
-//   if (!textModel) {
-//     textModel = await CLIPTextModelWithProjection.from_pretrained(modelToLoad, {
-//       dtype: "fp32",
-//     });
-//     global.models[modelName]!.textModel = textModel;
-//     console.log(`Loaded text model for ${modelName} into memory`);
-//   }
-//   return {
-//     tokenizer,
-//     textModel,
-//   };
-// }
+export async function getTextModel(modelName: ModelOptions): Promise<{
+  tokenizer: PreTrainedTokenizer;
+  textModel: PreTrainedModel;
+}> {
+  if (!(modelName in models)) {
+    throw new Error("Model name not recognized");
+  }
+  const modelToLoad = models[modelName].localPath ||
+    models[modelName].huggingfaceId;
+  let { tokenizer, textModel } = getGlobalModels(modelName);
+
+  if (!tokenizer) {
+    tokenizer = await AutoTokenizer.from_pretrained(modelToLoad);
+    global.models[modelName]!.tokenizer = tokenizer;
+    console.log(`Loaded tokenizer for ${modelName} into memory`);
+  }
+  if (!textModel) {
+    textModel = await CLIPTextModelWithProjection.from_pretrained(modelToLoad, {
+      dtype: "fp32",
+    });
+    global.models[modelName]!.textModel = textModel;
+    console.log(`Loaded text model for ${modelName} into memory`);
+  }
+  return {
+    tokenizer,
+    textModel,
+  };
+}
 
 // IMPORTANT: If running many embeddings in parallel, call preloadModel to prevent multiple copies
 // being loaded into memory
@@ -636,10 +636,10 @@ export async function getTextEmbedding(
   input: string,
   modelName: ModelOptions,
 ) {
-  // const { tokenizer, textModel } = await getTextModel(modelName);
-  // const tokens = tokenizer(input, { padding: "max_length", truncation: true });
-  // const { text_embeds } = await textModel(tokens);
-  // return [...text_embeds.normalize().data] as Array<number>;
+  const { tokenizer, textModel } = await getTextModel(modelName);
+  const tokens = tokenizer(input, { padding: "max_length", truncation: true });
+  const { text_embeds } = await textModel(tokens);
+  return [...text_embeds.normalize().data] as Array<number>;
   return [
     0.020356129854917526,
     0.04589816927909851,

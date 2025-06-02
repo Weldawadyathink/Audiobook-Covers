@@ -18,6 +18,7 @@
     "**/_fresh/*"
   ],
   "imports": {
+    "@huggingface/transformers": "npm:@huggingface/transformers@^3.5.2",
     "blurhash": "npm:blurhash@^2.0.5",
     "clsx": "npm:clsx@^2.1.1",
     "extract-colors": "npm:extract-colors@^4.2.0",
