@@ -1,7 +1,7 @@
 {
   "tasks": {
     "check": "deno fmt --check . && deno lint . && deno check **/*.ts && deno check **/*.tsx",
-    "dev": "deno run -A --watch=static/,routes/ dev.ts",
+    "dev": "deno run --env-file -A --watch=static/,routes/ dev.ts",
     "build": "deno run -A dev.ts build",
     "start": "deno run -A main.ts",
     "update": "deno run -A -r jsr:@fresh/update ."
@@ -28,6 +28,7 @@
     "node-image-hash": "npm:node-image-hash@^1.1.0",
     "preact": "npm:preact@^10.26.6",
     "@preact/signals": "npm:@preact/signals@^2.0.4",
+    "replicate": "npm:replicate@^1.0.1",
     "tailwind-merge": "npm:tailwind-merge@^3.3.0",
     "tailwindcss": "npm:tailwindcss@^4.1.7"
   },

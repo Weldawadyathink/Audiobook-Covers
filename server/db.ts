@@ -1,5 +1,3 @@
-import { type ModelOptions, models } from "./models.ts";
-
 // const global = globalThis as unknown as {
 //   duckDBConnection: undefined | DuckDBConnection;
 // };

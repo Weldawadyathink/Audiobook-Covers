@@ -4,7 +4,6 @@ import {
   getRandomCovers,
 } from "./db.ts";
 import { getTextEmbedding } from "./clip.ts";
-import { defaultModel } from "./models.ts";
 import { shapeImageData } from "./imageData.ts";
 
 export async function getRandom() {
