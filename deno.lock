@@ -34,6 +34,7 @@
     "npm:cssnano@6.0.3": "6.0.3_postcss@8.4.35",
     "npm:drizzle-kit@0.31.1": "0.31.1_esbuild@0.25.5",
     "npm:drizzle-kit@~0.31.1": "0.31.1_esbuild@0.25.5",
+    "npm:drizzle-orm@0.34.1": "0.34.1_@opentelemetry+api@1.9.0_@types+pg@8.15.4_pg@8.16.0",
     "npm:drizzle-orm@~0.44.1": "0.44.1_@opentelemetry+api@1.9.0_pg@8.16.0_@types+pg@8.15.4",
     "npm:esbuild-wasm@0.23.1": "0.23.1",
     "npm:esbuild@0.23.1": "0.23.1",
@@ -2459,6 +2460,19 @@
         "esbuild-register"
       ],
       "bin": true
+    },
+    "drizzle-orm@0.34.1_@opentelemetry+api@1.9.0_@types+pg@8.15.4_pg@8.16.0": {
+      "integrity": "sha512-t+zCwyWWt8xTqtYV4doE/xYmT7hpv1L8pQ66zddEz+3VWyedBBtctjMAp22mAJPfyWurRQXUJ1nrTtqLq+DqNA==",
+      "dependencies": [
+        "@opentelemetry/api",
+        "@types/pg",
+        "pg"
+      ],
+      "optionalPeers": [
+        "@opentelemetry/api",
+        "@types/pg",
+        "pg"
+      ]
     },
     "drizzle-orm@0.44.1_@opentelemetry+api@1.9.0_pg@8.16.0": {
       "integrity": "sha512-prIWOlwJbiYInvcJxE+IMiJCtMiFVrSUJCwx6AXSJvGOdLu35qZ46QncTZDgloiLNCG0XxTC8agQElSmsl++TA==",

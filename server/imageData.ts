@@ -1,10 +1,16 @@
-import type { DBImageData } from "./db.ts";
 import { getBlurhashUrl } from "./blurhash.ts";
 import { promisify } from "node:util";
 import getPixels from "get-pixels";
 import { extractColors } from "extract-colors";
 
 const getPixelsAsync = promisify(getPixels);
+
+export interface DBImageData {
+  id: string;
+  source: string | null;
+  extension: string | null;
+  blurhash: string | null;
+}
 
 export interface ImageData {
   id: string;
@@ -47,12 +53,12 @@ export async function shapeImageData(
   // Converts database format to frontend compatible format
   // TODO: Add avif format
   return await Promise.all(data.map(async (image) => {
-    const blurhashUrl = getBlurhashUrl(image.blurhash);
+    const blurhashUrl = image.blurhash ? getBlurhashUrl(image.blurhash) : "";
     const primaryColor = await getPrimaryImageColor(blurhashUrl);
     return {
       id: image.id,
       blurhashUrl: blurhashUrl,
-      source: image.source,
+      source: image.source || "",
       url: `${imageUrlPrefix}/original/${image.id}.${image.extension}`,
       jpeg: {
         320: `${imageUrlPrefix}/jpeg/320/${image.id}.jpg`,
