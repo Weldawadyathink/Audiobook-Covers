@@ -4,7 +4,11 @@
     "dev": "deno run --env-file -A --watch=static/,routes/ dev.ts",
     "build": "deno run -A dev.ts build",
     "start": "deno run -A main.ts",
-    "update": "deno run -A -r jsr:@fresh/update ."
+    "update": "deno run -A -r jsr:@fresh/update .",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
   },
   "lint": {
     "rules": {
@@ -19,19 +23,24 @@
   ],
   "imports": {
     "@huggingface/transformers": "npm:@huggingface/transformers@^3.5.2",
+    "@types/pg": "npm:@types/pg@^8.15.4",
     "blurhash": "npm:blurhash@^2.0.5",
     "clsx": "npm:clsx@^2.1.1",
+    "drizzle-kit": "npm:drizzle-kit@^0.31.1",
+    "drizzle-orm": "npm:drizzle-orm@^0.44.1",
     "extract-colors": "npm:extract-colors@^4.2.0",
     "fresh": "jsr:@fresh/core@^2.0.0-alpha.34",
     "@fresh/plugin-tailwind": "jsr:@fresh/plugin-tailwind@^0.0.1-alpha.7",
     "get-pixels": "npm:get-pixels@^3.3.3",
     "node-image-hash": "npm:node-image-hash@^1.1.0",
+    "pg": "npm:pg@^8.16.0",
     "preact": "npm:preact@^10.26.6",
     "@preact/signals": "npm:@preact/signals@^2.0.4",
     "replicate": "npm:replicate@^1.0.1",
     "tailwind-merge": "npm:tailwind-merge@^3.3.0",
     "tailwindcss": "npm:tailwindcss@^4.1.7"
   },
+  "nodeModulesDir": "auto",
   "compilerOptions": {
     "lib": [
       "dom",
