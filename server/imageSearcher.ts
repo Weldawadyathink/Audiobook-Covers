@@ -34,7 +34,10 @@ export async function vectorSearchByString(query: string) {
       source: image.source,
       extension: image.extension,
       blurhash: image.blurhash,
-      similarity: cosineDistance(image.embedding, vector.embedding).as(
+      similarity: cosineDistance(
+        image.embedding_mobileclip_s1,
+        vector.embedding,
+      ).as(
         "similarity",
       ),
     })
@@ -44,7 +47,7 @@ export async function vectorSearchByString(query: string) {
     .with(subquery)
     .select()
     .from(subquery)
-    .where(lte(subquery.similarity, 0.8));
+    .where(lte(subquery.similarity, 0.5));
   const finish = performance.now();
   console.log(
     `Completed search with replicate embedding. Embed time: ${

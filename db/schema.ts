@@ -8,6 +8,9 @@ export const image = pgTable("image", {
   hash: text("hash"),
   blurhash: text("blurhash"),
   embedding: vector("embedding", { dimensions: 768 }),
+  embedding_mobileclip_s1: vector("embedding_mobileclip_s1", {
+    dimensions: 512,
+  }),
   searchable: boolean("searchable"),
 });
 
