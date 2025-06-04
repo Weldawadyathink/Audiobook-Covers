@@ -2,7 +2,8 @@ import { db } from "../db/index.ts";
 import { getTextEmbedding } from "./clip.ts";
 import { shapeImageData } from "./imageData.ts";
 import { image } from "../db/schema.ts";
-import { cosineDistance, eq, lte, sql } from "drizzle-orm";
+import { cosineDistance, eq, gte, lte, sql } from "drizzle-orm";
+import { defaultModel, ModelOptions, models } from "./models.ts";
 
 export async function getRandom() {
   console.log("Getting random cover");
@@ -24,9 +25,13 @@ export async function getImageById(id: string) {
   return (await shapeImageData(results))[0];
 }
 
-export async function vectorSearchByString(query: string) {
+export async function vectorSearchByString(
+  query: string,
+  modelName: ModelOptions = defaultModel,
+) {
+  const model = models[modelName];
   const embedStart = performance.now();
-  const vector = await getTextEmbedding(query);
+  const vector = await model.getTextEmbedding(query);
   const dbStart = performance.now();
   const subquery = db.$with("subquery").as(
     db.select({
@@ -34,25 +39,28 @@ export async function vectorSearchByString(query: string) {
       source: image.source,
       extension: image.extension,
       blurhash: image.blurhash,
-      similarity: cosineDistance(
-        image.embedding_mobileclip_s1,
+      distance: cosineDistance(
+        model.dbColumn,
         vector.embedding,
       ).as(
-        "similarity",
+        "distance",
       ),
     })
-      .from(image),
+      .from(image)
+      .where(eq(image.searchable, true)),
   );
   const results = await db
     .with(subquery)
     .select()
     .from(subquery)
-    .where(lte(subquery.similarity, 0.5));
+    .where(lte(subquery.distance, 0.9))
+    .orderBy(subquery.distance);
   const finish = performance.now();
   console.log(
     `Completed search with replicate embedding. Embed time: ${
       dbStart - embedStart
     }ms, DB time: ${finish - dbStart}ms, Total time: ${finish - embedStart}ms`,
   );
+  console.log(JSON.stringify(results.map((i) => i.distance)));
   return await shapeImageData(results);
 }
