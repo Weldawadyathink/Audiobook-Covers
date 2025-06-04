@@ -13,13 +13,14 @@ async function reindexPicture(img: ImageData) {
 }
 
 async function reindexAllImages() {
+  const start = performance.now();
   const images = await db.select()
     .from(image)
     .where(isNull(image.embedding_mobileclip_s1))
-    .limit(40);
+    .limit(500);
   const imgData = await shapeImageData(images);
   await Promise.all(imgData.map(reindexPicture));
-  console.log("Reindexing complete");
+  console.log(`Reindexing complete in ${performance.now() - start}ms`);
 }
 
 if (import.meta.main) {
