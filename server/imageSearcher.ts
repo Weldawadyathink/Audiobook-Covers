@@ -1,8 +1,7 @@
 import { db } from "../db/index.ts";
-import { getTextEmbedding } from "./clip.ts";
 import { shapeImageData } from "./imageData.ts";
 import { image } from "../db/schema.ts";
-import { cosineDistance, eq, gte, lte, sql } from "drizzle-orm";
+import { asc, cosineDistance, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { defaultModel, ModelOptions, models } from "./models.ts";
 
 export async function getRandom() {
@@ -54,13 +53,12 @@ export async function vectorSearchByString(
     .select()
     .from(subquery)
     .where(lte(subquery.distance, 0.9))
-    .orderBy(subquery.distance);
+    .orderBy(asc(subquery.distance));
   const finish = performance.now();
   console.log(
     `Completed search with replicate embedding. Embed time: ${
       dbStart - embedStart
     }ms, DB time: ${finish - dbStart}ms, Total time: ${finish - embedStart}ms`,
   );
-  console.log(JSON.stringify(results.map((i) => i.distance)));
   return await shapeImageData(results);
 }
