@@ -53,7 +53,8 @@ export async function vectorSearchByString(
     .select()
     .from(subquery)
     .where(lte(subquery.distance, 0.9))
-    .orderBy(asc(subquery.distance));
+    .orderBy(asc(subquery.distance))
+    .limit(24);
   const finish = performance.now();
   console.log(
     `Completed search with replicate embedding. Embed time: ${
