@@ -26,13 +26,14 @@
     "npm:@huggingface/transformers@^3.5.2": "3.5.2",
     "npm:@opentelemetry/api@^1.9.0": "1.9.0",
     "npm:@preact/signals@^2.0.4": "2.2.0_preact@10.26.8",
+    "npm:@types/node@*": "22.15.15",
     "npm:@types/pg@^8.15.4": "8.15.4",
     "npm:autoprefixer@10.4.17": "10.4.17_postcss@8.4.35",
     "npm:blurhash@^2.0.5": "2.0.5",
     "npm:clsx@^2.1.1": "2.1.1",
     "npm:cssnano@6.0.3": "6.0.3_postcss@8.4.35",
     "npm:drizzle-kit@~0.31.1": "0.31.1_esbuild@0.25.5",
-    "npm:drizzle-orm@~0.44.1": "0.44.1_@types+pg@8.15.4_pg@8.16.0_@opentelemetry+api@1.9.0",
+    "npm:drizzle-orm@~0.44.2": "0.44.2_@opentelemetry+api@1.9.0_@types+pg@8.15.4_pg@8.16.0",
     "npm:esbuild-wasm@0.23.1": "0.23.1",
     "npm:esbuild@0.23.1": "0.23.1",
     "npm:extract-colors@^4.2.0": "4.2.0",
@@ -2468,8 +2469,8 @@
         "pg"
       ]
     },
-    "drizzle-orm@0.44.1_@types+pg@8.15.4_pg@8.16.0_@opentelemetry+api@1.9.0": {
-      "integrity": "sha512-prIWOlwJbiYInvcJxE+IMiJCtMiFVrSUJCwx6AXSJvGOdLu35qZ46QncTZDgloiLNCG0XxTC8agQElSmsl++TA==",
+    "drizzle-orm@0.44.2_@opentelemetry+api@1.9.0_@types+pg@8.15.4_pg@8.16.0": {
+      "integrity": "sha512-zGAqBzWWkVSFjZpwPOrmCrgO++1kZ5H/rZ4qTGeGOe18iXGVJWf3WPfHOVwFIbmi8kHjfJstC6rJomzGx8g/dQ==",
       "dependencies": [
         "@opentelemetry/api",
         "@types/pg",
@@ -4911,7 +4912,7 @@
       "npm:blurhash@^2.0.5",
       "npm:clsx@^2.1.1",
       "npm:drizzle-kit@~0.31.1",
-      "npm:drizzle-orm@~0.44.1",
+      "npm:drizzle-orm@~0.44.2",
       "npm:extract-colors@^4.2.0",
       "npm:get-pixels@^3.3.3",
       "npm:node-image-hash@^1.1.0",
