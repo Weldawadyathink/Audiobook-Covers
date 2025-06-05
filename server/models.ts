@@ -1,4 +1,4 @@
-import { image } from "../db/schema.ts";
+import { image } from "./db.ts";
 import { PgColumn } from "drizzle-orm/pg-core";
 import Replicate from "replicate";
 

@@ -1,6 +1,5 @@
-import { db } from "../db/index.ts";
 import { shapeImageData } from "./imageData.ts";
-import { image } from "../db/schema.ts";
+import { db, image } from "./db.ts";
 import { and, asc, cosineDistance, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { defaultModel, ModelOptions, models } from "./models.ts";
 

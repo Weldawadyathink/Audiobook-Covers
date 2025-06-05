@@ -1,5 +1,12 @@
+import { drizzle } from "drizzle-orm/node-postgres";
 import { boolean, pgTable, text, uuid, vector } from "drizzle-orm/pg-core";
-import { db } from "./index.ts";
+
+export const db = drizzle({
+  connection: {
+    connectionString: Deno.env.get("DATABASE_URL"),
+    ssl: true,
+  },
+});
 
 export const image = pgTable("image", {
   id: uuid("id").primaryKey(),

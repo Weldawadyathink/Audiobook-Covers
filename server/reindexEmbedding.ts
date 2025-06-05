@@ -1,6 +1,5 @@
 import { ImageData, shapeImageData } from "./imageData.ts";
-import { db } from "../db/index.ts";
-import { image } from "../db/schema.ts";
+import { db, image } from "./db.ts";
 import { eq, isNull } from "drizzle-orm";
 
 async function reindexPicture(img: ImageData) {
