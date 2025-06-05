@@ -13,8 +13,3 @@ export const image = pgTable("image", {
   }),
   searchable: boolean("searchable"),
 });
-
-if (import.meta.main) {
-  const result = await db.select().from(image).limit(10);
-  console.log(result);
-}

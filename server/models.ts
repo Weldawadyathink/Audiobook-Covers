@@ -47,6 +47,7 @@ export const models: { [key: string]: ModelDefinition } = {
     dimensions: 768,
     dbColumn: image.embedding,
     getTextEmbedding: async (input) => {
+      console.log(`Getting text embedding for ${input}`);
       const [result] = await replicate.run(
         "andreasjansson/clip-features:75b33f253f7714a281ad3e9b28f63e3232d583716ef6718f2e46641077ea040a",
         {
@@ -71,6 +72,6 @@ export const models: { [key: string]: ModelDefinition } = {
   },
 };
 
-export const defaultModel: ModelOptions = "original";
+export const defaultModel: ModelOptions = "mobileclip_s1";
 
 export type ModelOptions = keyof typeof models;

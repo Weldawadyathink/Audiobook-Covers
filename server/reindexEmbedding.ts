@@ -1,4 +1,3 @@
-import { getImageEmbedding } from "./clip.ts";
 import { ImageData, shapeImageData } from "./imageData.ts";
 import { db } from "../db/index.ts";
 import { image } from "../db/schema.ts";
