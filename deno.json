@@ -29,8 +29,6 @@
     "@types/pg": "npm:@types/pg@^8.15.4",
     "blurhash": "npm:blurhash@^2.0.5",
     "clsx": "npm:clsx@^2.1.1",
-    "drizzle-kit": "npm:drizzle-kit@^0.31.1",
-    "drizzle-orm": "npm:drizzle-orm@^0.44.2",
     "extract-colors": "npm:extract-colors@^4.2.0",
     "fresh": "jsr:@fresh/core@^2.0.0-alpha.34",
     "@fresh/plugin-tailwind": "jsr:@fresh/plugin-tailwind@^0.0.1-alpha.7",

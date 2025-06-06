@@ -1,7 +1,5 @@
 import { shapeImageData } from "./imageData.ts";
-import { pool, sql } from "./newdb.ts";
-import { db, image } from "./db.ts";
-import { and, asc, cosineDistance, desc, eq, gte, lte } from "drizzle-orm";
+import { pool, sql } from "./db.ts";
 import { defaultModel, ModelOptions, models } from "./models.ts";
 
 export async function getRandom() {
@@ -48,7 +46,7 @@ export async function vectorSearchByString(
         source,
         extension,
         blurhash,
-        embedding <=> ${JSON.stringify(vector.embedding)} as distance
+        ${model.dbColumn} <=> ${JSON.stringify(vector.embedding)} as distance
       FROM image
       WHERE searchable
       ORDER BY distance

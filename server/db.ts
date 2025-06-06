@@ -1,22 +1,43 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import { boolean, pgTable, text, uuid, vector } from "drizzle-orm/pg-core";
+import { createPool, createSqlTag } from "slonik";
+import { createPgDriverFactory } from "@slonik/pg-driver";
+import { z } from "zod";
+import { Client } from "pg";
 
-export const db = drizzle({
-  connection: {
-    connectionString: Deno.env.get("DATABASE_URL"),
-    ssl: true,
+const dbUrl = Deno.env.get("DATABASE_URL");
+if (!dbUrl) {
+  throw new Error("DATABASE_URL environment variable not set!");
+}
+
+export const pool = await createPool(dbUrl, {
+  driverFactory: createPgDriverFactory(),
+});
+
+export const sql = createSqlTag({
+  typeAliases: {
+    imageData: z.object({
+      id: z.string().uuid(),
+      source: z.string(),
+      extension: z.string(),
+      blurhash: z.string(),
+    }),
+    imageDataWithDistance: z.object({
+      id: z.string().uuid(),
+      source: z.string(),
+      extension: z.string(),
+      blurhash: z.string(),
+      distance: z.number(),
+    }),
   },
 });
 
-export const image = pgTable("image", {
-  id: uuid("id").primaryKey(),
-  source: text("source"),
-  extension: text("extension"),
-  hash: text("hash"),
-  blurhash: text("blurhash"),
-  embedding: vector("embedding", { dimensions: 768 }),
-  embedding_mobileclip_s1: vector("embedding_mobileclip_s1", {
-    dimensions: 512,
-  }),
-  searchable: boolean("searchable"),
-});
+if (import.meta.main) {
+  const client = new Client({
+    connectionString: Deno.env.get("DATABASE_URL"),
+    ssl: true,
+  });
+  console.log("Created database");
+  await client.connect();
+  console.log("Connected to database");
+  console.log((await client.query("SELECT version();")).rows[0].version);
+  await client.end();
+}

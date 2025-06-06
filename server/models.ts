@@ -1,6 +1,5 @@
-import { image } from "./db.ts";
-import { PgColumn } from "drizzle-orm/pg-core";
 import Replicate from "replicate";
+import { sql } from "./db.ts";
 
 const replicate = new Replicate({
   auth: Deno.env.get("REPLICATE_API_TOKEN"),
@@ -13,7 +12,7 @@ export interface EmbeddingOutput {
 
 export interface ModelDefinition {
   dimensions: number;
-  dbColumn: PgColumn;
+  dbColumn: ReturnType<typeof sql.identifier>;
   getTextEmbedding: (input: string) => Promise<EmbeddingOutput>;
   getImageEmbedding: (input: string) => Promise<EmbeddingOutput>;
 }
@@ -41,11 +40,11 @@ export const models: { [key: string]: ModelDefinition } = {
         },
       ) as EmbeddingOutput;
     },
-    dbColumn: image.embedding_mobileclip_s1,
+    dbColumn: sql.identifier(["embedding_mobileclip_s1"]),
   },
   original: {
     dimensions: 768,
-    dbColumn: image.embedding,
+    dbColumn: sql.identifier(["embedding"]),
     getTextEmbedding: async (input) => {
       console.log(`Getting text embedding for ${input}`);
       const [result] = await replicate.run(
