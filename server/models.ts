@@ -1,5 +1,6 @@
 import Replicate from "replicate";
 import { sql } from "./db.ts";
+import { z } from "zod/v4";
 
 const replicate = new Replicate({
   auth: Deno.env.get("REPLICATE_API_TOKEN"),
@@ -16,6 +17,14 @@ export interface ModelDefinition {
   getTextEmbedding: (input: string) => Promise<EmbeddingOutput>;
   getImageEmbedding: (input: string) => Promise<EmbeddingOutput>;
 }
+
+const publicClipModelValidator = z.array(
+  // Output format for public andreasjansson/clip-features on replicate
+  z.object({
+    embedding: z.array(z.number()),
+    input: z.string(),
+  }),
+);
 
 export const models: { [key: string]: ModelDefinition } = {
   "mobileclip_s1": {
@@ -47,26 +56,28 @@ export const models: { [key: string]: ModelDefinition } = {
     dbColumn: sql.identifier(["embedding"]),
     getTextEmbedding: async (input) => {
       console.log(`Getting text embedding for ${input}`);
-      const [result] = await replicate.run(
+      const result = await replicate.run(
         "andreasjansson/clip-features:75b33f253f7714a281ad3e9b28f63e3232d583716ef6718f2e46641077ea040a",
         {
           input: {
-            text: input,
+            inputs: input,
           },
         },
-      ) as Array<{ input: string; embedding: [number] }>;
-      return result;
+      );
+      const parsed = publicClipModelValidator.parse(result);
+      return parsed[0];
     },
     getImageEmbedding: async (imageUrl) => {
-      const [result] = await replicate.run(
+      const result = await replicate.run(
         "andreasjansson/clip-features:75b33f253f7714a281ad3e9b28f63e3232d583716ef6718f2e46641077ea040a",
         {
           input: {
-            image: imageUrl,
+            inputs: imageUrl,
           },
         },
-      ) as Array<{ input: string; embedding: [number] }>;
-      return result;
+      );
+      const parsed = publicClipModelValidator.parse(result);
+      return parsed[0];
     },
   },
 };
