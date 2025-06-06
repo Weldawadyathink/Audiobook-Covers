@@ -10,7 +10,10 @@ export interface DBImageData {
   source: string | null;
   extension: string | null;
   blurhash: string | null;
-  difference?: number | null;
+}
+
+export interface DBImageDataWithDistance extends DBImageData {
+  distance: number;
 }
 
 export interface ImageData {
@@ -28,8 +31,11 @@ export interface ImageData {
     640: string;
     1280: string;
   };
-  difference?: number | null;
   primaryColor: Awaited<ReturnType<typeof extractColors>>[number];
+}
+
+export interface ImageDataWithDistance extends ImageData {
+  distance: number;
 }
 
 const imageUrlPrefix =
@@ -49,14 +55,21 @@ async function getPrimaryImageColor(blurhashUrl: string) {
   return colors[0];
 }
 
-export async function shapeImageData(
+export function shapeImageData(
+  data: Readonly<DBImageDataWithDistance[]>,
+): Promise<ImageDataWithDistance[]>;
+
+export function shapeImageData(
   data: Readonly<DBImageData[]>,
-): Promise<ImageData[]> {
+): Promise<ImageData[]>;
+
+export async function shapeImageData(
+  data: Readonly<DBImageData[]> | Readonly<DBImageDataWithDistance[]>,
+): Promise<ImageData[] | ImageDataWithDistance[]> {
   return await Promise.all(data.map(async (image) => {
     const blurhashUrl = image.blurhash ? getBlurhashUrl(image.blurhash) : "";
     const primaryColor = await getPrimaryImageColor(blurhashUrl);
-    return {
-      difference: image.difference || null,
+    const returnval: ImageData | ImageDataWithDistance = {
       id: image.id,
       blurhashUrl: blurhashUrl,
       source: image.source || "",
@@ -73,5 +86,13 @@ export async function shapeImageData(
       },
       primaryColor: primaryColor,
     };
+    if ("distance" in image) {
+      return {
+        ...returnval,
+        distance: image.distance,
+      };
+    } else {
+      return returnval;
+    }
   }));
 }

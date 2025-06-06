@@ -1,4 +1,4 @@
-import { shapeImageData } from "./imageData.ts";
+import { DBImageDataWithDistance, shapeImageData } from "./imageData.ts";
 import { pool, sql } from "./db.ts";
 import { defaultModel, ModelOptions, models } from "./models.ts";
 
@@ -49,7 +49,7 @@ export async function vectorSearchByString(
         ${model.dbColumn} <=> ${JSON.stringify(vector.embedding)} as distance
       FROM image
       WHERE searchable
-      ORDER BY distance
+      ORDER BY distance ASC
       LIMIT 24
     `,
   );
@@ -59,5 +59,5 @@ export async function vectorSearchByString(
       dbStart - embedStart
     }ms, DB time: ${finish - dbStart}ms, Total time: ${finish - embedStart}ms`,
   );
-  return await shapeImageData(results);
+  return await shapeImageData(results as Readonly<DBImageDataWithDistance[]>);
 }

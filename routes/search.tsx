@@ -14,7 +14,13 @@ export default define.page(async (props) => {
       <span>Results</span>
       <div className="grid md:grid-cols-3 justify-center gap-6 sm:grid-cols-2 mx-6 my-6">
         {results.map((image) => (
-          <ImageCard key={image.id} imageData={image} className="max-w-96" />
+          <>
+            <ImageCard
+              key={image.id}
+              imageData={image}
+              className="max-w-96"
+            />
+          </>
         ))}
       </div>
     </>

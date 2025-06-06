@@ -1,10 +1,13 @@
 import { cn } from "../components/utils.ts";
 import { useState } from "preact/hooks";
 import { JSX } from "preact";
-import { ImageData } from "../server/imageData.ts";
+import {
+  type ImageData,
+  type ImageDataWithDistance,
+} from "../server/imageData.ts";
 
 export default function ImageCard(props: {
-  imageData: ImageData;
+  imageData: ImageData | ImageDataWithDistance;
   className?: string;
 }) {
   const image = props.imageData;
@@ -24,6 +27,11 @@ export default function ImageCard(props: {
         "relative aspect-square cursor-pointer rounded-3xl overflow-hidden hover:scale-105 duration-500 ease-in-out hover:z-10",
       )}
     >
+      {"distance" in image && (
+        <span className="absolute top-2 right-2 z-10 bg-black bg-opacity-50 text-white text-xs font-semibold px-2 py-1 rounded-full">
+          {image.distance.toFixed(3)}
+        </span>
+      )}
       <img
         className="w-full h-full absolute inset-0"
         src={image.blurhashUrl}
