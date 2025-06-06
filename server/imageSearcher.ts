@@ -14,22 +14,29 @@ export async function getRandom() {
       LIMIT 24
     `,
   );
-  // const results = await db
-  //   .select()
-  //   .from(image)
-  //   .orderBy(sql`random()`)
-  //   .limit(24);
   return await shapeImageData(results);
 }
 
 export async function getImageById(id: string) {
   console.log(`getById: ${id}`);
-  const results = await db
-    .select()
-    .from(image)
-    .where(eq(image.id, id))
-    .limit(1);
-  return (await shapeImageData(results))[0];
+  const results = await pool.maybeOne(
+    sql.typeAlias("imageData")`
+      SELECT *
+      FROM image
+      WHERE id=${id}
+      LIMIT 1
+    `,
+  );
+  if (!results) {
+    return;
+  }
+  return (await shapeImageData([results]))[0];
+  // const results = await db
+  //   .select()
+  //   .from(image)
+  //   .where(eq(image.id, id))
+  //   .limit(1);
+  // return (await shapeImageData(results))[0];
 }
 
 export async function vectorSearchByString(

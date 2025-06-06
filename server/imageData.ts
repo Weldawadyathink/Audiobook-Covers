@@ -50,7 +50,7 @@ async function getPrimaryImageColor(blurhashUrl: string) {
 }
 
 export async function shapeImageData(
-  data: DBImageData[],
+  data: Readonly<DBImageData[]>,
 ): Promise<ImageData[]> {
   return await Promise.all(data.map(async (image) => {
     const blurhashUrl = image.blurhash ? getBlurhashUrl(image.blurhash) : "";
