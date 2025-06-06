@@ -2,7 +2,7 @@
   "tasks": {
     "check": "deno fmt --check . && deno lint . && deno check **/*.ts && deno check **/*.tsx",
     "dev": "ROARR_LOG=true deno run --env-file -A --watch=static/,routes/ dev.ts",
-    "build": "deno run -A dev.ts build",
+    "build": "deno run --env-file -A dev.ts build",
     "start": "deno run -A main.ts",
     "update": "deno run -A -r jsr:@fresh/update .",
     "db:generate": "drizzle-kit generate",
