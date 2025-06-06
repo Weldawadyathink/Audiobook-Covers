@@ -1,15 +1,24 @@
 import { shapeImageData } from "./imageData.ts";
+import { pool, sql } from "./newdb.ts";
 import { db, image } from "./db.ts";
-import { and, asc, cosineDistance, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, asc, cosineDistance, desc, eq, gte, lte } from "drizzle-orm";
 import { defaultModel, ModelOptions, models } from "./models.ts";
 
 export async function getRandom() {
   console.log("Getting random cover");
-  const results = await db
-    .select()
-    .from(image)
-    .orderBy(sql`random()`)
-    .limit(24);
+  const results = await pool.many(
+    sql.typeAlias("imageData")`
+      SELECT *
+      FROM image
+      ORDER BY RANDOM()
+      LIMIT 24
+    `,
+  );
+  // const results = await db
+  //   .select()
+  //   .from(image)
+  //   .orderBy(sql`random()`)
+  //   .limit(24);
   return await shapeImageData(results);
 }
 

@@ -11,6 +11,7 @@
     "db:studio": "drizzle-kit studio",
     "reembed": "deno run -A --env-file server/reindexEmbedding.ts"
   },
+  "nodeModulesDir": "auto",
   "lint": {
     "rules": {
       "tags": [
@@ -24,6 +25,7 @@
   ],
   "imports": {
     "@huggingface/transformers": "npm:@huggingface/transformers@^3.5.2",
+    "@slonik/pg-driver": "npm:@slonik/pg-driver@^48.1.2",
     "@types/pg": "npm:@types/pg@^8.15.4",
     "blurhash": "npm:blurhash@^2.0.5",
     "clsx": "npm:clsx@^2.1.1",
@@ -38,8 +40,10 @@
     "preact": "npm:preact@^10.26.6",
     "@preact/signals": "npm:@preact/signals@^2.0.4",
     "replicate": "npm:replicate@^1.0.1",
+    "slonik": "npm:slonik@^48.1.2",
     "tailwind-merge": "npm:tailwind-merge@^3.3.0",
-    "tailwindcss": "npm:tailwindcss@^4.1.7"
+    "tailwindcss": "npm:tailwindcss@^4.1.7",
+    "zod": "npm:zod@^3.25.55"
   },
   "compilerOptions": {
     "lib": [
