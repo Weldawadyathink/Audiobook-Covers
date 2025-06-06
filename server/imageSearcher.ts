@@ -1,4 +1,4 @@
-import { DBImageDataWithDistance, shapeImageData } from "./imageData.ts";
+import { shapeImageData } from "./imageData.ts";
 import { pool, sql } from "./db.ts";
 import { defaultModel, ModelOptions, models } from "./models.ts";
 

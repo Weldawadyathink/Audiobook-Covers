@@ -33,6 +33,8 @@ jobs:
 
       - name: Build step
         run: "deno task build"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - name: Upload to Deno Deploy
         uses: denoland/deployctl@v1
