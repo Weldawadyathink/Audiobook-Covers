@@ -72,6 +72,6 @@ export const models: { [key: string]: ModelDefinition } = {
   },
 };
 
-export const defaultModel: ModelOptions = "mobileclip_s1";
+export const defaultModel: ModelOptions = "original";
 
 export type ModelOptions = keyof typeof models;
