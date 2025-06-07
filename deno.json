@@ -39,6 +39,7 @@
     "@preact/signals": "npm:@preact/signals@^2.0.4",
     "replicate": "npm:replicate@^1.0.1",
     "slonik": "npm:slonik@^48.1.2",
+    "slonik-interceptor-query-logging": "npm:slonik-interceptor-query-logging@^48.1.2",
     "tailwind-merge": "npm:tailwind-merge@^3.3.0",
     "tailwindcss": "npm:tailwindcss@^4.1.7",
     "zod": "npm:zod@^3.25.55"

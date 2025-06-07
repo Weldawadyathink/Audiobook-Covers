@@ -2,6 +2,9 @@ import { createPool, createSqlTag } from "slonik";
 import { createPgDriverFactory } from "@slonik/pg-driver";
 import { z } from "zod";
 import { Client } from "pg";
+import {
+  createQueryLoggingInterceptor,
+} from "slonik-interceptor-query-logging";
 
 const dbUrl = Deno.env.get("DATABASE_URL");
 if (!dbUrl) {
@@ -10,6 +13,7 @@ if (!dbUrl) {
 
 export const pool = await createPool(dbUrl, {
   driverFactory: createPgDriverFactory(),
+  interceptors: [createQueryLoggingInterceptor()],
 });
 
 export const sql = createSqlTag({

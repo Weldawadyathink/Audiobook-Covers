@@ -30,6 +30,9 @@ async function genericReplicateClipModel(
   modelId: `${string}/${string}` | `${string}/${string}:${string}`,
   input: string,
 ) {
+  console.log(
+    `Querying Replicate model ${modelId.split(":")[0]} with query ${input}`,
+  );
   const result = await replicate.run(modelId, {
     input: {
       inputs: input,
