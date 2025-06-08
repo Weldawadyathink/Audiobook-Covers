@@ -38,8 +38,7 @@ export interface ImageDataWithDistance extends ImageData {
   distance: number;
 }
 
-const imageUrlPrefix =
-  "https://audiobookcovers.global.ssl.fastly.net/file/com-audiobookcovers";
+const imageUrlPrefix = "https://com-audiobookcovers.fly.storage.tigris.dev";
 
 async function getPrimaryImageColor(blurhashUrl: string) {
   const pixels = await getPixelsAsync(blurhashUrl);
