@@ -1,5 +1,5 @@
 import { cn } from "../components/utils.ts";
-import { useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks"; // Import useEffect and useRef
 import { JSX } from "preact";
 import {
   type ImageData,
@@ -12,12 +12,22 @@ export default function ImageCard(props: {
 }) {
   const image = props.imageData;
   const [isLoaded, setIsLoaded] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null); // Create a ref for the image element
+
+  useEffect(() => {
+    // Check if the image is already loaded (e.g., from cache)
+    if (imgRef.current && imgRef.current.complete) {
+      setIsLoaded(true);
+    }
+  }, []);
+
   const style: JSX.CSSProperties = {
     boxShadow:
       `0 0 20px hsla(${image.primaryColor.hue}, ${image.primaryColor.saturation}%, ${
         image.primaryColor.lightness * 0.6
       }%, 0.5)`,
   };
+
   return (
     <a
       href={`/images/${image.id}`}
@@ -54,6 +64,7 @@ export default function ImageCard(props: {
           sizes="(max-width: 600px) 100vw, (max-width: 960px) 50vw, 33vw"
         />
         <img
+          ref={imgRef} // Attach the ref
           alt="audiobook cover image"
           loading="lazy"
           className={cn(
@@ -62,7 +73,6 @@ export default function ImageCard(props: {
           )}
           onLoad={() => setIsLoaded(true)}
           src={image.jpeg["320"]}
-          // alt="audiobook cover image" // Not technically accessible, but this site is image focused anyway
         />
       </picture>
     </a>
