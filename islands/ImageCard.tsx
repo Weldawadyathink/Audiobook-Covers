@@ -34,7 +34,7 @@ export default function ImageCard(props: {
       style={style}
       className={cn(
         props.className,
-        "relative aspect-square cursor-pointer rounded-3xl overflow-hidden hover:scale-105 duration-500 ease-in-out hover:z-10",
+        "relative aspect-square cursor-pointer rounded-3xl overflow-hidden duration-500 ease-in-out hover:z-10",
       )}
     >
       {"distance" in image && (

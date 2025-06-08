@@ -3,10 +3,11 @@ import { pool, sql } from "./db.ts";
 import { defaultModel, ModelOptions, models } from "./models.ts";
 
 export async function getRandom() {
-  const cache = JSON.parse(Deno.readTextFileSync("./cache/randomImage.json"));
-  if (cache) {
-    console.log("Using cache for random images");
+  try {
+    const cache = JSON.parse(Deno.readTextFileSync("./cache/randomImage.json"));
     return cache as ImageData[];
+  } catch {
+    // If no cache, query from database
   }
   console.log("Getting random cover");
   const results = await pool.many(
@@ -15,7 +16,7 @@ export async function getRandom() {
       FROM image
       WHERE searchable
       ORDER BY RANDOM()
-      LIMIT 24
+      LIMIT 54
     `,
   );
   const imgData = await shapeImageData(results);
