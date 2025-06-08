@@ -5,10 +5,6 @@
     "build": "deno run --env-file -A dev.ts build",
     "start": "deno run -A main.ts",
     "update": "deno run -A -r jsr:@fresh/update .",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio",
     "reembed": "deno run -A --env-file server/reindexEmbedding.ts"
   },
   "nodeModulesDir": "auto",

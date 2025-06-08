@@ -59,5 +59,5 @@ export async function vectorSearchByString(
       dbStart - embedStart
     }ms, DB time: ${finish - dbStart}ms, Total time: ${finish - embedStart}ms`,
   );
-  return await shapeImageData(results as Readonly<DBImageDataWithDistance[]>);
+  return await shapeImageData(results);
 }
