@@ -11,7 +11,7 @@ export default function App({ Component }: PageProps) {
         <link rel="stylesheet" href="/styles.css" />
       </head>
       <body>
-        <div className="fixed inset-0 z-[-1] bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900 via-purple-900 to-slate-900" />
+        <div className="fixed inset-0 z-[-1] bg-slate-700 " />
         <div className="m-2 flex gap-2">
           <a href="/" className="[&.active]:font-bold">
             Home
