@@ -38,6 +38,11 @@ async function genericFlyClipModel(
         inputs: input,
       },
       timeout: false,
+      retry: {
+        limit: 10,
+        methods: ["post"],
+        backoffLimit: 1000,
+      },
     },
   ).json();
   return publicClipModelValidator.parse(json);

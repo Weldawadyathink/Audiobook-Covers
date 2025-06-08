@@ -22,13 +22,14 @@ async function reindexAllImages(model: ModelDefinition) {
       FROM image
       WHERE ${model.dbColumn} IS NULL
       ORDER BY RANDOM()
-      LIMIT 50
+      LIMIT 10
     `,
   );
   if (images.length === 0) {
     console.log(`No images found.`);
     return;
   }
+  console.log(`Selected ${images.length} images from database to embed`);
   const imgData = await shapeImageData(images);
   await Promise.all(imgData.map((i) => reindexPicture(i, model)));
   const time = (performance.now() - start) / 1000;
@@ -37,5 +38,16 @@ async function reindexAllImages(model: ModelDefinition) {
 }
 
 if (import.meta.main) {
-  await reindexAllImages(models["mobileclip_s0"]);
+  const modelName = Deno.args[0];
+  const processes = Deno.args[1] || 2;
+  const model = models[modelName];
+  console.log(`Generating embeddings for ${modelName}`);
+  await Promise.all(
+    // Runs two reindexing processes at the same time
+    // In theory, there will be collisions where both processes will
+    // select the same images to embed. Very likely at the end of the
+    // embed process. But one will just overwrite the other in the
+    // database, so it just costs a little extra in compute.
+    Array.apply(null, Array(processes)).map(() => reindexAllImages(model)),
+  );
 }
