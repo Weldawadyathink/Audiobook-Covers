@@ -8,6 +8,7 @@ export async function getRandom() {
     sql.typeAlias("imageData")`
       SELECT *
       FROM image
+      WHERE searchable
       ORDER BY RANDOM()
       LIMIT 24
     `,
