@@ -63,7 +63,19 @@ async function genericReplicateClipModel(
   return publicClipModelValidator.parse(result);
 }
 
-export const models: { [key: string]: ModelDefinition } = {
+export const modelOptions = [
+  "mobileclip_s0",
+  "mobileclip_s1",
+  "mobileclip_s2",
+  "mobileclip_b",
+  "mobileclip_blt",
+  "openAI",
+] as const;
+export const defaultModel = "mobileclip_s0" as const;
+export const zModelOptions = z.enum(modelOptions).catch(defaultModel);
+export type ModelOptions = z.infer<typeof zModelOptions>;
+
+export const models: { readonly [K in ModelOptions]: ModelDefinition } = {
   "mobileclip_s0": {
     dimensions: 512,
     getTextEmbedding: async (input) => {
@@ -154,7 +166,7 @@ export const models: { [key: string]: ModelDefinition } = {
     },
     dbColumn: sql.identifier(["embedding_mobileclip_blt"]),
   },
-  original: {
+  "openAI": {
     dimensions: 768,
     dbColumn: sql.identifier(["embedding"]),
     getTextEmbedding: async (input) => {
@@ -173,8 +185,4 @@ export const models: { [key: string]: ModelDefinition } = {
       return result[0];
     },
   },
-};
-
-export const defaultModel: ModelOptions = "mobileclip_s1";
-
-export type ModelOptions = keyof typeof models;
+} as const;

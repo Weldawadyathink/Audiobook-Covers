@@ -1,18 +1,29 @@
 import { define } from "../utils.ts";
 import ImageCard from "../islands/ImageCard.tsx";
 import { vectorSearchByString } from "../server/imageSearcher.ts";
+import { modelOptions, zModelOptions } from "../server/models.ts";
 
 export default define.page(async (props) => {
   const query = props.url.searchParams.get("q");
-  const results = query ? await vectorSearchByString(query) : [];
+  const model = zModelOptions.parse(props.url.searchParams.get(
+    "model",
+  ));
+
+  const results = query ? await vectorSearchByString(query, model) : [];
   return (
     <>
-      <form method="GET" action="/search">
-        <input type="text" name="q" defaultValue={query || ""} />
+      <form method="GET" action="/search" className="flex flex-row gap-6 mx-12">
+        <input type="text" name="q" value={query || ""} />
+        <select name="model" id="model">
+          {modelOptions.map((option) => (
+            <option key={option} value={option} selected={option == model}>
+              {option}
+            </option>
+          ))}
+        </select>
         <button type="submit">Search</button>
       </form>
-      <span>Results</span>
-      <div className="grid md:grid-cols-3 justify-center gap-6 sm:grid-cols-2 mx-6 my-6">
+      <div className="grid md:grid-cols-4 justify-center gap-6 sm:grid-cols-2 mx-6 my-6">
         {results.map((image) => (
           <>
             <ImageCard

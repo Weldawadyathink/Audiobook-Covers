@@ -3,12 +3,6 @@ import { pool, sql } from "./db.ts";
 import { defaultModel, ModelOptions, models } from "./models.ts";
 
 export async function getRandom() {
-  try {
-    const cache = JSON.parse(Deno.readTextFileSync("./cache/randomImage.json"));
-    return cache as ImageData[];
-  } catch {
-    // If no cache, query from database
-  }
   console.log("Getting random cover");
   const results = await pool.many(
     sql.typeAlias("imageData")`
@@ -19,14 +13,7 @@ export async function getRandom() {
       LIMIT 54
     `,
   );
-  const imgData = await shapeImageData(results);
-  await Deno.mkdir("./cache");
-  await Deno.writeTextFile(
-    "./cache/randomImage.json",
-    JSON.stringify(imgData),
-    { create: true },
-  );
-  return imgData;
+  return await shapeImageData(results);
 }
 
 export async function getImageById(id: string) {
