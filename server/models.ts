@@ -1,6 +1,7 @@
 import Replicate from "replicate";
 import { sql } from "./db.ts";
 import { z } from "zod/v4";
+import ky from "ky";
 
 const replicate = new Replicate({
   auth: Deno.env.get("REPLICATE_API_TOKEN"),
@@ -26,6 +27,22 @@ const publicClipModelValidator = z.array(
   }),
 );
 
+async function genericFlyClipModel(
+  modelId: string,
+  input: string,
+) {
+  const json = await ky.post(
+    `https://${modelId}.fly.dev/predictions`,
+    {
+      json: {
+        inputs: input,
+      },
+      timeout: false,
+    },
+  ).json();
+  return publicClipModelValidator.parse(json);
+}
+
 async function genericReplicateClipModel(
   modelId: `${string}/${string}` | `${string}/${string}:${string}`,
   input: string,
@@ -45,15 +62,15 @@ export const models: { [key: string]: ModelDefinition } = {
   "mobileclip_s0": {
     dimensions: 512,
     getTextEmbedding: async (input) => {
-      const result = await genericReplicateClipModel(
-        "weldawadyathink/mobileclip-s0:d0207d14f31bd4deb30922f300813e65eb077966daf8c419312bf6f3e819ff5c",
+      const result = await genericFlyClipModel(
+        "mobileclip-s0",
         input,
       );
       return result[0];
     },
     getImageEmbedding: async (input) => {
-      const result = await genericReplicateClipModel(
-        "weldawadyathink/mobileclip-s0:d0207d14f31bd4deb30922f300813e65eb077966daf8c419312bf6f3e819ff5c",
+      const result = await genericFlyClipModel(
+        "mobileclip-s0",
         input,
       );
       return result[0];
@@ -63,15 +80,15 @@ export const models: { [key: string]: ModelDefinition } = {
   "mobileclip_s1": {
     dimensions: 512,
     getTextEmbedding: async (input) => {
-      const result = await genericReplicateClipModel(
-        "weldawadyathink/mobileclip-s1:af32db66cfc8a89acf4564719df79b89dcbc9ef4ce2e971f1a349db0a7d23cc5",
+      const result = await genericFlyClipModel(
+        "mobileclip-s1",
         input,
       );
       return result[0];
     },
     getImageEmbedding: async (input) => {
-      const result = await genericReplicateClipModel(
-        "weldawadyathink/mobileclip-s1:af32db66cfc8a89acf4564719df79b89dcbc9ef4ce2e971f1a349db0a7d23cc5",
+      const result = await genericFlyClipModel(
+        "mobileclip-s1",
         input,
       );
       return result[0];
@@ -81,15 +98,15 @@ export const models: { [key: string]: ModelDefinition } = {
   "mobileclip_s2": {
     dimensions: 512,
     getTextEmbedding: async (input) => {
-      const result = await genericReplicateClipModel(
-        "weldawadyathink/mobileclip-s2:713b5bce1c13437d6d9e72feb101bbb481345364c1546a77fe3d0d14ea494709",
+      const result = await genericFlyClipModel(
+        "mobileclip-s2",
         input,
       );
       return result[0];
     },
     getImageEmbedding: async (input) => {
-      const result = await genericReplicateClipModel(
-        "weldawadyathink/mobileclip-s2:713b5bce1c13437d6d9e72feb101bbb481345364c1546a77fe3d0d14ea494709",
+      const result = await genericFlyClipModel(
+        "mobileclip-s2",
         input,
       );
       return result[0];
@@ -99,15 +116,15 @@ export const models: { [key: string]: ModelDefinition } = {
   "mobileclip_b": {
     dimensions: 512,
     getTextEmbedding: async (input) => {
-      const result = await genericReplicateClipModel(
-        "weldawadyathink/mobileclip-b:448e4cabca8b47b23589a379065cbf4681ac6b980e592dae8d4bb2c717164621",
+      const result = await genericFlyClipModel(
+        "mobileclip-b",
         input,
       );
       return result[0];
     },
     getImageEmbedding: async (input) => {
-      const result = await genericReplicateClipModel(
-        "weldawadyathink/mobileclip-b:448e4cabca8b47b23589a379065cbf4681ac6b980e592dae8d4bb2c717164621",
+      const result = await genericFlyClipModel(
+        "mobileclip-b",
         input,
       );
       return result[0];
@@ -117,15 +134,15 @@ export const models: { [key: string]: ModelDefinition } = {
   "mobileclip_blt": {
     dimensions: 512,
     getTextEmbedding: async (input) => {
-      const result = await genericReplicateClipModel(
-        "weldawadyathink/mobileclip-blt:17507e65350e514e0f44c8831a106761e330276a4b0f3339597b42fba71e4914",
+      const result = await genericFlyClipModel(
+        "mobileclip-blt",
         input,
       );
       return result[0];
     },
     getImageEmbedding: async (input) => {
-      const result = await genericReplicateClipModel(
-        "weldawadyathink/mobileclip-blt:17507e65350e514e0f44c8831a106761e330276a4b0f3339597b42fba71e4914",
+      const result = await genericFlyClipModel(
+        "mobileclip-blt",
         input,
       );
       return result[0];

@@ -29,6 +29,7 @@
     "fresh": "jsr:@fresh/core@^2.0.0-alpha.34",
     "@fresh/plugin-tailwind": "jsr:@fresh/plugin-tailwind@^0.0.1-alpha.7",
     "get-pixels": "npm:get-pixels@^3.3.3",
+    "ky": "npm:ky@^1.8.1",
     "node-image-hash": "npm:node-image-hash@^1.1.0",
     "pg": "npm:pg@^8.16.0",
     "preact": "npm:preact@^10.26.6",
