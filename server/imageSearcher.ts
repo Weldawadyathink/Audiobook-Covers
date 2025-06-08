@@ -1,8 +1,13 @@
-import { shapeImageData } from "./imageData.ts";
+import { type ImageData, shapeImageData } from "./imageData.ts";
 import { pool, sql } from "./db.ts";
 import { defaultModel, ModelOptions, models } from "./models.ts";
 
 export async function getRandom() {
+  const cache = JSON.parse(Deno.readTextFileSync("./cache/randomImage.json"));
+  if (cache) {
+    console.log("Using cache for random images");
+    return cache as ImageData[];
+  }
   console.log("Getting random cover");
   const results = await pool.many(
     sql.typeAlias("imageData")`
@@ -13,7 +18,14 @@ export async function getRandom() {
       LIMIT 24
     `,
   );
-  return await shapeImageData(results);
+  const imgData = await shapeImageData(results);
+  await Deno.mkdir("./cache");
+  await Deno.writeTextFile(
+    "./cache/randomImage.json",
+    JSON.stringify(imgData),
+    { create: true },
+  );
+  return imgData;
 }
 
 export async function getImageById(id: string) {
