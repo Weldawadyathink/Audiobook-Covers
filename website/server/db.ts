@@ -1,5 +1,5 @@
 import { createPool, createSqlTag } from "slonik";
-import { createPgDriverFactory } from "@slonik/pg-driver";
+import { createPgDriverFactory } from "./create_pg_driver_factory.ts";
 import { z } from "zod";
 import { Client } from "pg";
 import {
