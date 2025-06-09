@@ -1,5 +1,6 @@
 {
   "imports": {
+    "@std/fs": "jsr:@std/fs@^1.0.18",
     "@std/uuid": "jsr:@std/uuid@^1.0.8"
   },
   "tasks": {

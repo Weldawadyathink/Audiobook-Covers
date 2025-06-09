@@ -13,6 +13,11 @@ COPY deno.json deno.lock ./
 RUN deno install --frozen=true
 
 FROM python:3.13-slim-bookworm
+
+COPY --from=tailscale/tailscale:latest /usr/local/bin/containerboot /usr/local/bin/containerboot
+COPY --from=tailscale/tailscale:latest /usr/local/bin/tailscaled /usr/local/bin/tailscaled
+COPY --from=tailscale/tailscale:latest /usr/local/bin/tailscale /usr/local/bin/tailscale
+
 ENV DENO_DIR=/deno-dir/
 COPY --from=denobuilder /deno-dir /deno-dir
 WORKDIR /app
@@ -21,4 +26,4 @@ COPY --from=denoland/deno:bin /deno /usr/local/bin/
 
 COPY . .
 
-CMD ["deno", "task", "start"]
+CMD ["/app/start.sh"]
