@@ -11,15 +11,14 @@ FROM denoland/deno:debian AS denobuilder
 WORKDIR /app
 COPY deno.json deno.lock ./
 RUN deno install --frozen=true
-COPY . .
-RUN deno cache main.ts
 
 FROM python:3.13-slim-bookworm
+ENV DENO_DIR=/deno-dir/
+COPY --from=denobuilder /deno-dir /deno-dir
 WORKDIR /app
 COPY --from=pythonbuilder /app/.venv .venv/
 COPY --from=denoland/deno:bin /deno /usr/local/bin/
-ENV DENO_DIR=/deno-dir/
-COPY --from=denobuilder /deno-dir /
-COPY --from=denobuilder /app .
+
+COPY . .
 
 CMD ["deno", "task", "start"]

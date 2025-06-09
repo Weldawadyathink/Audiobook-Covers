@@ -1,9 +1,0 @@
-dev: build
-    docker run --rm -it audiobookcovers-downloader
-
-build:
-    docker build -t audiobookcovers-downloader .
-
-
-it: build
-    docker run --rm -it audiobookcovers-downloader /bin/bash
