@@ -1,9 +1,9 @@
 name: Deploy
 on:
   push:
-    branches: main
+    branches: fresh-rewrite
   pull_request:
-    branches: main
+    branches: fresh-rewrite
 
 jobs:
   deploy:
@@ -29,16 +29,16 @@ jobs:
           node-version: lts/*
 
       - name: Install step
-        run: "deno install"
+        run: "cd website && deno install"
 
       - name: Build step
-        run: "deno task build"
+        run: "cd website && deno task build"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - name: Upload to Deno Deploy
         uses: denoland/deployctl@v1
         with:
           project: "audiobook-covers"
           entrypoint: "main.ts"
-          root: "."
-          
-          
+          root: "./website"

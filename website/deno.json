@@ -1,0 +1,65 @@
+{
+  "tasks": {
+    "check": "deno fmt --check . && deno lint . && deno check **/*.ts && deno check **/*.tsx",
+    "dev": "ROARR_LOG=true deno run --env-file -A --watch=static/,routes/ dev.ts",
+    "build": "deno run --env-file -A dev.ts build",
+    "start": "deno run -A main.ts",
+    "update": "deno run -A -r jsr:@fresh/update .",
+    "reembed": "deno run -A --env-file server/reindexEmbedding.ts"
+  },
+  "nodeModulesDir": "auto",
+  "lint": {
+    "rules": {
+      "tags": [
+        "fresh",
+        "recommended"
+      ]
+    }
+  },
+  "exclude": [
+    "**/_fresh/*"
+  ],
+  "imports": {
+    "@huggingface/transformers": "npm:@huggingface/transformers@^3.5.2",
+    "@slonik/pg-driver": "npm:@slonik/pg-driver@^48.1.2",
+    "@types/pg": "npm:@types/pg@^8.15.4",
+    "blurhash": "npm:blurhash@^2.0.5",
+    "clsx": "npm:clsx@^2.1.1",
+    "extract-colors": "npm:extract-colors@^4.2.0",
+    "fresh": "jsr:@fresh/core@^2.0.0-alpha.34",
+    "@fresh/plugin-tailwind": "jsr:@fresh/plugin-tailwind@^0.0.1-alpha.7",
+    "get-pixels": "npm:get-pixels@^3.3.3",
+    "ky": "npm:ky@^1.8.1",
+    "node-image-hash": "npm:node-image-hash@^1.1.0",
+    "pg": "npm:pg@^8.16.0",
+    "pg-query-stream": "npm:pg-query-stream@^4.10.0",
+    "pg-types": "npm:pg-types@^4.0.2",
+    "postgres-array": "npm:postgres-array@^3.0.4",
+    "preact": "npm:preact@^10.26.6",
+    "@preact/signals": "npm:@preact/signals@^2.0.4",
+    "replicate": "npm:replicate@^1.0.1",
+    "slonik": "npm:slonik@^48.1.2",
+    "slonik-interceptor-query-logging": "npm:slonik-interceptor-query-logging@^48.1.2",
+    "tailwind-merge": "npm:tailwind-merge@^3.3.0",
+    "tailwindcss": "npm:tailwindcss@^4.1.7",
+    "zod": "npm:zod@^3.25.55"
+  },
+  "compilerOptions": {
+    "lib": [
+      "dom",
+      "dom.asynciterable",
+      "dom.iterable",
+      "deno.ns"
+    ],
+    "jsx": "precompile",
+    "jsxImportSource": "preact",
+    "jsxPrecompileSkipElements": [
+      "a",
+      "img",
+      "source",
+      "body",
+      "html",
+      "head"
+    ]
+  }
+}

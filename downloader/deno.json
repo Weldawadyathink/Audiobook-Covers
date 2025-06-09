@@ -1,0 +1,14 @@
+{
+  "imports": {
+    "@std/fs": "jsr:@std/fs@^1.0.18",
+    "@std/uuid": "jsr:@std/uuid@^1.0.8"
+  },
+  "tasks": {
+    "start": "deno run --env-file -A main.ts",
+    "dev": "deno run --env-file -A --watch main.ts",
+    "docker": "docker build -t audiobookcovers-downloader . && docker run -p 8000:8000 --rm -it audiobookcovers-downloader",
+    "docker:it": "docker build -t audiobookcovers-downloader . && docker run -p 8000:8000 --rm -it audiobookcovers-downloader /bin/bash"
+  },
+  "compilerOptions": {
+  }
+}
