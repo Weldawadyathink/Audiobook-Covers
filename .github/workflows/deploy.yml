@@ -1,9 +1,9 @@
 name: Deploy
 on:
   push:
-    branches: fresh-rewrite
+    branches: main
   pull_request:
-    branches: fresh-rewrite
+    branches: main
 
 jobs:
   deploy:
