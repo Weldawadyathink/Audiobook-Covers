@@ -1,7 +1,14 @@
 {
-  "tasks": {
-    "dev": "deno run --watch main.ts"
-  },
   "imports": {
+    "hono": "jsr:@hono/hono@^4.7.11"
+  },
+  "tasks": {
+    "start": "deno run --env-file -A main.ts",
+    "dev": "deno run --env-file -A --watch main.ts",
+    "docker": "docker build -t audiobookcovers-downloader . && docker run --rm -it audiobookcovers-downloader"
+  },
+  "compilerOptions": {
+    "jsx": "precompile",
+    "jsxImportSource": "hono/jsx"
   }
 }

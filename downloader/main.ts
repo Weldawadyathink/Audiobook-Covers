@@ -1,8 +1,23 @@
-export function add(a: number, b: number): number {
-  return a + b;
-}
+import { Hono } from "hono";
 
-// Learn more at https://docs.deno.com/runtime/manual/examples/module_metadata#concepts
-if (import.meta.main) {
-  console.log("Add 2 + 3 =", add(2, 3));
+const validAPIKey = Deno.env.get("API_KEY");
+if (!validAPIKey) {
+  console.log("API_KEY environment variable is missing");
+  Deno.exit(1);
 }
+const validAPIAuth = `Bearer ${validAPIKey}`;
+
+const app = new Hono();
+
+app.post("/download", (c) => {
+  const auth = c.req.header("Authorization");
+  if (!auth || auth !== validAPIAuth) {
+    console.log("Unauthorized access");
+    c.status(401);
+    return c.text("Not authorized");
+  }
+  console.log("Authorized access");
+  return c.text("Hello Hono!");
+});
+
+Deno.serve(app.fetch);

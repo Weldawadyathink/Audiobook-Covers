@@ -1,0 +1,33 @@
+{
+  "version": "5",
+  "specifiers": {
+    "jsr:@hono/hono@^4.7.11": "4.7.11",
+    "npm:@types/node@*": "22.15.15",
+    "npm:create-hono@latest": "0.19.1"
+  },
+  "jsr": {
+    "@hono/hono@4.7.11": {
+      "integrity": "52b9395e4f2448fbaf82a6bd7925d15e59f4055037e74d6c2f657f3618b11193"
+    }
+  },
+  "npm": {
+    "@types/node@22.15.15": {
+      "integrity": "sha512-R5muMcZob3/Jjchn5LcO8jdKwSCbzqmPB6ruBxMcf9kbxtniZHP327s6C37iOfuw8mbKK3cAQa7sEl7afLrQ8A==",
+      "dependencies": [
+        "undici-types"
+      ]
+    },
+    "create-hono@0.19.1": {
+      "integrity": "sha512-Nou3VaRiSA0EhjESlhHmT+FD0vnwDGK6O2Az6vLUzU4k51Kd04ZUNjfMvceuR0QgbZe3Wl4g/s4mNZU1mCIT5A==",
+      "bin": true
+    },
+    "undici-types@6.21.0": {
+      "integrity": "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="
+    }
+  },
+  "workspace": {
+    "dependencies": [
+      "jsr:@hono/hono@^4.7.11"
+    ]
+  }
+}
