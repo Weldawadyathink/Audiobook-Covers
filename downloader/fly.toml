@@ -8,6 +8,11 @@ primary_region = 'sjc'
 
 [build]
 
+[[restart]]
+policy = "on-failure"
+retries = 5
+
+
 [[vm]]
 memory = '512mb'
 cpu_kind = 'shared'
