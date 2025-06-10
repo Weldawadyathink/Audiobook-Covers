@@ -1,7 +1,14 @@
 {
   "imports": {
     "@std/fs": "jsr:@std/fs@^1.0.18",
-    "@std/uuid": "jsr:@std/uuid@^1.0.8"
+    "@std/uuid": "jsr:@std/uuid@^1.0.8",
+    "pg": "npm:pg@^8.16.0",
+    "pg-query-stream": "npm:pg-query-stream@^4.10.0",
+    "pg-types": "npm:pg-types@^4.0.2",
+    "postgres-array": "npm:postgres-array@^3.0.4",
+    "slonik": "npm:slonik@^48.1.2",
+    "slonik-interceptor-query-logging": "npm:slonik-interceptor-query-logging@^48.1.2",
+    "zod": "npm:zod@^3.25.57"
   },
   "tasks": {
     "start": "deno run --env-file -A main.ts",

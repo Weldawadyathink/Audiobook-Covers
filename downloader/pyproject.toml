@@ -1,9 +1,9 @@
 [project]
-name="audiobookcovers-downloader"
+name = "audiobookcovers-downloader"
 requires-python = ">=3.13,<4.0"
 dependencies = [
     "bdfr (>=2.6.2,<3.0.0)",
-    "praw (==7.2.0)"
+    "praw (==7.7.0)"
 ]
 
 [tool.poetry]
