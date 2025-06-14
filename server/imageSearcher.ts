@@ -1,10 +1,11 @@
 import { type ImageData, shapeImageData } from "./imageData.ts";
-import { pool, sql } from "./db.ts";
+import { getDbPool, sql } from "./db.ts";
 import { defaultModel, ModelOptions, models } from "./models.ts";
 
 export async function getRandom() {
   console.log("Getting random cover");
   const start = performance.now();
+  const pool = await getDbPool();
   const results = await pool.many(
     sql.typeAlias("imageData")`
       SELECT
@@ -26,6 +27,7 @@ export async function getRandom() {
 export async function getImageById(id: string) {
   console.log(`getById: ${id}`);
   const start = performance.now();
+  const pool = await getDbPool();
   const results = await pool.maybeOne(
     sql.typeAlias("imageData")`
       SELECT
@@ -54,6 +56,7 @@ export async function vectorSearchByString(
   const embedStart = performance.now();
   const vector = await model.getTextEmbedding(query);
   const dbStart = performance.now();
+  const pool = await getDbPool();
   const results = await pool.many(
     sql.typeAlias("imageDataWithDistance")`
       SELECT

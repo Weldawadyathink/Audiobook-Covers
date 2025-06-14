@@ -1,6 +1,6 @@
 import { ImageData, shapeImageData } from "./imageData.ts";
 import { ModelDefinition, models } from "./models.ts";
-import { pool, sql } from "./db.ts";
+import { getDbPool, sql } from "./db.ts";
 
 async function reindexPicture(img: ImageData, model: ModelDefinition) {
   const replicate = await model.getImageEmbedding(img.url);
@@ -16,6 +16,7 @@ async function reindexPicture(img: ImageData, model: ModelDefinition) {
 
 async function reindexAllImages(model: ModelDefinition) {
   const start = performance.now();
+  const pool = await getDbPool();
   const images = await pool.any(
     sql.typeAlias("imageData")`
       SELECT *

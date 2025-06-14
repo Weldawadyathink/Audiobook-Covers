@@ -7,18 +7,19 @@ import {
 } from "slonik-interceptor-query-logging";
 import { env } from "../env.ts";
 
-let slonik: DatabasePool;
-let pool: DatabasePool;
+const global = globalThis as unknown as {
+  slonikDbPool: DatabasePool | unknown;
+};
 
-if (env.NODE_ENV !== "build") {
-  const slonik = await createPool(env.DATABASE_URL, {
-    driverFactory: createPgDriverFactory(),
-    interceptors: [createQueryLoggingInterceptor()],
-  });
-  const pool = slonik;
+export async function getDbPool(): Promise<DatabasePool> {
+  if (!global.slonikDbPool) {
+    global.slonikDbPool = await createPool(env.DATABASE_URL, {
+      driverFactory: createPgDriverFactory(),
+      interceptors: [createQueryLoggingInterceptor()],
+    });
+  }
+  return global.slonikDbPool as DatabasePool;
 }
-// Do not connect to the database if building
-export { pool, slonik };
 
 export const sql = createSqlTag({
   typeAliases: {

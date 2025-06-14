@@ -1,6 +1,6 @@
 import { define } from "../../utils.ts";
 import { z } from "zod/v4";
-import { slonik, sql } from "../../server/db.ts";
+import { getDbPool, sql } from "../../server/db.ts";
 import { verify } from "@stdext/crypto/hash";
 import { setCookie } from "@std/http";
 
@@ -21,7 +21,8 @@ export const handler = define.handlers({
       });
     }
     console.log(`Log in request for ${form.username}`);
-    const result = await slonik.maybeOne(
+    const pool = await getDbPool();
+    const result = await pool.maybeOne(
       sql.type(
         z.object({
           id: z.int(),
@@ -57,7 +58,7 @@ export const handler = define.handlers({
       headers.set("Location", "/");
       console.log(cookieId);
       console.log(result);
-      await slonik.query(
+      await pool.query(
         sql.typeAlias("void")`
           INSERT INTO session(token, user_id, expires_at)
           VALUES(${cookieId}, ${result.id}, NOW() + INTERVAL '1 day')
