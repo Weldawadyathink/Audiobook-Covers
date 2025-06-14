@@ -5,16 +5,18 @@ import { Client } from "pg";
 import {
   createQueryLoggingInterceptor,
 } from "slonik-interceptor-query-logging";
+import { env } from "../env.ts";
 
-const dbUrl = Deno.env.get("DATABASE_URL");
+const dbUrl = env.DATABASE_URL;
 if (!dbUrl) {
   throw new Error("DATABASE_URL environment variable not set!");
 }
 
-export const pool = await createPool(dbUrl, {
+export const slonik = await createPool(dbUrl, {
   driverFactory: createPgDriverFactory(),
   interceptors: [createQueryLoggingInterceptor()],
 });
+export const pool = slonik;
 
 export const sql = createSqlTag({
   typeAliases: {
@@ -36,7 +38,7 @@ export const sql = createSqlTag({
 
 if (import.meta.main) {
   const client = new Client({
-    connectionString: Deno.env.get("DATABASE_URL"),
+    connectionString: env.DATABASE_URL,
     ssl: true,
   });
   console.log("Created database");

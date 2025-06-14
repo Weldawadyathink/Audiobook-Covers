@@ -41,6 +41,8 @@ export interface ImageDataWithDistance extends ImageData {
 const imageUrlPrefix = "https://com-audiobookcovers.fly.storage.tigris.dev";
 
 async function getPrimaryImageColor(blurhashUrl: string) {
+  // TODO: look at https://www.npmjs.com/package/fast-blurhash
+  // Gets the average color of a blurhash
   const pixels = await getPixelsAsync(blurhashUrl);
   const data = [...pixels.data];
   const [width, height] = pixels.shape;

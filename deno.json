@@ -20,7 +20,6 @@
     "**/_fresh/*"
   ],
   "imports": {
-    "@huggingface/transformers": "npm:@huggingface/transformers@^3.5.2",
     "@slonik/pg-driver": "npm:@slonik/pg-driver@^48.1.2",
     "@types/pg": "npm:@types/pg@^8.15.4",
     "blurhash": "npm:blurhash@^2.0.5",
@@ -31,6 +30,8 @@
     "get-pixels": "npm:get-pixels@^3.3.3",
     "ky": "npm:ky@^1.8.1",
     "node-image-hash": "npm:node-image-hash@^1.1.0",
+    "@keawade/zod-env": "jsr:@keawade/zod-env@^0.1.2",
+    "@Weldawadyathink/zod-env": "https://raw.githubusercontent.com/Weldawadyathink/zod-env/refs/heads/main/v4/mod.ts",
     "pg": "npm:pg@^8.16.0",
     "pg-query-stream": "npm:pg-query-stream@^4.10.0",
     "pg-types": "npm:pg-types@^4.0.2",
