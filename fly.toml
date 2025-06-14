@@ -16,14 +16,12 @@ auto_start_machines = true
 min_machines_running = 0
 processes = ['app']
 
-[[services.http_checks]]
+[[http_service.checks]]
 interval = "10s"
 grace_period = "5s"
+timeout = "2s"
 method = "get"
 path = "/api/healthcheck"
-protocol = "http"
-timeout = 2000
-tls_skip_verify = false
 
 [[vm]]
 size = 'shared-cpu-1x'
