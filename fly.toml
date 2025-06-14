@@ -18,7 +18,7 @@ processes = ['app']
 
 [[http_service.checks]]
 interval = "10s"
-grace_period = "10s"
+grace_period = "30s"
 timeout = "10s"
 method = "get"
 path = "/api/healthcheck"
