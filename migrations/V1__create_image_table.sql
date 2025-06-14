@@ -1,21 +1,20 @@
 CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
 
-CREATE TABLE public.image
-(
-    id                       uuid NOT NULL,
-    source                   text,
-    extension                text,
-    old_hash                 text,
-    embedding                public.vector(768),
-    searchable               boolean DEFAULT true,
-    blurhash                 text,
-    embedding_mobileclip_s1  public.vector(512),
-    embedding_mobileclip_s0  public.vector(512),
-    embedding_mobileclip_s2  public.vector(512),
-    embedding_mobileclip_b   public.vector(512),
-    embedding_mobileclip_blt public.vector(512),
-    hash                     text,
-    from_old_database        boolean DEFAULT false
+CREATE TABLE public.image (
+    id                       UUID NOT NULL,
+    source                   TEXT,
+    extension                TEXT,
+    old_hash                 TEXT,
+    embedding                public.VECTOR(768),
+    searchable               BOOLEAN DEFAULT TRUE,
+    blurhash                 TEXT,
+    embedding_mobileclip_s1  public.VECTOR(512),
+    embedding_mobileclip_s0  public.VECTOR(512),
+    embedding_mobileclip_s2  public.VECTOR(512),
+    embedding_mobileclip_b   public.VECTOR(512),
+    embedding_mobileclip_blt public.VECTOR(512),
+    hash                     TEXT,
+    from_old_database        BOOLEAN DEFAULT FALSE
 );
 
 

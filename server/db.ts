@@ -33,6 +33,7 @@ export const sql = createSqlTag({
       blurhash: z.string(),
       distance: z.number(),
     }),
+    void: z.object({}).strict(),
   },
 });
 
