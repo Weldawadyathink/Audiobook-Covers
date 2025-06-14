@@ -1,9 +1,8 @@
 FROM denoland/deno:alpine
 WORKDIR /app
-RUN apk add libvips
 
 COPY deno.json deno.lock ./
-RUN deno install --frozen
+RUN deno install --frozen --allow-scripts
 COPY . .
 RUN deno task build
 RUN deno cache main.ts

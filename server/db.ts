@@ -1,4 +1,4 @@
-import { createPool, createSqlTag } from "slonik";
+import { createPool, createSqlTag, DatabasePool } from "slonik";
 import { createPgDriverFactory } from "./create_pg_driver_factory.ts";
 import { z } from "zod";
 import { Client } from "pg";
@@ -7,16 +7,18 @@ import {
 } from "slonik-interceptor-query-logging";
 import { env } from "../env.ts";
 
-const dbUrl = env.DATABASE_URL;
-if (!dbUrl) {
-  throw new Error("DATABASE_URL environment variable not set!");
-}
+let slonik: DatabasePool;
+let pool: DatabasePool;
 
-export const slonik = await createPool(dbUrl, {
-  driverFactory: createPgDriverFactory(),
-  interceptors: [createQueryLoggingInterceptor()],
-});
-export const pool = slonik;
+if (env.NODE_ENV !== "build") {
+  const slonik = await createPool(env.DATABASE_URL, {
+    driverFactory: createPgDriverFactory(),
+    interceptors: [createQueryLoggingInterceptor()],
+  });
+  const pool = slonik;
+}
+// Do not connect to the database if building
+export { pool, slonik };
 
 export const sql = createSqlTag({
   typeAliases: {
