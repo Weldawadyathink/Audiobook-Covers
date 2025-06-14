@@ -22,23 +22,25 @@ jobs:
         uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
+      
+      #      - name: Install Node.js
+      #        uses: actions/setup-node@v4
+      #        with:
+      #          node-version: lts/*
 
       - name: Install step
-        run: "cd website && deno install"
+        run: "deno install"
 
       - name: Build step
-        run: "cd website && deno task build"
+        run: "deno task build"
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REPLICATE_API_TOKEN: "Nothing"
+
 
       - name: Upload to Deno Deploy
         uses: denoland/deployctl@v1
         with:
           project: "audiobook-covers"
           entrypoint: "main.ts"
-          root: "./website"
+          root: "./"
