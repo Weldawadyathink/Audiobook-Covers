@@ -3,35 +3,30 @@
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'audiobook-covers'
-primary_region = 'sjc'
+app = "audiobook-covers"
+primary_region = "sjc"
 
 [build]
 
 [http_service]
 internal_port = 8000
 force_https = true
-auto_stop_machines = 'suspend'
+auto_stop_machines = "suspend"
 auto_start_machines = true
 min_machines_running = 0
-processes = ['app']
+processes = ["app"]
 
-[[services.tcp_checks]]
-grace_period = "10s"
-interval = "15s"
-restart_limit = 0
-timeout = "2s"
-
-[[services.http_checks]]
-grace_period = "15s"
-interval = "15s"
-timeout = "2s"
-method = "get"
+[[http_service.checks]]
+grace_period = "6s"
+interval = "30s"
+method = "GET"
+timeout = "5s"
 path = "/api/healthcheck"
-tls_skip_verify = false
 
 [[vm]]
-size = 'shared-cpu-1x'
+cpus = 1
+memory = "256mb"
+cpu_kind = "shared"
 
 [env]
 NODE_ENV = "production"
