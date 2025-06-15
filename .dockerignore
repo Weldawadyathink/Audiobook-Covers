@@ -19,6 +19,7 @@ migrations
 .github
 .idea
 .vscode
+_fresh
 
 **/venv
 
