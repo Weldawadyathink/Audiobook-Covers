@@ -4513,6 +4513,7 @@
       "jsr:@fresh/plugin-tailwind@^0.0.1-alpha.7",
       "jsr:@keawade/zod-env@~0.1.2",
       "jsr:@std/crypto@^1.0.5",
+      "jsr:@std/encoding@^1.0.10",
       "jsr:@std/http@^1.0.18",
       "jsr:@stdext/crypto@0.1",
       "npm:@preact/signals@^2.0.4",

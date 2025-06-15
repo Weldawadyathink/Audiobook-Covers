@@ -4,6 +4,7 @@ import { getDbPool, sql } from "../../server/db.ts";
 import { verify } from "@stdext/crypto/hash";
 import { setCookie } from "@std/http";
 import { env } from "../../env.ts";
+import { encodeBase64 } from "@std/encoding";
 
 const formValidator = z.object({
   username: z.string(),
@@ -46,10 +47,13 @@ export const handler = define.handlers({
     } else {
       const headers = new Headers();
       const url = new URL(ctx.req.url);
-      const cookieId = crypto.randomUUID();
+      const sessionId = crypto.randomUUID();
       setCookie(headers, {
         name: "auth",
-        value: cookieId,
+        value: encodeBase64(JSON.stringify({
+          sessionId,
+          username: result.username,
+        })),
         maxAge: 28800,
         sameSite: "Lax",
         domain: url.hostname,
@@ -57,12 +61,12 @@ export const handler = define.handlers({
         secure: env.NODE_ENV === "production", // Insecure for dev environment
       });
       headers.set("Location", "/");
-      console.log(cookieId);
+      console.log(sessionId);
       console.log(result);
       await pool.query(
         sql.typeAlias("void")`
-          INSERT INTO session(token, user_id, expires_at)
-          VALUES(${cookieId}, ${result.id}, NOW() + INTERVAL '1 day')
+          INSERT INTO session(session_id, user_id, expires_at)
+          VALUES(${sessionId}, ${result.id}, NOW() + INTERVAL '1 day')
         `,
       );
       return new Response("Logged in", {
