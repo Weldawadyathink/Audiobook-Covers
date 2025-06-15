@@ -28,3 +28,4 @@ size = 'shared-cpu-1x'
 
 [env]
 NODE_ENV = "production"
+ROARR_LOG = "true"
