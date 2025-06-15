@@ -23,45 +23,6 @@ export default define.page(async (props) => {
         image2: DBImageDataValidator,
       }),
     )`
-      WITH
-        complete_image AS (
-          SELECT
-            id,
-            embedding_mobileclip_s0
-          FROM image
-          WHERE deleted IS FALSE
-        ),
-        tablesample_image AS (
-          SELECT
-            id,
-            embedding_mobileclip_s0
-          FROM image
-          TABLESAMPLE SYSTEM (5) REPEATABLE (42)
-          WHERE deleted IS FALSE
-        ),
-        sample_vectors AS (
-          SELECT
-            id,
-            embedding_mobileclip_s0
-          FROM
-            ${
-      sql.identifier([
-        env.NODE_ENV === "development" ? "tablesample_image" : "complete_image",
-      ])
-    }
-        ),
-        neighbors AS (
-          SELECT
-            a.id AS id1,
-            b.id AS id2,
-            a.embedding_mobileclip_s0
-              <=> b.embedding_mobileclip_s0 AS distance
-          FROM sample_vectors a
-            JOIN sample_vectors b ON a.id < b.id
-          WHERE
-            a.embedding_mobileclip_s0
-              <=> b.embedding_mobileclip_s0 < 0.1
-        )
       SELECT
         jsonb_build_object(
           'id',                i1.id,
@@ -80,10 +41,11 @@ export default define.page(async (props) => {
           'from_old_database', i2.from_old_database
         ) AS image2,
         n.distance
-      FROM neighbors n
+      FROM image_neighbor n
         JOIN image i1 ON i1.id = n.id1
         JOIN image i2 ON i2.id = n.id2
-      ORDER BY n.distance;
+      ORDER BY n.distance
+      LIMIT 24
     `,
   );
 
