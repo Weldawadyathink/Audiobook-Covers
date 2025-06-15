@@ -3,6 +3,7 @@ import { z } from "zod/v4";
 import { getDbPool, sql } from "../../server/db.ts";
 import { verify } from "@stdext/crypto/hash";
 import { setCookie } from "@std/http";
+import { env } from "../../env.ts";
 
 const formValidator = z.object({
   username: z.string(),
@@ -53,7 +54,7 @@ export const handler = define.handlers({
         sameSite: "Lax",
         domain: url.hostname,
         path: "/",
-        secure: true,
+        secure: env.NODE_ENV === "production", // Insecure for dev environment
       });
       headers.set("Location", "/");
       console.log(cookieId);

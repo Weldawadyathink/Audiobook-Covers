@@ -28,6 +28,7 @@ export const sql = createSqlTag({
       source: z.string(),
       extension: z.string(),
       blurhash: z.string(),
+      searchable: z.boolean().optional(),
     }),
     imageDataWithDistance: z.object({
       id: z.string().uuid(),
@@ -35,6 +36,7 @@ export const sql = createSqlTag({
       extension: z.string(),
       blurhash: z.string(),
       distance: z.number(),
+      searchable: z.boolean().optional(),
     }),
     void: z.object({}).strict(),
   },

@@ -25,7 +25,7 @@ export async function getRandom() {
 }
 
 export async function getImageById(id: string) {
-  console.log(`getById: ${id}`);
+  console.log(`getImageById: ${id}`);
   const start = performance.now();
   const pool = await getDbPool();
   const results = await pool.maybeOne(
@@ -34,9 +34,10 @@ export async function getImageById(id: string) {
         id,
         source,
         extension,
-        blurhash
+        blurhash,
+        searchable
       FROM image
-      WHERE id=${id}
+      WHERE id = ${id}
       LIMIT 1
     `,
   );
@@ -64,6 +65,7 @@ export async function vectorSearchByString(
         source,
         extension,
         blurhash,
+        searchable,
         ${model.dbColumn} <=> ${JSON.stringify(vector.embedding)} as distance
       FROM image
       WHERE searchable

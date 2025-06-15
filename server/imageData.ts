@@ -7,9 +7,10 @@ const getPixelsAsync = promisify(getPixels);
 
 export interface DBImageData {
   id: string;
-  source: string | null;
-  extension: string | null;
-  blurhash: string | null;
+  source: string;
+  extension: string;
+  blurhash: string;
+  searchable?: boolean;
 }
 
 export interface DBImageDataWithDistance extends DBImageData {
@@ -21,6 +22,7 @@ export interface ImageData {
   url: string;
   blurhashUrl: string;
   source: string;
+  searchable?: boolean;
   jpeg: {
     320: string;
     640: string;
@@ -74,6 +76,7 @@ export async function shapeImageData(
       id: image.id,
       blurhashUrl: blurhashUrl,
       source: image.source || "",
+      searchable: image.searchable,
       url: `${imageUrlPrefix}/original/${image.id}.${image.extension}`,
       jpeg: {
         320: `${imageUrlPrefix}/jpeg/320/${image.id}.jpg`,

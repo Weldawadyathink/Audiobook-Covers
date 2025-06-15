@@ -3,7 +3,7 @@
     "check": "deno fmt --check . && deno lint . && deno check **/*.ts && deno check **/*.tsx",
     "dev": "deno run --env-file -A --watch=static/,routes/ dev.ts",
     "build": "NODE_ENV=build deno run --env-file -A dev.ts build",
-    "start": "deno run -A main.ts",
+    "start": "NODE_ENV=production deno run -A main.ts",
     "update": "deno run -A -r jsr:@fresh/update .",
     "reembed": "deno run -A --env-file server/reindexEmbedding.ts",
     "docker": "docker build . -t audiobookcovers && docker run -it --rm audiobookcovers -P 8000:8000",
