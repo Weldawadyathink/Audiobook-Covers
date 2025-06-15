@@ -1,6 +1,6 @@
 import { createPool, createSqlTag, DatabasePool } from "slonik";
 import { createPgDriverFactory } from "./create_pg_driver_factory.ts";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { Client } from "pg";
 import {
   createQueryLoggingInterceptor,
@@ -24,21 +24,6 @@ export async function getDbPool(): Promise<DatabasePool> {
 
 export const sql = createSqlTag({
   typeAliases: {
-    imageData: z.object({
-      id: z.string().uuid(),
-      source: z.string(),
-      extension: z.string(),
-      blurhash: z.string(),
-      searchable: z.boolean().optional(),
-    }),
-    imageDataWithDistance: z.object({
-      id: z.string().uuid(),
-      source: z.string(),
-      extension: z.string(),
-      blurhash: z.string(),
-      distance: z.number(),
-      searchable: z.boolean().optional(),
-    }),
     void: z.object({}).strict(),
   },
 });

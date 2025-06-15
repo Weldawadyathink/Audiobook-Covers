@@ -1,4 +1,4 @@
-import { ImageData, shapeImageData } from "./imageData.ts";
+import { ImageData, shapeImageDataArray } from "./imageData.ts";
 import { ModelDefinition, ModelOptions, models } from "./models.ts";
 import { getDbPool, sql } from "./db.ts";
 
@@ -32,7 +32,7 @@ async function reindexAllImages(model: ModelDefinition) {
     return;
   }
   console.log(`Selected ${images.length} images from database to embed`);
-  const imgData = await shapeImageData(images);
+  const imgData = await shapeImageDataArray(images);
   await Promise.all(imgData.map((i) => reindexPicture(i, model)));
   const time = (performance.now() - start) / 1000;
   console.log(`Reindexed ${images.length} images in ${time.toFixed(0)}s`);

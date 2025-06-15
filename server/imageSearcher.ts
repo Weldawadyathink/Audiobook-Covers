@@ -1,17 +1,19 @@
-import { type ImageData, shapeImageData } from "./imageData.ts";
+import { shapeImageDataArray } from "./imageData.ts";
 import { getDbPool, sql } from "./db.ts";
 import { defaultModel, ModelOptions, models } from "./models.ts";
+import { DBImageDataValidator } from "./imageData.ts";
 
 export async function getRandom() {
   console.log("Getting random cover");
   const start = performance.now();
   const pool = await getDbPool();
   const results = await pool.many(
-    sql.typeAlias("imageData")`
+    sql.type(DBImageDataValidator)`
       SELECT
         id,
         source,
         extension,
+        from_old_database,
         blurhash
       FROM image
       WHERE searchable
@@ -21,7 +23,40 @@ export async function getRandom() {
   );
   const time = performance.now() - start;
   console.log(`getRandom database lookup in ${time.toFixed(1)}ms`);
-  return await shapeImageData(results);
+  return await shapeImageDataArray(results);
+}
+
+export async function getImageByIdAndSimilar(id: string) {
+  // If not found, return empty array
+  console.log(`getImageByIdAndSimilar: ${id}`);
+  const start = performance.now();
+  const pool = await getDbPool();
+  const model = models[defaultModel];
+  const results = await pool.any(
+    sql.type(DBImageDataValidator)`
+      WITH target AS (
+        SELECT ${model.dbColumn} as e
+        FROM image
+        WHERE id = ${id}
+      )
+      SELECT
+        i.id,
+        i.source,
+        i.extension,
+        i.blurhash,
+        i.from_old_database,
+        i.searchable,
+        i.${model.dbColumn} <=> target.e as distance
+      FROM 
+        image as i
+        CROSS JOIN target
+      ORDER BY distance
+      LIMIT 96
+    `,
+  );
+  const time = performance.now() - start;
+  console.log(`getImageByIdAnsSimilar database lookup in ${time.toFixed(1)}ms`);
+  return await shapeImageDataArray(results);
 }
 
 export async function getImageById(id: string) {
@@ -29,12 +64,13 @@ export async function getImageById(id: string) {
   const start = performance.now();
   const pool = await getDbPool();
   const results = await pool.maybeOne(
-    sql.typeAlias("imageData")`
+    sql.type(DBImageDataValidator)`
       SELECT
         id,
         source,
         extension,
         blurhash,
+        from_old_database,
         searchable
       FROM image
       WHERE id = ${id}
@@ -46,7 +82,7 @@ export async function getImageById(id: string) {
   if (!results) {
     return;
   }
-  return (await shapeImageData([results]))[0];
+  return (await shapeImageDataArray([results]))[0];
 }
 
 export async function vectorSearchByString(
@@ -59,17 +95,18 @@ export async function vectorSearchByString(
   const dbStart = performance.now();
   const pool = await getDbPool();
   const results = await pool.many(
-    sql.typeAlias("imageDataWithDistance")`
+    sql.type(DBImageDataValidator)`
       SELECT
         id,
         source,
         extension,
         blurhash,
+        from_old_database,
         searchable,
         ${model.dbColumn} <=> ${JSON.stringify(vector.embedding)} as distance
       FROM image
       WHERE searchable
-      ORDER BY distance ASC
+      ORDER BY distance
       LIMIT 96
     `,
   );
@@ -79,5 +116,5 @@ export async function vectorSearchByString(
       dbStart - embedStart
     }ms, DB time: ${finish - dbStart}ms, Total time: ${finish - embedStart}ms`,
   );
-  return await shapeImageData(results);
+  return await shapeImageDataArray(results);
 }

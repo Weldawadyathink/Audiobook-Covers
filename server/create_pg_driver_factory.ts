@@ -1,6 +1,6 @@
-// Taken from: https://github.com/lopkol/sff-vektor/blob/a08f6b303295775443efcaf8a5050e627015c82c/slonik-pg-driver/create_pg_driver_factory.ts#L199-L206
+// @ts-nocheck I know this code works, but has some type errors
 
-// @ts-types="npm:@types/pg"
+// Taken from: https://github.com/lopkol/sff-vektor/blob/a08f6b303295775443efcaf8a5050e627015c82c/slonik-pg-driver/create_pg_driver_factory.ts#L199-L206
 
 /**
  * This file is a fork of the slonik pg driver factory

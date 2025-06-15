@@ -1,6 +1,6 @@
 import { define } from "../utils.ts";
 
-export default define.page(async () => {
+export default define.page(() => {
   return (
     <a href="https://fresh.deno.dev">
       <img

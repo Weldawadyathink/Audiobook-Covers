@@ -1,7 +1,7 @@
 import { getCookies } from "@std/http";
 import { getDbPool, sql } from "./db.ts";
 import { z } from "zod/v4";
-import { decodeBase64, encodeBase64 } from "@std/encoding";
+import { decodeBase64 } from "@std/encoding";
 
 export async function getIsAuthenticated(req: Request) {
   const cookies = getCookies(req.headers);

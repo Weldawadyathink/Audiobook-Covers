@@ -30,6 +30,7 @@ export default define.page(async (props) => {
           <>
             <ImageCard
               showDistance={auth}
+              showDataset={auth}
               key={image.id}
               imageData={image}
               className="max-w-96"

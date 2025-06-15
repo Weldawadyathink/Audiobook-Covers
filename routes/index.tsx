@@ -2,6 +2,7 @@ import { define } from "../utils.ts";
 import ImageCard from "../islands/ImageCard.tsx";
 import { getRandom } from "../server/imageSearcher.ts";
 import { cn } from "../components/utils.ts";
+import { getIsAuthenticated } from "../server/auth.ts";
 
 function isLargeImage(index: number) {
   const repeatInterval = 15; // Pattern repeats every 15 numbers
@@ -9,7 +10,8 @@ function isLargeImage(index: number) {
   return select.has(index % repeatInterval);
 }
 
-export default define.page(async () => {
+export default define.page(async (props) => {
+  const auth = await getIsAuthenticated(props.req);
   const images = await getRandom();
   return (
     <div className="grid md:grid-cols-4 justify-center gap-6 sm:grid-cols-2 mx-6 my-6">
@@ -17,6 +19,7 @@ export default define.page(async () => {
         <ImageCard
           key={image.id}
           imageData={image}
+          showDataset={auth}
           className={cn(
             "",
             isLargeImage(index) &&

@@ -1,19 +1,18 @@
 import { define } from "../../utils.ts";
 import ImageCard from "../../islands/ImageCard.tsx";
-import { getImageById } from "../../server/imageSearcher.ts";
+import {
+  getImageById,
+  getImageByIdAndSimilar,
+} from "../../server/imageSearcher.ts";
 import { getIsAuthenticated } from "../../server/auth.ts";
 
 export default define.page(async (props) => {
+  console.log(await getImageById(props.params.id));
   const auth = await getIsAuthenticated(props.req);
-  const image = await getImageById(props.params.id);
+  const [image, ...similar] = await getImageByIdAndSimilar(props.params.id);
 
   if (!image) {
     return <p>Image id {props.params.id} could not be found.</p>;
-  }
-
-  if (!("searchable" in image)) {
-    console.error("Image does not have searchable field");
-    return new Response("Internal server error", { status: 500 });
   }
 
   return (
@@ -33,6 +32,19 @@ export default define.page(async (props) => {
             </select>
             <button type="submit">Submit</button>
           </form>
+        </div>
+      )}
+
+      {similar && (
+        <div class="grid grid-cols-4 gap-4">
+          {similar.map((image) => (
+            <ImageCard
+              key={image.id}
+              imageData={image}
+              showDistance={auth}
+              showDataset={auth}
+            />
+          ))}
         </div>
       )}
     </div>
