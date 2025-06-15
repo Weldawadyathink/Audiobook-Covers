@@ -5,9 +5,7 @@
     "build": "NODE_ENV=build deno run --env-file -A dev.ts build",
     "start": "NODE_ENV=production deno run -A main.ts",
     "update": "deno run -A -r jsr:@fresh/update .",
-    "reembed": "deno run -A --env-file server/reindexEmbedding.ts",
-    "docker": "docker build . -t audiobookcovers && docker run -it --rm audiobookcovers -P 8000:8000",
-    "docker:it": "docker build . -t audiobookcovers && docker run -it --rm audiobookcovers /bin/sh"
+    "reembed": "deno run -A --env-file server/reindexEmbedding.ts"
   },
   "nodeModulesDir": "auto",
   "lint": {
