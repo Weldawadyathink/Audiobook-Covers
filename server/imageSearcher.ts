@@ -17,6 +17,7 @@ export async function getRandom() {
         blurhash
       FROM image
       WHERE searchable
+        AND deleted IS FALSE
       ORDER BY RANDOM()
       LIMIT 54
     `,
@@ -38,6 +39,7 @@ export async function getImageByIdAndSimilar(id: string) {
         SELECT ${model.dbColumn} as e
         FROM image
         WHERE id = ${id}
+          AND deleted IS FALSE
       )
       SELECT
         i.id,
@@ -50,6 +52,7 @@ export async function getImageByIdAndSimilar(id: string) {
       FROM 
         image as i
         CROSS JOIN target
+      WHERE i.deleted IS FALSE
       ORDER BY distance
       LIMIT 96
     `,
@@ -74,6 +77,7 @@ export async function getImageById(id: string) {
         searchable
       FROM image
       WHERE id = ${id}
+        AND deleted IS FALSE
       LIMIT 1
     `,
   );
@@ -106,6 +110,7 @@ export async function vectorSearchByString(
         ${model.dbColumn} <=> ${JSON.stringify(vector.embedding)} as distance
       FROM image
       WHERE searchable
+        AND deleted IS FALSE
       ORDER BY distance
       LIMIT 96
     `,

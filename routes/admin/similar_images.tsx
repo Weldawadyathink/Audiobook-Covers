@@ -24,12 +24,20 @@ export default define.page(async (props) => {
       }),
     )`
       WITH
+        complete_image AS (
+          SELECT
+            id,
+            embedding_mobileclip_s0
+          FROM image
+          WHERE deleted IS FALSE
+        ),
         tablesample_image AS (
           SELECT
             id,
             embedding_mobileclip_s0
           FROM image
           TABLESAMPLE SYSTEM (5) REPEATABLE (42)
+          WHERE deleted IS FALSE
         ),
         sample_vectors AS (
           SELECT
@@ -38,7 +46,7 @@ export default define.page(async (props) => {
           FROM
             ${
       sql.identifier([
-        env.NODE_ENV === "development" ? "tablesample_image" : "image",
+        env.NODE_ENV === "development" ? "tablesample_image" : "complete_image",
       ])
     }
         ),
