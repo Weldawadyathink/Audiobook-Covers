@@ -13,6 +13,7 @@ const global = globalThis as unknown as {
 
 export async function getDbPool(): Promise<DatabasePool> {
   if (!global.slonikDbPool) {
+    console.log("Creating database pool");
     global.slonikDbPool = await createPool(env.DATABASE_URL, {
       driverFactory: createPgDriverFactory(),
       interceptors: [createQueryLoggingInterceptor()],
