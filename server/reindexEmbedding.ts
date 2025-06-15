@@ -1,9 +1,10 @@
 import { ImageData, shapeImageData } from "./imageData.ts";
-import { ModelDefinition, models } from "./models.ts";
+import { ModelDefinition, ModelOptions, models } from "./models.ts";
 import { getDbPool, sql } from "./db.ts";
 
 async function reindexPicture(img: ImageData, model: ModelDefinition) {
   const replicate = await model.getImageEmbedding(img.url);
+  const pool = await getDbPool();
   await pool.query(
     sql.unsafe`
       UPDATE image
@@ -41,7 +42,7 @@ async function reindexAllImages(model: ModelDefinition) {
 if (import.meta.main) {
   const modelName = Deno.args[0];
   const processes = Deno.args[1] || 2;
-  const model = models[modelName];
+  const model = models[modelName as ModelOptions];
   console.log(`Generating embeddings for ${modelName}`);
   await Promise.all(
     // Runs two reindexing processes at the same time
