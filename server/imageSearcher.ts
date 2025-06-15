@@ -70,7 +70,7 @@ export async function vectorSearchByString(
       FROM image
       WHERE searchable
       ORDER BY distance ASC
-      LIMIT 24
+      LIMIT 96
     `,
   );
   const finish = performance.now();
