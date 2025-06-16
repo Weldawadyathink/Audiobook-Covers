@@ -1,4 +1,8 @@
-import { ImageData, shapeImageDataArray } from "./imageData.ts";
+import {
+  DBImageDataValidator,
+  ImageData,
+  shapeImageDataArray,
+} from "./imageData.ts";
 import { ModelDefinition, ModelOptions, models } from "./models.ts";
 import { getDbPool, sql } from "./db.ts";
 
@@ -19,7 +23,7 @@ async function reindexAllImages(model: ModelDefinition) {
   const start = performance.now();
   const pool = await getDbPool();
   const images = await pool.any(
-    sql.typeAlias("imageData")`
+    sql.type(DBImageDataValidator)`
       SELECT *
       FROM image
       WHERE ${model.dbColumn} IS NULL

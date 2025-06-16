@@ -1,4 +1,4 @@
-import { decode, encode } from "blurhash";
+import { decode } from "blurhash";
 // import sharp from "sharp";
 
 export { isBlurhashValid } from "blurhash";
@@ -146,15 +146,15 @@ export function getBlurhashUrl(inputHash: string) {
   };
 
   // this is a fork of https://gist.github.com/mattiaz9/53cb67040fa135cb395b1d015a200aff
-  const getPngArray = (pngString: string) => {
-    const pngArray = new Uint8Array(pngString.length);
-
-    for (let i = 0; i < pngString.length; i++) {
-      pngArray[i] = pngString.charCodeAt(i);
-    }
-
-    return pngArray;
-  };
+  // const getPngArray = (pngString: string) => {
+  //   const pngArray = new Uint8Array(pngString.length);
+  //
+  //   for (let i = 0; i < pngString.length; i++) {
+  //     pngArray[i] = pngString.charCodeAt(i);
+  //   }
+  //
+  //   return pngArray;
+  // };
 
   const blurHashToDataURL = (hash: string, width = 32, height = 32) => {
     const rgba = decode(hash, width, height);

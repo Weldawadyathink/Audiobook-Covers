@@ -5,7 +5,7 @@ import { DBImageDataValidator } from "../../server/imageData.ts";
 import { z } from "zod/v4";
 import ImageCard from "../../islands/ImageCard.tsx";
 
-export default define.page(async (ctx) => {
+export default define.page(async () => {
   console.log(
     "ADMIN: Getting similar images from database, long running query.",
   );

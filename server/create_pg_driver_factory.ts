@@ -56,6 +56,7 @@ type PostgresType = {
   typname: string;
 };
 
+// deno-lint-ignore no-explicit-any
 type TypeOverrides = (oid: number) => any;
 
 const createTypeOverrides = async (
@@ -298,7 +299,7 @@ export const createPgDriverFactory = (): DriverFactory => {
     };
 
     return {
-      createPoolClient: async ({ clientEventEmitter }) => {
+      createPoolClient: ({ clientEventEmitter }) => {
         const client = new pg.Client(clientConfiguration);
 
         // We will see this triggered when the connection is terminated, e.g.
@@ -384,7 +385,7 @@ export const createPgDriverFactory = (): DriverFactory => {
 
             const transform = new Transform({
               objectMode: true,
-              async transform(datum, enc, callback) {
+              transform(datum, _enc, callback) {
                 if (!fields) {
                   callback(new Error("Fields not available"));
 
