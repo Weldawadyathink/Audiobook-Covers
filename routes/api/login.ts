@@ -60,7 +60,7 @@ export const handler = define.handlers({
         path: "/",
         secure: env.NODE_ENV === "production", // Insecure for dev environment
       });
-      headers.set("Location", "/");
+      headers.set("Location", "/admin");
       console.log(sessionId);
       console.log(result);
       await pool.query(

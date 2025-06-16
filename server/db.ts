@@ -8,7 +8,7 @@ import {
 import { env } from "../env.ts";
 
 const global = globalThis as unknown as {
-  slonikDbPool: DatabasePool | unknown;
+  slonikDbPool: DatabasePool | undefined;
 };
 
 export async function getDbPool(): Promise<DatabasePool> {
@@ -19,7 +19,7 @@ export async function getDbPool(): Promise<DatabasePool> {
       interceptors: [createQueryLoggingInterceptor()],
     });
   }
-  return global.slonikDbPool as DatabasePool;
+  return global.slonikDbPool;
 }
 
 export const sql = createSqlTag({

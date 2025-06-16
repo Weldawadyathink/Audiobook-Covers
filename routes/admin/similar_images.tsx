@@ -2,15 +2,10 @@ import { define } from "../../utils.ts";
 import { getDbPool, sql } from "../../server/db.ts";
 import { shapeImageData } from "../../server/imageData.ts";
 import { DBImageDataValidator } from "../../server/imageData.ts";
-import { env } from "../../env.ts";
 import { z } from "zod/v4";
-import { getIsAuthenticated } from "../../server/auth.ts";
 import ImageCard from "../../islands/ImageCard.tsx";
 
-export default define.page(async (props) => {
-  if (!(await getIsAuthenticated(props.req))) {
-    return <p>Not authenticated</p>;
-  }
+export default define.page(async (ctx) => {
   console.log(
     "ADMIN: Getting similar images from database, long running query.",
   );
