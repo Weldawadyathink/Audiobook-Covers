@@ -50,9 +50,6 @@ importers:
       lucide-react:
         specifier: ^0.516.0
         version: 0.516.0(react@19.1.0)
-      pg-cloudflare:
-        specifier: ^1.2.5
-        version: 1.2.5
       prettier:
         specifier: ^3.5.3
         version: 3.5.3
@@ -6540,7 +6537,8 @@ snapshots:
 
   performance-now@2.1.0: {}
 
-  pg-cloudflare@1.2.5: {}
+  pg-cloudflare@1.2.5:
+    optional: true
 
   pg-connection-string@2.9.0: {}
 

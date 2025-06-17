@@ -27,7 +27,6 @@
     "get-pixels": "^3.3.3",
     "ky": "^1.8.1",
     "lucide-react": "^0.516.0",
-    "pg-cloudflare": "^1.2.5",
     "prettier": "^3.5.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
