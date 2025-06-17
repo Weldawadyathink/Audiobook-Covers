@@ -4,6 +4,7 @@ import {
   createRootRoute,
   HeadContent,
   Scripts,
+  Link,
 } from "@tanstack/react-router";
 // @ts-ignore For some reason it doesn't like this pattern
 import appCss from "@/styles/app.css?url";
@@ -64,7 +65,15 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
         <HeadContent />
       </head>
       <body>
-        {children}
+        <div className="fixed inset-0 z-[-1] bg-slate-700 " />
+        <div className="m-2 gap-2 flex">
+          <Link to="/">Home</Link>
+          <Link to="/search">Search</Link>
+          <Link to="/about">About</Link>
+          <Link to="/contribute">Contribute</Link>
+          <Link to="/admin">Admin</Link>
+        </div>
+        <div className="m-2">{children}</div>
         <Scripts />
       </body>
     </html>
