@@ -4,7 +4,7 @@ import { defaultModel, ModelOptions, models } from "@/server/models";
 import { DBImageDataValidator } from "@/server/imageData";
 import { createServerFn } from "@tanstack/react-start";
 
-export async function getRandom() {
+export const getRandom = createServerFn().handler(async () => {
   console.log("Getting random cover");
   const start = performance.now();
   const pool = await getDbPool();
@@ -26,7 +26,7 @@ export async function getRandom() {
   const time = performance.now() - start;
   console.log(`getRandom database lookup in ${time.toFixed(1)}ms`);
   return await shapeImageDataArray(results);
-}
+});
 
 export async function getImageByIdAndSimilar(id: string) {
   // If not found, return empty array
