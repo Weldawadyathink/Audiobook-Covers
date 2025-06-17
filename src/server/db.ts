@@ -2,7 +2,7 @@ import { createPool, createSqlTag, DatabasePool } from "slonik";
 import { createPgDriverFactory } from "@slonik/pg-driver";
 import { z } from "zod/v4";
 import { createQueryLoggingInterceptor } from "slonik-interceptor-query-logging";
-import { env } from "@/server/env";
+import { getEnv } from "@/server/env";
 
 const global = globalThis as unknown as {
   slonikDbPool: DatabasePool | undefined;
@@ -11,7 +11,7 @@ const global = globalThis as unknown as {
 export async function getDbPool(): Promise<DatabasePool> {
   if (!global.slonikDbPool) {
     console.log("Creating database pool");
-    global.slonikDbPool = await createPool(env.DATABASE_URL, {
+    global.slonikDbPool = await createPool(getEnv().DATABASE_URL, {
       driverFactory: createPgDriverFactory(),
       interceptors: [createQueryLoggingInterceptor()],
     });
