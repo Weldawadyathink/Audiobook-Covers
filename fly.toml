@@ -1,0 +1,33 @@
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = "audiobook-covers"
+primary_region = "sjc"
+swap_size_mb = 2048
+
+[build]
+
+[http_service]
+internal_port = 3000
+force_https = true
+auto_stop_machines = "suspend"
+auto_start_machines = true
+min_machines_running = 0
+processes = ["app"]
+
+[[http_service.checks]]
+grace_period = "6s"
+interval = "30s"
+method = "GET"
+timeout = "5s"
+path = "/api/healthcheck"
+
+[[vm]]
+cpus = 1
+memory = "512mb"
+cpu_kind = "shared"
+
+[env]
+NODE_ENV = "production"
+ROARR_LOG = "true"

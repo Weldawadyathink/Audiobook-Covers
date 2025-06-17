@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build"
+    "build": "vite build",
+    "start": "node .output/server/index.mjs"
   },
   "keywords": [],
   "author": "",
