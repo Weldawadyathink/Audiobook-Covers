@@ -1,8 +1,14 @@
 import { shapeImageDataArray } from "@/server/imageData";
 import { getDbPool, sql } from "@/server/db";
-import { defaultModel, ModelOptions, models } from "@/server/models";
+import {
+  defaultModel,
+  ModelOptions,
+  models,
+  zModelOptions,
+} from "@/server/models";
 import { DBImageDataValidator } from "@/server/imageData";
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod/v4";
 
 export const getRandom = createServerFn().handler(async () => {
   console.log("Getting random cover");
@@ -27,42 +33,47 @@ export const getRandom = createServerFn().handler(async () => {
   console.log(`getRandom database lookup in ${time.toFixed(1)}ms`);
   return await shapeImageDataArray(results);
 });
-//
-// export async function getImageByIdAndSimilar(id: string) {
-//   // If not found, return empty array
-//   console.log(`getImageByIdAndSimilar: ${id}`);
-//   const start = performance.now();
-//   const pool = await getDbPool();
-//   const model = models[defaultModel];
-//   const results = await pool.any(
-//     sql.type(DBImageDataValidator)`
-//       WITH target AS (
-//         SELECT ${model.dbColumn} as e
-//         FROM image
-//         WHERE id = ${id}
-//           AND deleted IS FALSE
-//       )
-//       SELECT
-//         i.id,
-//         i.source,
-//         i.extension,
-//         i.blurhash,
-//         i.from_old_database,
-//         i.searchable,
-//         i.${model.dbColumn} <=> target.e as distance
-//       FROM
-//         image as i
-//         CROSS JOIN target
-//       WHERE i.deleted IS FALSE
-//       ORDER BY distance
-//       LIMIT 96
-//     `,
-//   );
-//   const time = performance.now() - start;
-//   console.log(`getImageByIdAnsSimilar database lookup in ${time.toFixed(1)}ms`);
-//   return await shapeImageDataArray(results);
-// }
-//
+
+export const getImageByIdAndSimilar = createServerFn({
+  method: "GET",
+})
+  .validator(z.uuid())
+  .handler(async ({ data: id }) => {
+    console.log(`getImageByIdAndSimilar: ${id}`);
+    const start = performance.now();
+    const pool = await getDbPool();
+    const model = models[defaultModel];
+    const results = await pool.any(
+      sql.type(DBImageDataValidator)`
+      WITH target AS (
+        SELECT ${model.dbColumn} as e
+        FROM image
+        WHERE id = ${id}
+          AND deleted IS FALSE
+      )
+      SELECT
+        i.id,
+        i.source,
+        i.extension,
+        i.blurhash,
+        i.from_old_database,
+        i.searchable,
+        i.${model.dbColumn} <=> target.e as distance
+      FROM
+        image as i
+        CROSS JOIN target
+      WHERE i.deleted IS FALSE
+      ORDER BY distance
+      LIMIT 96
+    `,
+    );
+    const time = performance.now() - start;
+    console.log(
+      `getImageByIdAnsSimilar database lookup in ${time.toFixed(1)}ms`,
+    );
+    return await shapeImageDataArray(results);
+  });
+
 // export async function getImageById(id: string) {
 //   console.log(`getImageById: ${id}`);
 //   const start = performance.now();
@@ -89,38 +100,40 @@ export const getRandom = createServerFn().handler(async () => {
 //   }
 //   return (await shapeImageDataArray([results]))[0];
 // }
-//
-// export async function vectorSearchByString(
-//   query: string,
-//   modelName: ModelOptions = defaultModel,
-// ) {
-//   const model = models[modelName];
-//   const embedStart = performance.now();
-//   const vector = await model.getTextEmbedding(query);
-//   const dbStart = performance.now();
-//   const pool = await getDbPool();
-//   const results = await pool.many(
-//     sql.type(DBImageDataValidator)`
-//       SELECT
-//         id,
-//         source,
-//         extension,
-//         blurhash,
-//         from_old_database,
-//         searchable,
-//         ${model.dbColumn} <=> ${JSON.stringify(vector.embedding)} as distance
-//       FROM image
-//       WHERE searchable
-//         AND deleted IS FALSE
-//       ORDER BY distance
-//       LIMIT 96
-//     `,
-//   );
-//   const finish = performance.now();
-//   console.log(
-//     `Completed search with replicate embedding. Embed time: ${
-//       dbStart - embedStart
-//     }ms, DB time: ${finish - dbStart}ms, Total time: ${finish - embedStart}ms`,
-//   );
-//   return await shapeImageDataArray(results);
-// }
+
+export const vectorSearchByString = createServerFn()
+  .validator(z.object({ q: z.string(), model: zModelOptions }))
+  .handler(async ({ data }) => {
+    if (data.q === "") {
+      return [];
+    }
+    const model = models[data.model];
+    const embedStart = performance.now();
+    const vector = await model.getTextEmbedding(data.q);
+    const dbStart = performance.now();
+    const pool = await getDbPool();
+    const results = await pool.many(
+      sql.type(DBImageDataValidator)`
+      SELECT
+        id,
+        source,
+        extension,
+        blurhash,
+        from_old_database,
+        searchable,
+        ${model.dbColumn} <=> ${JSON.stringify(vector.embedding)} as distance
+      FROM image
+      WHERE searchable
+        AND deleted IS FALSE
+      ORDER BY distance
+      LIMIT 96
+    `,
+    );
+    const finish = performance.now();
+    console.log(
+      `Completed search with replicate embedding. Embed time: ${
+        dbStart - embedStart
+      }ms, DB time: ${finish - dbStart}ms, Total time: ${finish - embedStart}ms`,
+    );
+    return await shapeImageDataArray(results);
+  });

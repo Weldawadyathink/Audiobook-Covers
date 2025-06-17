@@ -14,13 +14,15 @@ export interface ModelDefinition {
   getImageEmbedding: (input: string) => Promise<EmbeddingOutput>;
 }
 
-const publicClipModelValidator = z.array(
-  // Output format for public andreasjansson/clip-features on replicate
-  z.object({
-    embedding: z.array(z.coerce.number()),
-    input: z.coerce.string(),
-  }),
-);
+const publicClipModelValidator = z
+  .array(
+    // Output format for public andreasjansson/clip-features on replicate
+    z.object({
+      embedding: z.array(z.coerce.number()),
+      input: z.coerce.string(),
+    }),
+  )
+  .min(1);
 
 async function genericFlyClipModel(modelId: string, input: string) {
   const json = await ky

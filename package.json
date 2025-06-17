@@ -19,6 +19,7 @@
     "@tailwindcss/vite": "^4.1.10",
     "@tanstack/react-router": "^1.121.21",
     "@tanstack/react-start": "^1.121.21",
+    "@tanstack/zod-adapter": "^1.121.21",
     "base-64": "^1.0.0",
     "blurhash": "^2.0.5",
     "class-variance-authority": "^0.7.1",
