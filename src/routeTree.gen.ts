@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as RandomRouteImport } from './routes/random'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ImagesIdRouteImport } from './routes/images.$id'
 
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
@@ -28,35 +29,44 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ImagesIdRoute = ImagesIdRouteImport.update({
+  id: '/images/$id',
+  path: '/images/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/random': typeof RandomRoute
   '/search': typeof SearchRoute
+  '/images/$id': typeof ImagesIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/random': typeof RandomRoute
   '/search': typeof SearchRoute
+  '/images/$id': typeof ImagesIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/random': typeof RandomRoute
   '/search': typeof SearchRoute
+  '/images/$id': typeof ImagesIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/random' | '/search'
+  fullPaths: '/' | '/random' | '/search' | '/images/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/random' | '/search'
-  id: '__root__' | '/' | '/random' | '/search'
+  to: '/' | '/random' | '/search' | '/images/$id'
+  id: '__root__' | '/' | '/random' | '/search' | '/images/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   RandomRoute: typeof RandomRoute
   SearchRoute: typeof SearchRoute
+  ImagesIdRoute: typeof ImagesIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -82,6 +92,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/images/$id': {
+      id: '/images/$id'
+      path: '/images/$id'
+      fullPath: '/images/$id'
+      preLoaderRoute: typeof ImagesIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -89,6 +106,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   RandomRoute: RandomRoute,
   SearchRoute: SearchRoute,
+  ImagesIdRoute: ImagesIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

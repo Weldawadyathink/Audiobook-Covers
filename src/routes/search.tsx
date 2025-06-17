@@ -14,7 +14,6 @@ export const Route = createFileRoute("/search")({
   validateSearch: zodValidator(searchParameters),
   loaderDeps: ({ search: { q, model } }) => ({ q, model }),
   loader: async ({ deps: data }) => {
-    console.log("Loading search", data);
     return {
       images: await vectorSearchByString({ data }),
       auth: true,
@@ -29,15 +28,13 @@ function RouteComponent() {
       <div>Hello "/search/"!</div>
       <div className="grid md:grid-cols-4 justify-center gap-6 sm:grid-cols-2 mx-6 my-6">
         {images.map((image) => (
-          <>
-            <ImageCard
-              showDistance={auth}
-              showDataset={auth}
-              key={image.id}
-              imageData={image}
-              className="max-w-96"
-            />
-          </>
+          <ImageCard
+            showDistance={auth}
+            showDataset={auth}
+            key={image.id}
+            imageData={image}
+            className="max-w-96"
+          />
         ))}
       </div>
       <Outlet />
