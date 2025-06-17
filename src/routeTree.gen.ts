@@ -8,11 +8,20 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import { createServerRootRoute } from '@tanstack/react-start/server'
+
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as RandomRouteImport } from './routes/random'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as ImagesIdRouteImport } from './routes/images.$id'
+import { Route as AdminTestRouteImport } from './routes/admin/test'
+import { ServerRoute as ApiLoginServerRouteImport } from './routes/api/login'
+
+const rootServerRouteImport = createServerRootRoute()
 
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
@@ -24,49 +33,132 @@ const RandomRoute = RandomRouteImport.update({
   path: '/random',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
 } as any)
 const ImagesIdRoute = ImagesIdRouteImport.update({
   id: '/images/$id',
   path: '/images/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminTestRoute = AdminTestRouteImport.update({
+  id: '/test',
+  path: '/test',
+  getParentRoute: () => AdminRoute,
+} as any)
+const ApiLoginServerRoute = ApiLoginServerRouteImport.update({
+  id: '/api/login',
+  path: '/api/login',
+  getParentRoute: () => rootServerRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/login': typeof LoginRoute
   '/random': typeof RandomRoute
   '/search': typeof SearchRoute
+  '/admin/test': typeof AdminTestRoute
   '/images/$id': typeof ImagesIdRoute
+  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/random': typeof RandomRoute
   '/search': typeof SearchRoute
+  '/admin/test': typeof AdminTestRoute
   '/images/$id': typeof ImagesIdRoute
+  '/admin': typeof AdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/login': typeof LoginRoute
   '/random': typeof RandomRoute
   '/search': typeof SearchRoute
+  '/admin/test': typeof AdminTestRoute
   '/images/$id': typeof ImagesIdRoute
+  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/random' | '/search' | '/images/$id'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/login'
+    | '/random'
+    | '/search'
+    | '/admin/test'
+    | '/images/$id'
+    | '/admin/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/random' | '/search' | '/images/$id'
-  id: '__root__' | '/' | '/random' | '/search' | '/images/$id'
+  to:
+    | '/'
+    | '/login'
+    | '/random'
+    | '/search'
+    | '/admin/test'
+    | '/images/$id'
+    | '/admin'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/login'
+    | '/random'
+    | '/search'
+    | '/admin/test'
+    | '/images/$id'
+    | '/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
+  LoginRoute: typeof LoginRoute
   RandomRoute: typeof RandomRoute
   SearchRoute: typeof SearchRoute
   ImagesIdRoute: typeof ImagesIdRoute
+}
+export interface FileServerRoutesByFullPath {
+  '/api/login': typeof ApiLoginServerRoute
+}
+export interface FileServerRoutesByTo {
+  '/api/login': typeof ApiLoginServerRoute
+}
+export interface FileServerRoutesById {
+  __root__: typeof rootServerRouteImport
+  '/api/login': typeof ApiLoginServerRoute
+}
+export interface FileServerRouteTypes {
+  fileServerRoutesByFullPath: FileServerRoutesByFullPath
+  fullPaths: '/api/login'
+  fileServerRoutesByTo: FileServerRoutesByTo
+  to: '/api/login'
+  id: '__root__' | '/api/login'
+  fileServerRoutesById: FileServerRoutesById
+}
+export interface RootServerRouteChildren {
+  ApiLoginServerRoute: typeof ApiLoginServerRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -85,12 +177,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RandomRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/images/$id': {
       id: '/images/$id'
@@ -99,11 +212,43 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ImagesIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/test': {
+      id: '/admin/test'
+      path: '/test'
+      fullPath: '/admin/test'
+      preLoaderRoute: typeof AdminTestRouteImport
+      parentRoute: typeof AdminRoute
+    }
+  }
+}
+declare module '@tanstack/react-start/server' {
+  interface ServerFileRoutesByPath {
+    '/api/login': {
+      id: '/api/login'
+      path: '/api/login'
+      fullPath: '/api/login'
+      preLoaderRoute: typeof ApiLoginServerRouteImport
+      parentRoute: typeof rootServerRouteImport
+    }
   }
 }
 
+interface AdminRouteChildren {
+  AdminTestRoute: typeof AdminTestRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminTestRoute: AdminTestRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
+  LoginRoute: LoginRoute,
   RandomRoute: RandomRoute,
   SearchRoute: SearchRoute,
   ImagesIdRoute: ImagesIdRoute,
@@ -111,3 +256,9 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+const rootServerRouteChildren: RootServerRouteChildren = {
+  ApiLoginServerRoute: ApiLoginServerRoute,
+}
+export const serverRouteTree = rootServerRouteImport
+  ._addFileChildren(rootServerRouteChildren)
+  ._addFileTypes<FileServerRouteTypes>()

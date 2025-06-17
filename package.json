@@ -21,6 +21,7 @@
     "@tanstack/react-router": "^1.121.21",
     "@tanstack/react-start": "^1.121.21",
     "@tanstack/zod-adapter": "^1.121.21",
+    "argon2": "^0.43.0",
     "base-64": "^1.0.0",
     "blurhash": "^2.0.5",
     "class-variance-authority": "^0.7.1",
@@ -30,7 +31,6 @@
     "get-pixels": "^3.3.3",
     "ky": "^1.8.1",
     "lucide-react": "^0.516.0",
-    "prettier": "^3.5.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "slonik": "^48.1.2",
@@ -45,6 +45,7 @@
     "@types/get-pixels": "^3.3.4",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
+    "prettier": "^3.5.3",
     "tw-animate-css": "^1.3.4",
     "typescript": "^5.8.3",
     "vite-tsconfig-paths": "^5.1.4"
