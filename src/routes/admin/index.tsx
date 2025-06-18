@@ -6,7 +6,13 @@ export const Route = createFileRoute("/admin/")({
 
 function RouteComponent() {
   return (
-    <div>
+    <div className="p-4">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+        <Link to="/admin/logout" className="text-red-600 hover:text-red-700">
+          Logout
+        </Link>
+      </div>
       <Link to="/admin/test">Test</Link>
     </div>
   );

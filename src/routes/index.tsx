@@ -1,48 +1,41 @@
-import * as fs from "node:fs";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
-import {Button} from "@/components/ui/button";
+import { createFileRoute } from "@tanstack/react-router";
+import { getRandom } from "@/server/imageSearcher";
+import ImageCard from "@/components/ImageCard";
+import { cn } from "@/lib/utils";
+import { getIsAuthenticated } from "@/server/auth";
 
-const filePath = "count.txt";
-
-async function readCount() {
-  return parseInt(
-    await fs.promises.readFile(filePath, "utf-8").catch(() => "0"),
-  );
+function isLargeImage(index: number) {
+  const repeatInterval = 15; // Pattern repeats every 15 numbers
+  const select = new Set([1, 9, 10]); // Select large images by modulus
+  return select.has(index % repeatInterval);
 }
-
-const getCount = createServerFn({
-  method: "GET",
-}).handler(() => {
-  return readCount();
-});
-
-const updateCount = createServerFn({ method: "POST" })
-  .validator((d: number) => d)
-  .handler(async ({ data }) => {
-    const count = await readCount();
-    await fs.promises.writeFile(filePath, `${count + data}`);
-  });
 
 export const Route = createFileRoute("/")({
   component: Home,
-  loader: async () => await getCount(),
+  loader: async () => {
+    return {
+      images: await getRandom(),
+      auth: await getIsAuthenticated(),
+    };
+  },
 });
 
 function Home() {
-  const router = useRouter();
-  const state = Route.useLoaderData();
+  const { images, auth } = Route.useLoaderData();
 
   return (
-    <Button
-      type="button"
-      onClick={() => {
-        updateCount({ data: 1 }).then(() => {
-          router.invalidate();
-        });
-      }}
-    >
-      Add 1 to {state}?
-    </Button>
+    <div className="grid md:grid-cols-4 justify-center gap-6 sm:grid-cols-2 mx-6 my-6">
+      {images.map((image, index) => (
+        <ImageCard
+          key={image.id}
+          imageData={image}
+          showDataset={auth}
+          className={cn(
+            "",
+            isLargeImage(index) && "col-span-2 row-span-2 scale-95"
+          )}
+        />
+      ))}
+    </div>
   );
 }
