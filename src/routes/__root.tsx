@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-router";
 // @ts-ignore For some reason it doesn't like this pattern
 import appCss from "@/styles/app.css?url";
+import { Separator } from "@/components/ui/separator";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -66,14 +67,32 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
       </head>
       <body>
         <div className="fixed inset-0 z-[-1] bg-slate-700 " />
-        <div className="m-2 gap-2 flex">
-          <Link to="/">Home</Link>
-          <Link to="/search">Search</Link>
-          <Link to="/about">About</Link>
-          <Link to="/contribute">Contribute</Link>
-          <Link to="/admin">Admin</Link>
-        </div>
-        <div className="m-2">{children}</div>
+        <nav className="fixed top-0 left-0 right-0 z-30 w-full bg-slate-800/80 backdrop-blur border-b border-slate-700 shadow-md">
+          <div className="mx-auto max-w-4xl flex items-center gap-4 px-4 py-2">
+            <Link
+              to="/"
+              className="font-semibold hover:underline transition-colors"
+            >
+              Home
+            </Link>
+            <Link to="/search" className="hover:underline transition-colors">
+              Search
+            </Link>
+            <Link to="/about" className="hover:underline transition-colors">
+              About
+            </Link>
+            <Link
+              to="/contribute"
+              className="hover:underline transition-colors"
+            >
+              Contribute
+            </Link>
+            <Link to="/admin" className="hover:underline transition-colors">
+              Admin
+            </Link>
+          </div>
+        </nav>
+        <div className="pt-16 m-2">{children}</div>
         <Scripts />
       </body>
     </html>
