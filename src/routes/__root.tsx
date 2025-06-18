@@ -9,6 +9,7 @@ import {
 // @ts-ignore For some reason it doesn't like this pattern
 import appCss from "@/styles/app.css?url";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -68,28 +69,22 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
       <body>
         <div className="fixed inset-0 z-[-1] bg-slate-700 " />
         <nav className="fixed top-0 left-0 right-0 z-30 w-full bg-slate-800/80 backdrop-blur border-b border-slate-700 shadow-md">
-          <div className="mx-auto max-w-4xl flex items-center gap-4 px-4 py-2">
-            <Link
-              to="/"
-              className="font-semibold hover:underline transition-colors"
-            >
-              Home
-            </Link>
-            <Link to="/search" className="hover:underline transition-colors">
-              Search
-            </Link>
-            <Link to="/about" className="hover:underline transition-colors">
-              About
-            </Link>
-            <Link
-              to="/contribute"
-              className="hover:underline transition-colors"
-            >
-              Contribute
-            </Link>
-            <Link to="/admin" className="hover:underline transition-colors">
-              Admin
-            </Link>
+          <div className="mx-auto max-w-4xl flex items-center gap-3 px-4 py-2">
+            <Button asChild variant="secondary">
+              <Link to="/">Home</Link>
+            </Button>
+            <Button asChild variant="ghost">
+              <Link to="/search">Search</Link>
+            </Button>
+            <Button asChild variant="ghost">
+              <Link to="/about">About</Link>
+            </Button>
+            <Button asChild variant="ghost">
+              <Link to="/contribute">Contribute</Link>
+            </Button>
+            <Button asChild variant="ghost">
+              <Link to="/admin">Admin</Link>
+            </Button>
           </div>
         </nav>
         <div className="pt-16 m-2">{children}</div>
