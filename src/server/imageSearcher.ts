@@ -1,4 +1,4 @@
-import { shapeImageDataArray } from "@/server/imageData";
+import { shapeImageDataArray, shapeImageData } from "@/server/imageData";
 import { getDbPool, sql } from "@/server/db";
 import {
   defaultModel,
@@ -27,7 +27,7 @@ export const getRandom = createServerFn().handler(async () => {
         AND deleted IS FALSE
       ORDER BY RANDOM()
       LIMIT 54
-    `,
+    `
   );
   const time = performance.now() - start;
   console.log(`getRandom database lookup in ${time.toFixed(1)}ms`);
@@ -65,11 +65,11 @@ export const getImageByIdAndSimilar = createServerFn({
       WHERE i.deleted IS FALSE
       ORDER BY distance
       LIMIT 96
-    `,
+    `
     );
     const time = performance.now() - start;
     console.log(
-      `getImageByIdAnsSimilar database lookup in ${time.toFixed(1)}ms`,
+      `getImageByIdAnsSimilar database lookup in ${time.toFixed(1)}ms`
     );
     return await shapeImageDataArray(results);
   });
@@ -127,13 +127,13 @@ export const vectorSearchByString = createServerFn()
         AND deleted IS FALSE
       ORDER BY distance
       LIMIT 96
-    `,
+    `
     );
     const finish = performance.now();
     console.log(
       `Completed search with replicate embedding. Embed time: ${
         dbStart - embedStart
-      }ms, DB time: ${finish - dbStart}ms, Total time: ${finish - embedStart}ms`,
+      }ms, DB time: ${finish - dbStart}ms, Total time: ${finish - embedStart}ms`
     );
     return await shapeImageDataArray(results);
   });

@@ -21,6 +21,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as ImagesIdRouteImport } from './routes/images.$id'
 import { Route as AdminTestRouteImport } from './routes/admin/test'
+import { Route as AdminSimilarRouteImport } from './routes/admin/similar'
 import { Route as AdminLogoutRouteImport } from './routes/admin/logout'
 import { ServerRoute as ApiLoginServerRouteImport } from './routes/api/login'
 
@@ -76,6 +77,11 @@ const AdminTestRoute = AdminTestRouteImport.update({
   path: '/test',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminSimilarRoute = AdminSimilarRouteImport.update({
+  id: '/similar',
+  path: '/similar',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminLogoutRoute = AdminLogoutRouteImport.update({
   id: '/logout',
   path: '/logout',
@@ -96,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/random': typeof RandomRoute
   '/search': typeof SearchRoute
   '/admin/logout': typeof AdminLogoutRoute
+  '/admin/similar': typeof AdminSimilarRoute
   '/admin/test': typeof AdminTestRoute
   '/images/$id': typeof ImagesIdRoute
   '/admin/': typeof AdminIndexRoute
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/random': typeof RandomRoute
   '/search': typeof SearchRoute
   '/admin/logout': typeof AdminLogoutRoute
+  '/admin/similar': typeof AdminSimilarRoute
   '/admin/test': typeof AdminTestRoute
   '/images/$id': typeof ImagesIdRoute
   '/admin': typeof AdminIndexRoute
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/random': typeof RandomRoute
   '/search': typeof SearchRoute
   '/admin/logout': typeof AdminLogoutRoute
+  '/admin/similar': typeof AdminSimilarRoute
   '/admin/test': typeof AdminTestRoute
   '/images/$id': typeof ImagesIdRoute
   '/admin/': typeof AdminIndexRoute
@@ -137,6 +146,7 @@ export interface FileRouteTypes {
     | '/random'
     | '/search'
     | '/admin/logout'
+    | '/admin/similar'
     | '/admin/test'
     | '/images/$id'
     | '/admin/'
@@ -149,6 +159,7 @@ export interface FileRouteTypes {
     | '/random'
     | '/search'
     | '/admin/logout'
+    | '/admin/similar'
     | '/admin/test'
     | '/images/$id'
     | '/admin'
@@ -162,6 +173,7 @@ export interface FileRouteTypes {
     | '/random'
     | '/search'
     | '/admin/logout'
+    | '/admin/similar'
     | '/admin/test'
     | '/images/$id'
     | '/admin/'
@@ -271,6 +283,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminTestRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/similar': {
+      id: '/admin/similar'
+      path: '/similar'
+      fullPath: '/admin/similar'
+      preLoaderRoute: typeof AdminSimilarRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/logout': {
       id: '/admin/logout'
       path: '/logout'
@@ -294,12 +313,14 @@ declare module '@tanstack/react-start/server' {
 
 interface AdminRouteChildren {
   AdminLogoutRoute: typeof AdminLogoutRoute
+  AdminSimilarRoute: typeof AdminSimilarRoute
   AdminTestRoute: typeof AdminTestRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminLogoutRoute: AdminLogoutRoute,
+  AdminSimilarRoute: AdminSimilarRoute,
   AdminTestRoute: AdminTestRoute,
   AdminIndexRoute: AdminIndexRoute,
 }

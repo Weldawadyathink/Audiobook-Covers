@@ -14,6 +14,8 @@ function RouteComponent() {
         </Link>
       </div>
       <Link to="/admin/test">Test</Link>
+      <br />
+      <Link to="/admin/similar">Similar Pairs</Link>
     </div>
   );
 }
