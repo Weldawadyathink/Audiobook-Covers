@@ -5,11 +5,13 @@ import {
   HeadContent,
   Scripts,
   Link,
+  useLocation,
 } from "@tanstack/react-router";
 // @ts-ignore For some reason it doesn't like this pattern
 import appCss from "@/styles/app.css?url";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { NavBarItem } from "@/components/NavBarItem";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -61,6 +63,7 @@ function RootComponent() {
 }
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
+  const pathname = useLocation({ select: (l) => l.pathname });
   return (
     <html>
       <head>
@@ -70,21 +73,11 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
         <div className="fixed inset-0 z-[-1] bg-slate-700 " />
         <nav className="fixed top-0 left-0 right-0 z-30 w-full bg-slate-800/80 backdrop-blur border-b border-slate-700 shadow-md">
           <div className="mx-auto max-w-4xl flex items-center gap-3 px-4 py-2">
-            <Button asChild variant="secondary">
-              <Link to="/">Home</Link>
-            </Button>
-            <Button asChild variant="ghost">
-              <Link to="/search">Search</Link>
-            </Button>
-            <Button asChild variant="ghost">
-              <Link to="/about">About</Link>
-            </Button>
-            <Button asChild variant="ghost">
-              <Link to="/contribute">Contribute</Link>
-            </Button>
-            <Button asChild variant="ghost">
-              <Link to="/admin">Admin</Link>
-            </Button>
+            <NavBarItem to="/">Home</NavBarItem>
+            <NavBarItem to="/search">Search</NavBarItem>
+            <NavBarItem to="/about">About</NavBarItem>
+            <NavBarItem to="/contribute">Contribute</NavBarItem>
+            <NavBarItem to="/admin">Admin</NavBarItem>
           </div>
         </nav>
         <div className="pt-16 m-2">{children}</div>
