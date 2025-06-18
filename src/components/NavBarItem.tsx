@@ -4,15 +4,12 @@ import { Button } from "@/components/ui/button";
 
 const BaseNavBarItem = forwardRef<HTMLAnchorElement, React.ComponentProps<"a">>(
   ({ children, ...props }, ref) => {
-    // We'll get 'to' and all link props via createLink
-    // We'll get 'to' from props as well
-    // @ts-ignore
-    const to = props.to as string;
+    const href = props.href || "";
     const pathname = useLocation({ select: (l) => l.pathname });
-    const isActive =
-      to === "/"
+    const isActive = // If path is /, do not match subpaths
+      href === "/"
         ? pathname === "/"
-        : pathname === to || pathname.startsWith(to + "/");
+        : pathname === href || pathname.startsWith(href + "/");
     return (
       <Button asChild variant={isActive ? "secondary" : "ghost"}>
         <a ref={ref} {...props}>
