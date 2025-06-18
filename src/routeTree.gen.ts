@@ -24,6 +24,7 @@ import { Route as AdminTestRouteImport } from './routes/admin/test'
 import { Route as AdminSimilarRouteImport } from './routes/admin/similar'
 import { Route as AdminLogoutRouteImport } from './routes/admin/logout'
 import { ServerRoute as ApiLoginServerRouteImport } from './routes/api/login'
+import { ServerRoute as ApiHeartbeatServerRouteImport } from './routes/api/heartbeat'
 
 const rootServerRouteImport = createServerRootRoute()
 
@@ -90,6 +91,11 @@ const AdminLogoutRoute = AdminLogoutRouteImport.update({
 const ApiLoginServerRoute = ApiLoginServerRouteImport.update({
   id: '/api/login',
   path: '/api/login',
+  getParentRoute: () => rootServerRouteImport,
+} as any)
+const ApiHeartbeatServerRoute = ApiHeartbeatServerRouteImport.update({
+  id: '/api/heartbeat',
+  path: '/api/heartbeat',
   getParentRoute: () => rootServerRouteImport,
 } as any)
 
@@ -190,24 +196,28 @@ export interface RootRouteChildren {
   ImagesIdRoute: typeof ImagesIdRoute
 }
 export interface FileServerRoutesByFullPath {
+  '/api/heartbeat': typeof ApiHeartbeatServerRoute
   '/api/login': typeof ApiLoginServerRoute
 }
 export interface FileServerRoutesByTo {
+  '/api/heartbeat': typeof ApiHeartbeatServerRoute
   '/api/login': typeof ApiLoginServerRoute
 }
 export interface FileServerRoutesById {
   __root__: typeof rootServerRouteImport
+  '/api/heartbeat': typeof ApiHeartbeatServerRoute
   '/api/login': typeof ApiLoginServerRoute
 }
 export interface FileServerRouteTypes {
   fileServerRoutesByFullPath: FileServerRoutesByFullPath
-  fullPaths: '/api/login'
+  fullPaths: '/api/heartbeat' | '/api/login'
   fileServerRoutesByTo: FileServerRoutesByTo
-  to: '/api/login'
-  id: '__root__' | '/api/login'
+  to: '/api/heartbeat' | '/api/login'
+  id: '__root__' | '/api/heartbeat' | '/api/login'
   fileServerRoutesById: FileServerRoutesById
 }
 export interface RootServerRouteChildren {
+  ApiHeartbeatServerRoute: typeof ApiHeartbeatServerRoute
   ApiLoginServerRoute: typeof ApiLoginServerRoute
 }
 
@@ -308,6 +318,13 @@ declare module '@tanstack/react-start/server' {
       preLoaderRoute: typeof ApiLoginServerRouteImport
       parentRoute: typeof rootServerRouteImport
     }
+    '/api/heartbeat': {
+      id: '/api/heartbeat'
+      path: '/api/heartbeat'
+      fullPath: '/api/heartbeat'
+      preLoaderRoute: typeof ApiHeartbeatServerRouteImport
+      parentRoute: typeof rootServerRouteImport
+    }
   }
 }
 
@@ -341,6 +358,7 @@ export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 const rootServerRouteChildren: RootServerRouteChildren = {
+  ApiHeartbeatServerRoute: ApiHeartbeatServerRoute,
   ApiLoginServerRoute: ApiLoginServerRoute,
 }
 export const serverRouteTree = rootServerRouteImport

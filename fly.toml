@@ -21,7 +21,7 @@ grace_period = "6s"
 interval = "30s"
 method = "GET"
 timeout = "5s"
-path = "/api/healthcheck"
+path = "/api/heartbeat"
 
 [[vm]]
 cpus = 1
