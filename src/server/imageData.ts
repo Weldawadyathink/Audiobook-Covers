@@ -56,14 +56,18 @@ async function getPrimaryImageColor(blurhashUrl: string) {
 }
 
 export async function shapeImageData(
-  image: Readonly<z.infer<typeof DBImageDataValidator>>,
+  image: Readonly<z.infer<typeof DBImageDataValidator>>
 ): Promise<ImageData> {
   const blurhashUrl = image.blurhash ? getBlurhashUrl(image.blurhash) : "";
   const primaryColor = await getPrimaryImageColor(blurhashUrl);
   return {
     id: image.id,
     blurhashUrl,
-    source: image.source ?? "",
+    source:
+      typeof image.source === "string" &&
+      image.source.startsWith("https://reddit.com/")
+        ? `https://redd.it/${image.source.replace("https://reddit.com/", "")}`
+        : (image.source ?? ""),
     url: `${imageUrlPrefix}/original/${image.id}.${image.extension}`,
     jpeg: {
       320: `${imageUrlPrefix}/jpeg/320/${image.id}.jpg`,
@@ -85,7 +89,7 @@ export async function shapeImageData(
 }
 
 export function shapeImageDataArray(
-  data: Readonly<Array<z.infer<typeof DBImageDataValidator>>>,
+  data: Readonly<Array<z.infer<typeof DBImageDataValidator>>>
 ): Promise<ImageData[]> {
   return Promise.all(data.map(shapeImageData));
 }
