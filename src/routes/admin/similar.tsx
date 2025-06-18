@@ -37,8 +37,8 @@ const getSimilarImagePairs = createServerFn().handler(async () => {
         ) AS image2,
         n.distance
       FROM image_neighbor n
-        JOIN image i1 ON i1.id = n.id1 AND i1.deleted IS FALSE
-        JOIN image i2 ON i2.id = n.id2 AND i2.deleted IS FALSE
+        JOIN image i1 ON i1.id = n.id1 AND i1.deleted IS FALSE AND i1.searchable IS TRUE
+        JOIN image i2 ON i2.id = n.id2 AND i2.deleted IS FALSE AND i2.searchable IS TRUE
       ORDER BY n.distance
       LIMIT 48
     `
