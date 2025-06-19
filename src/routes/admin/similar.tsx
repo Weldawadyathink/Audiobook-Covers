@@ -2,10 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import ImageCard from "@/components/ImageCard";
 import { createServerFn } from "@tanstack/react-start";
 import { getDbPool, sql } from "@/server/db";
-import { getIsAuthenticated } from "@/server/auth";
 import { z } from "zod/v4";
 import { toast, Toaster } from "sonner";
 import { DBImageDataValidator, shapeImageData } from "@/server/imageData";
+import { setImageDeleted, setImageNotDeleted } from "@/server/crud";
 
 const getSimilarImagePairs = createServerFn().handler(async () => {
   console.log("ADMIN: Getting similar images from database.");
@@ -57,32 +57,6 @@ const getSimilarImagePairs = createServerFn().handler(async () => {
   return images;
 });
 
-const softDeleteImage = createServerFn()
-  .validator(z.object({ id: z.uuid() }))
-  .handler(async ({ data: { id } }) => {
-    if (!(await getIsAuthenticated())) {
-      throw new Error("Not authorized");
-    }
-    const pool = await getDbPool();
-    await pool.query(
-      sql.unsafe`UPDATE image SET deleted = TRUE WHERE id = ${id}`
-    );
-    return { success: true };
-  });
-
-const undoDeleteImage = createServerFn()
-  .validator(z.object({ id: z.uuid() }))
-  .handler(async ({ data: { id } }) => {
-    if (!(await getIsAuthenticated())) {
-      throw new Error("Not authorized");
-    }
-    const pool = await getDbPool();
-    await pool.query(
-      sql.unsafe`UPDATE image SET deleted = FALSE WHERE id = ${id}`
-    );
-    return { success: true };
-  });
-
 export const Route = createFileRoute("/admin/similar")({
   component: RouteComponent,
   loader: async () => {
@@ -97,7 +71,7 @@ function RouteComponent() {
 
   const handleDelete = async (id: string) => {
     try {
-      await softDeleteImage({ data: { id } });
+      await setImageDeleted({ data: { id } });
       toast("Image deleted", {
         action: {
           label: "Undo",
@@ -112,7 +86,7 @@ function RouteComponent() {
 
   const handleUndo = async (id: string) => {
     try {
-      await undoDeleteImage({ data: { id } });
+      await setImageNotDeleted({ data: { id } });
       toast("Image restored");
     } catch (error: any) {
       toast("Failed to restore image", { description: error.message });

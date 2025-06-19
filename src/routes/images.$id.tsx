@@ -1,16 +1,20 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { getImageByIdAndSimilar } from "@/server/imageSearcher";
 import ImageCard from "@/components/ImageCard";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { saveAs } from "file-saver";
+import { Download, ExternalLink, SearchCheck, SearchX } from "lucide-react";
+import { setImageNotSearchable, setImageSearchable } from "@/server/crud";
+import { toast, Toaster } from "sonner";
+import { getIsAuthenticated } from "@/server/auth";
 
 export const Route = createFileRoute("/images/$id")({
   component: RouteComponent,
   loader: async ({ params }) => {
     return {
       images: await getImageByIdAndSimilar({ data: params.id }),
-      auth: true,
+      auth: await getIsAuthenticated(),
     };
   },
 });
@@ -21,6 +25,7 @@ function RouteComponent() {
     auth,
   } = Route.useLoaderData();
   const [downloading, setDownloading] = useState(false);
+  const router = useRouter();
 
   async function handleDownload() {
     setDownloading(true);
@@ -35,6 +40,20 @@ function RouteComponent() {
     }
   }
 
+  function toggleSearchable() {
+    if (image.searchable) {
+      toast("Image set as not searchable");
+      setImageNotSearchable({ data: { id: image.id } }).then(() =>
+        router.invalidate()
+      );
+    } else {
+      toast("Image set as searchable");
+      setImageSearchable({ data: { id: image.id } }).then(() =>
+        router.invalidate()
+      );
+    }
+  }
+
   if (!image) {
     return <div className="text-center text-lg mt-16">Image not found</div>;
   }
@@ -45,27 +64,33 @@ function RouteComponent() {
         <ImageCard imageData={image} className="max-w-96 w-full mb-4" />
         <div className="flex flex-col items-center gap-2 w-full">
           {auth && (
-            <div className="flex flex-row gap-4 text-xs text-gray-600 mb-2">
-              <span>Searchable: {String(image.searchable)}</span>
-              <span>Dataset: {image.from_old_database ? "Old" : "New"}</span>
-            </div>
+            <Button className="w-full" onClick={toggleSearchable}>
+              {image.searchable ? (
+                <>
+                  <span>Searchable</span>
+                  <SearchCheck />
+                </>
+              ) : (
+                <>
+                  <span>Not Searchable</span>
+                  <SearchX />
+                </>
+              )}
+            </Button>
           )}
-          {image.source && (
-            <a
-              href={image.source}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 underline text-sm mb-2"
-            >
-              View Source
+          <Button asChild className="w-full">
+            <a href={image.source} target="_blank" rel="noopener noreferrer">
+              <span>View Source</span>
+              <ExternalLink />
             </a>
-          )}
+          </Button>
           <Button
             className="w-full"
             onClick={handleDownload}
             disabled={downloading}
           >
-            {downloading ? "Downloading..." : "Download"}
+            <span>{downloading ? "Downloading..." : "Download"}</span>
+            <Download />
           </Button>
         </div>
       </div>
@@ -87,6 +112,7 @@ function RouteComponent() {
           </div>
         </div>
       )}
+      <Toaster />
     </div>
   );
 }
