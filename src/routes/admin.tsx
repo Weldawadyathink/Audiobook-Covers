@@ -7,7 +7,7 @@ export const Route = createFileRoute("/admin")({
   component: RouteComponent,
   loader: async () => {
     const auth = await getIsAuthenticated();
-    if (!auth) {
+    if (!auth.isAuthenticated) {
       throw redirect({ to: "/login" });
     }
     return {};

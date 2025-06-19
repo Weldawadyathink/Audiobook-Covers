@@ -7,38 +7,49 @@ import { redirect } from "@tanstack/react-router";
 import cookie from "cookie";
 import { logAnalyticsEvent } from "@/server/analytics";
 
-export const getIsAuthenticated = createServerFn().handler(async () => {
-  console.log("Checking auth");
-  const request = getWebRequest();
-  const cookies = cookie.parse(request.headers.get("cookie") ?? "");
-  if (!cookies) {
-    return false;
-  }
-  const authCookie = cookies["auth"];
-  if (!authCookie) {
-    return false;
-  }
-  const decodedAuthCookie = base64.decode(authCookie);
-  const auth = z
-    .object({
-      sessionId: z.uuid(),
-      username: z.string(),
-    })
-    .safeParse(JSON.parse(decodedAuthCookie));
+type AuthenticationResult =
+  | {
+      isAuthenticated: false;
+    }
+  | {
+      isAuthenticated: true;
+      username: string;
+      sessionId: string;
+    };
 
-  if (!auth.success) {
-    console.log("Could not parse auth cookie");
-    return false;
-  }
-
-  const pool = await getDbPool();
-  const result = await pool.maybeOne(
-    sql.type(
-      z.object({
+export const getIsAuthenticated = createServerFn().handler(
+  async (): Promise<AuthenticationResult> => {
+    console.log("Checking auth");
+    const request = getWebRequest();
+    const cookies = cookie.parse(request.headers.get("cookie") ?? "");
+    if (!cookies) {
+      return { isAuthenticated: false };
+    }
+    const authCookie = cookies["auth"];
+    if (!authCookie) {
+      return { isAuthenticated: false };
+    }
+    const decodedAuthCookie = base64.decode(authCookie);
+    const auth = z
+      .object({
+        sessionId: z.uuid(),
         username: z.string(),
-        session_id: z.string(),
       })
-    )`
+      .safeParse(JSON.parse(decodedAuthCookie));
+
+    if (!auth.success) {
+      console.log("Could not parse auth cookie");
+      return { isAuthenticated: false };
+    }
+
+    const pool = await getDbPool();
+    const result = await pool.maybeOne(
+      sql.type(
+        z.object({
+          username: z.string(),
+          session_id: z.string(),
+        })
+      )`
         SELECT s.session_id AS session_id, u.username AS username
         FROM session s
         JOIN web_user u ON s.user_id = u.id
@@ -46,32 +57,37 @@ export const getIsAuthenticated = createServerFn().handler(async () => {
         AND expires_at > NOW()
         AND u.username = ${auth.data.username}
       `
-  );
-  if (!result) {
-    return false;
-  }
-  if (
-    result.session_id === auth.data.sessionId &&
-    result.username === auth.data.username
-  ) {
-    logAnalyticsEvent({
-      data: {
-        eventType: "adminUserAuthSuccess",
-        payload: {
-          sessionId: auth.data.sessionId,
-          username: auth.data.username,
+    );
+    if (!result) {
+      return { isAuthenticated: false };
+    }
+    if (
+      result.session_id === auth.data.sessionId &&
+      result.username === auth.data.username
+    ) {
+      logAnalyticsEvent({
+        data: {
+          eventType: "adminUserAuthSuccess",
+          payload: {
+            sessionId: auth.data.sessionId,
+            username: auth.data.username,
+          },
         },
-      },
-    });
-    return true;
-  } else {
-    return false;
+      });
+      return {
+        isAuthenticated: true,
+        username: result.username,
+        sessionId: result.session_id,
+      };
+    } else {
+      return { isAuthenticated: false };
+    }
   }
-});
+);
 
 export const forceAuthenticated = createServerFn().handler(async () => {
   const auth = await getIsAuthenticated();
-  if (!auth) {
+  if (!auth.isAuthenticated) {
     throw redirect({ to: "/login" });
   } else {
     return true;

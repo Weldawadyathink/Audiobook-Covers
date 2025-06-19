@@ -89,8 +89,8 @@ function RouteComponent() {
               <ImageCard
                 key={image.id}
                 imageData={image}
-                showDistance={auth}
-                showDataset={auth}
+                showDistance={auth.isAuthenticated}
+                showDataset={auth.isAuthenticated}
               />
             ))}
           </div>

@@ -29,7 +29,7 @@ function Home() {
         <ImageCard
           key={image.id}
           imageData={image}
-          showDataset={auth}
+          showDataset={auth.isAuthenticated}
           className={cn(
             "",
             isLargeImage(index) && "col-span-2 row-span-2 scale-95"

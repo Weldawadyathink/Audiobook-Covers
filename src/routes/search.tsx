@@ -6,6 +6,7 @@ import ImageCard from "@/components/ImageCard";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { getIsAuthenticated } from "@/server/auth";
 
 const searchParameters = z.object({
   q: z.string().default(""),
@@ -17,17 +18,18 @@ export const Route = createFileRoute("/search")({
   validateSearch: zodValidator(searchParameters),
   loaderDeps: ({ search: { q, model } }) => ({ q, model }),
   loader: async ({ deps: data }) => {
+    const auth = await getIsAuthenticated();
     return {
       q: data.q,
       model: data.model,
       images: await vectorSearchByString({ data }),
-      auth: true,
+      isAuthenticated: auth.isAuthenticated,
     };
   },
 });
 
 function RouteComponent() {
-  const { images, auth, q, model } = Route.useLoaderData();
+  const { images, isAuthenticated, q, model } = Route.useLoaderData();
   const [searchQuery, setSearchQuery] = useState(q);
   const navigate = useNavigate();
   const submitForm = () => {
@@ -58,8 +60,8 @@ function RouteComponent() {
       <div className="grid md:grid-cols-4 justify-center gap-6 sm:grid-cols-2 mx-6 my-6">
         {images.map((image) => (
           <ImageCard
-            showDistance={auth}
-            showDataset={auth}
+            showDistance={isAuthenticated}
+            showDataset={isAuthenticated}
             key={image.id}
             imageData={image}
             className="max-w-96"
