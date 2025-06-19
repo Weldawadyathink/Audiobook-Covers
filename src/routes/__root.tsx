@@ -12,6 +12,7 @@ import appCss from "@/styles/app.css?url";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { NavBarItem } from "@/components/NavBarItem";
+import { HeartHandshake, House, Info, Search, ShieldUser } from "lucide-react";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -75,11 +76,26 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
         </div>
         <nav className="fixed top-0 left-0 right-0 z-30 w-full bg-slate-800/80 backdrop-blur border-b border-slate-700 shadow-md">
           <div className="mx-auto max-w-4xl flex items-center gap-3 px-4 py-2">
-            <NavBarItem to="/">Home</NavBarItem>
-            <NavBarItem to="/search">Search</NavBarItem>
-            <NavBarItem to="/about">About</NavBarItem>
-            <NavBarItem to="/contribute">Contribute</NavBarItem>
-            <NavBarItem to="/admin">Admin</NavBarItem>
+            <NavBarItem to="/">
+              <span>Home</span>
+              <House />
+            </NavBarItem>
+            <NavBarItem to="/search">
+              <span>Search</span>
+              <Search />
+            </NavBarItem>
+            <NavBarItem to="/about">
+              <span>About</span>
+              <Info />
+            </NavBarItem>
+            <NavBarItem to="/contribute">
+              <span>Contribute</span>
+              <HeartHandshake />
+            </NavBarItem>
+            <NavBarItem to="/admin">
+              <span>Admin</span>
+              <ShieldUser />
+            </NavBarItem>
           </div>
         </nav>
         <div className="pt-16 m-2">{children}</div>
