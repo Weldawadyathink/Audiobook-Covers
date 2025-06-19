@@ -38,7 +38,7 @@ export const ServerRoute = createServerFileRoute("/api/login").methods({
       `
     );
     if (!result) {
-      logAnalyticsEvent({
+      await logAnalyticsEvent({
         data: {
           eventType: "adminUserLoginFailure",
           payload: {
@@ -51,7 +51,7 @@ export const ServerRoute = createServerFileRoute("/api/login").methods({
     }
     const valid = await argon2.verify(result.password_hash, form.password);
     if (!valid) {
-      logAnalyticsEvent({
+      await logAnalyticsEvent({
         data: {
           eventType: "adminUserLoginFailure",
           payload: {

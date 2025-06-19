@@ -28,12 +28,12 @@ function RouteComponent() {
 
   function toggleSearchable() {
     if (image.searchable) {
-      toast("Image set as not searchable");
+      toast("Setting image as not searchable");
       setImageNotSearchable({ data: { id: image.id } }).then(() =>
         router.invalidate()
       );
     } else {
-      toast("Image set as searchable");
+      toast("Setting image as searchable");
       setImageSearchable({ data: { id: image.id } }).then(() =>
         router.invalidate()
       );

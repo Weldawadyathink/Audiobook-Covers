@@ -8,7 +8,8 @@ import { logAnalyticsEvent } from "@/server/analytics";
 export const setImageDeleted = createServerFn()
   .validator(z.object({ id: z.uuid() }))
   .handler(async ({ data: { id } }) => {
-    if (!(await getIsAuthenticated())) {
+    const auth = await getIsAuthenticated();
+    if (!auth.isAuthenticated) {
       throw new Error("Not authorized");
     }
     const pool = await getDbPool();
@@ -18,7 +19,7 @@ export const setImageDeleted = createServerFn()
     await logAnalyticsEvent({
       data: {
         eventType: "imageDeleted",
-        payload: { id },
+        payload: { id, username: auth.username, sessionId: auth.sessionId },
       },
     });
     return { success: true };
@@ -27,8 +28,9 @@ export const setImageDeleted = createServerFn()
 export const setImageNotDeleted = createServerFn()
   .validator(z.object({ id: z.uuid() }))
   .handler(async ({ data: { id } }) => {
-    if (!(await getIsAuthenticated())) {
-      return { success: false };
+    const auth = await getIsAuthenticated();
+    if (!auth.isAuthenticated) {
+      throw new Error("Not authorized");
     }
     const pool = await getDbPool();
     await pool.query(
@@ -37,7 +39,7 @@ export const setImageNotDeleted = createServerFn()
     await logAnalyticsEvent({
       data: {
         eventType: "imageUndeleted",
-        payload: { id },
+        payload: { id, username: auth.username, sessionId: auth.sessionId },
       },
     });
     return { success: true };
@@ -46,8 +48,9 @@ export const setImageNotDeleted = createServerFn()
 export const setImageSearchable = createServerFn()
   .validator(z.object({ id: z.uuid() }))
   .handler(async ({ data: { id } }) => {
-    if (!(await getIsAuthenticated())) {
-      return { success: false };
+    const auth = await getIsAuthenticated();
+    if (!auth.isAuthenticated) {
+      throw new Error("Not authorized");
     }
     console.log("Setting image as searchable", id);
     const pool = await getDbPool();
@@ -57,7 +60,7 @@ export const setImageSearchable = createServerFn()
     await logAnalyticsEvent({
       data: {
         eventType: "setImageSearchable",
-        payload: { id },
+        payload: { id, username: auth.username, sessionId: auth.sessionId },
       },
     });
     return { success: true };
@@ -66,7 +69,8 @@ export const setImageSearchable = createServerFn()
 export const setImageNotSearchable = createServerFn()
   .validator(z.object({ id: z.uuid() }))
   .handler(async ({ data: { id } }) => {
-    if (!(await getIsAuthenticated())) {
+    const auth = await getIsAuthenticated();
+    if (!auth.isAuthenticated) {
       throw new Error("Not authorized");
     }
     console.log("Setting image as not searchable", id);
@@ -77,7 +81,7 @@ export const setImageNotSearchable = createServerFn()
     await logAnalyticsEvent({
       data: {
         eventType: "setImageNotSearchable",
-        payload: { id },
+        payload: { id, username: auth.username, sessionId: auth.sessionId },
       },
     });
     return { success: true };

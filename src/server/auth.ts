@@ -65,7 +65,7 @@ export const getIsAuthenticated = createServerFn().handler(
       result.session_id === auth.data.sessionId &&
       result.username === auth.data.username
     ) {
-      logAnalyticsEvent({
+      await logAnalyticsEvent({
         data: {
           eventType: "adminUserAuthSuccess",
           payload: {
