@@ -2,12 +2,12 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { getImageByIdAndSimilar } from "@/server/imageSearcher";
 import ImageCard from "@/components/ImageCard";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
-import { saveAs } from "file-saver";
 import { Download, ExternalLink, SearchCheck, SearchX } from "lucide-react";
 import { setImageNotSearchable, setImageSearchable } from "@/server/crud";
 import { toast, Toaster } from "sonner";
 import { getIsAuthenticated } from "@/server/auth";
+import { ClientOnly } from "@/components/ClientOnly";
+import { DownloadButton } from "@/components/DownloadButton";
 
 export const Route = createFileRoute("/images/$id")({
   component: RouteComponent,
@@ -24,21 +24,7 @@ function RouteComponent() {
     images: [image, ...similar],
     auth,
   } = Route.useLoaderData();
-  const [downloading, setDownloading] = useState(false);
   const router = useRouter();
-
-  async function handleDownload() {
-    setDownloading(true);
-    try {
-      const response = await fetch(image.url);
-      const blob = await response.blob();
-      saveAs(blob, image.url.split("/").pop() || "cover");
-    } catch (e) {
-      alert("Failed to download image.");
-    } finally {
-      setDownloading(false);
-    }
-  }
 
   function toggleSearchable() {
     if (image.searchable) {
@@ -84,14 +70,12 @@ function RouteComponent() {
               <ExternalLink />
             </a>
           </Button>
-          <Button
-            className="w-full"
-            onClick={handleDownload}
-            disabled={downloading}
-          >
-            <span>{downloading ? "Downloading..." : "Download"}</span>
-            <Download />
-          </Button>
+          <ClientOnly>
+            <DownloadButton url={image.url}>
+              <span>Download</span>
+              <Download />
+            </DownloadButton>
+          </ClientOnly>
         </div>
       </div>
 
