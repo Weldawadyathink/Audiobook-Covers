@@ -11,7 +11,7 @@ const BaseNavBarItem = forwardRef<HTMLAnchorElement, React.ComponentProps<"a">>(
         ? pathname === "/"
         : pathname === href || pathname.startsWith(href + "/");
     return (
-      <Button asChild variant={isActive ? "secondary" : "ghost"} size="lg">
+      <Button asChild size="lg">
         <a ref={ref} {...props}>
           {children}
         </a>
