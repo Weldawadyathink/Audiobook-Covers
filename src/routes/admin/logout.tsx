@@ -4,6 +4,7 @@ import { getWebRequest } from "@tanstack/react-start/server";
 import cookie from "cookie";
 import { getDbPool, sql } from "@/server/db";
 import { useEffect } from "react";
+import { logAnalyticsEvent } from "@/server/analytics";
 
 export const logout = createServerFn({ method: "POST" }).handler(async () => {
   const request = getWebRequest();
@@ -25,6 +26,13 @@ export const logout = createServerFn({ method: "POST" }).handler(async () => {
       }
     }
   }
+
+  await logAnalyticsEvent({
+    data: {
+      eventType: "adminUserLogout",
+      payload: {},
+    },
+  });
 
   // Clear the auth cookie
   const headers = new Headers();

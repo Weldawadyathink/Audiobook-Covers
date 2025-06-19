@@ -1,14 +1,10 @@
 import { shapeImageDataArray, shapeImageData } from "@/server/imageData";
 import { getDbPool, sql } from "@/server/db";
-import {
-  defaultModel,
-  ModelOptions,
-  models,
-  zModelOptions,
-} from "@/server/models";
+import { defaultModel, models, zModelOptions } from "@/server/models";
 import { DBImageDataValidator } from "@/server/imageData";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
+import { logAnalyticsEvent } from "@/server/analytics";
 
 export const getRandom = createServerFn().handler(async () => {
   console.log("Getting random cover");
@@ -31,6 +27,15 @@ export const getRandom = createServerFn().handler(async () => {
   );
   const time = performance.now() - start;
   console.log(`getRandom database lookup in ${time.toFixed(1)}ms`);
+  logAnalyticsEvent({
+    data: {
+      eventType: "getRandom",
+      payload: {
+        results: results.length,
+        time: time,
+      },
+    },
+  });
   return await shapeImageDataArray(results);
 });
 
@@ -71,6 +76,16 @@ export const getImageByIdAndSimilar = createServerFn({
     console.log(
       `getImageByIdAnsSimilar database lookup in ${time.toFixed(1)}ms`
     );
+    logAnalyticsEvent({
+      data: {
+        eventType: "getImageByIdAndSimilar",
+        payload: {
+          id,
+          results: results.length,
+          time: time,
+        },
+      },
+    });
     return await shapeImageDataArray(results);
   });
 
@@ -135,5 +150,18 @@ export const vectorSearchByString = createServerFn()
         dbStart - embedStart
       }ms, DB time: ${finish - dbStart}ms, Total time: ${finish - embedStart}ms`
     );
+    logAnalyticsEvent({
+      data: {
+        eventType: "vectorSearchByString",
+        payload: {
+          model: data.model,
+          q: data.q,
+          results: results.length,
+          embedTime: dbStart - embedStart,
+          dbTime: finish - dbStart,
+          totalTime: finish - embedStart,
+        },
+      },
+    });
     return await shapeImageDataArray(results);
   });

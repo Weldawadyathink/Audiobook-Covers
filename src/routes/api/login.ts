@@ -5,6 +5,7 @@ import { createServerFileRoute } from "@tanstack/react-start/server";
 import cookie from "cookie";
 import argon2 from "argon2";
 import { randomUUID } from "node:crypto";
+import { logAnalyticsEvent } from "@/server/analytics";
 
 const formValidator = z.object({
   username: z.string(),
@@ -37,10 +38,28 @@ export const ServerRoute = createServerFileRoute("/api/login").methods({
       `
     );
     if (!result) {
+      logAnalyticsEvent({
+        data: {
+          eventType: "adminUserLoginFailure",
+          payload: {
+            username: form.username,
+            reason: "usernameNotFound",
+          },
+        },
+      });
       return new Response("Invalid username or password", { status: 401 });
     }
     const valid = await argon2.verify(result.password_hash, form.password);
     if (!valid) {
+      logAnalyticsEvent({
+        data: {
+          eventType: "adminUserLoginFailure",
+          payload: {
+            username: form.username,
+            reason: "passwordIncorrect",
+          },
+        },
+      });
       return new Response("Invalid username or password", { status: 401 });
     }
     const sessionId = randomUUID();
@@ -50,6 +69,15 @@ export const ServerRoute = createServerFileRoute("/api/login").methods({
         VALUES(${sessionId}, ${result.id}, NOW() + INTERVAL '1 day')
       `
     );
+    await logAnalyticsEvent({
+      data: {
+        eventType: "adminUserLoginSuccess",
+        payload: {
+          username: form.username,
+          sessionId,
+        },
+      },
+    });
     const authValue = base64.encode(
       JSON.stringify({ sessionId, username: result.username })
     );
@@ -71,4 +99,4 @@ export const ServerRoute = createServerFileRoute("/api/login").methods({
       headers,
     });
   },
-}); 
+});

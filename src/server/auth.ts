@@ -5,6 +5,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getWebRequest } from "@tanstack/react-start/server";
 import { redirect } from "@tanstack/react-router";
 import cookie from "cookie";
+import { logAnalyticsEvent } from "@/server/analytics";
 
 export const getIsAuthenticated = createServerFn().handler(async () => {
   console.log("Checking auth");
@@ -49,10 +50,23 @@ export const getIsAuthenticated = createServerFn().handler(async () => {
   if (!result) {
     return false;
   }
-  return (
+  if (
     result.session_id === auth.data.sessionId &&
     result.username === auth.data.username
-  );
+  ) {
+    logAnalyticsEvent({
+      data: {
+        eventType: "adminUserAuthSuccess",
+        payload: {
+          sessionId: auth.data.sessionId,
+          username: auth.data.username,
+        },
+      },
+    });
+    return true;
+  } else {
+    return false;
+  }
 });
 
 export const forceAuthenticated = createServerFn().handler(async () => {

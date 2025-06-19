@@ -71,7 +71,7 @@ function RouteComponent() {
             </a>
           </Button>
           <ClientOnly>
-            <DownloadButton url={image.url}>
+            <DownloadButton image={image}>
               <span>Download</span>
               <Download />
             </DownloadButton>
