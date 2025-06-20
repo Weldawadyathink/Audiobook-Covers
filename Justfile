@@ -1,11 +1,5 @@
 dev:
-    deno task dev
-
-build:
-    deno task build
-
-start:
-    deno task start
+    pnpm run dev | roarr pretty-print
 
 db_args:
     #!/bin/zsh
@@ -42,7 +36,7 @@ devdb_rebuild:
     psql pgbouncer -X -c "RESUME audiobookcovers_dev;"
 
 docker:
-    docker build . -t audiobookcovers && docker run -it --rm audiobookcovers -P 8000:8000
+    docker build . -t audiobookcovers && docker run -it --rm audiobookcovers
 
 docker_it:
     docker build . -t audiobookcovers && docker run -it --rm audiobookcovers /bin/sh

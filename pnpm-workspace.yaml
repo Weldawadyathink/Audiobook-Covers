@@ -1,0 +1,6 @@
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - esbuild
+
+nodeLinker: hoisted
+packageImportMethod: clone-or-copy
