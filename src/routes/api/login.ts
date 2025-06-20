@@ -4,7 +4,7 @@ import base64 from "base-64";
 import { createServerFileRoute } from "@tanstack/react-start/server";
 import cookie from "cookie";
 import argon2 from "argon2";
-import { randomUUID } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { logAnalyticsEvent } from "@/server/analytics";
 
 const formValidator = z.object({
@@ -62,7 +62,7 @@ export const ServerRoute = createServerFileRoute("/api/login").methods({
       });
       return new Response("Invalid username or password", { status: 401 });
     }
-    const sessionId = randomUUID();
+    const sessionId = randomBytes(32).toString("hex");
     await pool.query(
       sql.typeAlias("void")`
         INSERT INTO session(session_id, user_id, expires_at)

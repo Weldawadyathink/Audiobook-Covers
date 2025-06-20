@@ -32,7 +32,7 @@ export const getIsAuthenticated = createServerFn().handler(
     const decodedAuthCookie = base64.decode(authCookie);
     const auth = z
       .object({
-        sessionId: z.uuid(),
+        sessionId: z.string(),
         username: z.string(),
       })
       .safeParse(JSON.parse(decodedAuthCookie));
