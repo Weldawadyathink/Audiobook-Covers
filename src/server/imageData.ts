@@ -37,7 +37,7 @@ export interface ImageData {
   primaryColor: Awaited<ReturnType<typeof extractColors>>[number];
 }
 
-const imageUrlPrefix = "https://com-audiobookcovers.fly.storage.tigris.dev";
+const imageUrlPrefix = "https://images.audiobookcovers.com";
 
 async function getPrimaryImageColor(blurhashUrl: string) {
   // TODO: look at https://www.npmjs.com/package/fast-blurhash
