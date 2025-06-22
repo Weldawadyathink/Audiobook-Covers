@@ -139,18 +139,19 @@ export const getImageByIdAndSimilar = createServerFn({
 // }
 
 export const vectorSearchByString = createServerFn()
-  .validator(z.object({ q: z.string(), model: zModelOptions }))
+  .validator(z.object({ q: z.string() }))
   .handler(async ({ data }) => {
     if (data.q === "") {
       return [];
     }
-    const model = models[data.model];
+    const modelName = defaultModel;
+    const model = models[modelName];
     const similarityThreshold = 0.765;
     const embedStart = performance.now();
     const vector = await model.getTextEmbedding(data.q);
     const dbStart = performance.now();
     const pool = await getDbPool();
-    const results = await pool.many(
+    const results = await pool.any(
       sql.type(DBImageDataValidator)`
       WITH searchable_images AS (
         SELECT
@@ -181,7 +182,7 @@ export const vectorSearchByString = createServerFn()
       data: {
         eventType: "vectorSearchByString",
         payload: {
-          model: data.model,
+          model: modelName,
           q: data.q,
           results: results.length,
           embedTime: dbStart - embedStart,
