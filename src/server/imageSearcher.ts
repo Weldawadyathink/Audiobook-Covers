@@ -145,25 +145,30 @@ export const vectorSearchByString = createServerFn()
       return [];
     }
     const model = models[data.model];
+    const similarityThreshold = 0.765;
     const embedStart = performance.now();
     const vector = await model.getTextEmbedding(data.q);
     const dbStart = performance.now();
     const pool = await getDbPool();
     const results = await pool.many(
       sql.type(DBImageDataValidator)`
-      SELECT
-        id,
-        source,
-        extension,
-        blurhash,
-        from_old_database,
-        searchable,
-        ${model.dbColumn} <=> ${JSON.stringify(vector.embedding)} as distance
-      FROM image
-      WHERE searchable
-        AND deleted IS FALSE
+      WITH searchable_images AS (
+        SELECT
+          id,
+          source,
+          extension,
+          blurhash,
+          from_old_database,
+          searchable,
+          ${model.dbColumn} <=> ${JSON.stringify(vector.embedding)} as distance
+        FROM image
+        WHERE searchable IS TRUE
+          AND deleted IS FALSE
+      )
+      SELECT *
+      FROM searchable_images
+      WHERE distance <= ${similarityThreshold}
       ORDER BY distance
-      LIMIT 96
     `
     );
     const finish = performance.now();
