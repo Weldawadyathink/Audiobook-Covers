@@ -48,9 +48,31 @@ export const getImageByIdAndSimilar = createServerFn({
     const start = performance.now();
     const pool = await getDbPool();
     const model = models[defaultModel];
+    const target = await pool.maybeOne(
+      sql.type(DBImageDataValidator)`
+        SELECT
+          id,
+          source,
+          extension,
+          blurhash,
+          from_old_database,
+          searchable
+        FROM image
+        WHERE id = ${id}
+      `
+    );
+    if (!target) {
+      return [];
+    }
     const results = await pool.any(
       sql.type(DBImageDataValidator)`
-      WITH target AS (
+      WITH searchable_images AS (
+        SELECT *
+        FROM image
+        WHERE searchable IS TRUE
+          AND deleted IS FALSE
+      ),
+      target AS (
         SELECT ${model.dbColumn} as e
         FROM image
         WHERE id = ${id}
@@ -65,9 +87,9 @@ export const getImageByIdAndSimilar = createServerFn({
         i.searchable,
         i.${model.dbColumn} <=> target.e as distance
       FROM
-        image as i
+        searchable_images as i
         CROSS JOIN target
-      WHERE i.deleted IS FALSE
+      WHERE i.id != ${id}
       ORDER BY distance
       LIMIT 96
     `
@@ -86,7 +108,7 @@ export const getImageByIdAndSimilar = createServerFn({
         },
       },
     });
-    return await shapeImageDataArray(results);
+    return await shapeImageDataArray([target, ...results]);
   });
 
 // export async function getImageById(id: string) {
