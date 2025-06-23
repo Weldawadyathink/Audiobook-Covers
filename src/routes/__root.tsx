@@ -76,7 +76,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body className="text-white">
         <div className="fixed inset-0 z-[-1] pointer-events-none">
           <div className="absolute inset-0 bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900" />
         </div>
