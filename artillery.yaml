@@ -1,0 +1,41 @@
+config:
+  target: "https://dev.audiobookcovers.com"
+  phases:
+    - duration: 30
+      arrivalRate: 1
+      rampTo: 5
+      name: Warm up
+    - duration: 60
+      arrivalRate: 10
+      name: Load test
+scenarios:
+  - name: "Randomized search query"
+    flow:
+      - loop:
+          - get:
+              url: "/"
+              expect:
+                - statusCode: 200
+          - get:
+              url: "/search"
+              expect:
+                - statusCode: 200
+          - get:
+              url: "/search?q=eragon"
+              expect:
+                - statusCode: 200
+          - get:
+              url: "/images/9c8f404b-642a-4409-9555-d06af1f91948"
+              expect:
+                - statusCode: 200
+          - get:
+              url: "/about"
+              expect:
+                - statusCode: 200
+          - get:
+              url: "/contribute"
+              expect:
+                - statusCode: 200
+        count: 5
+plugins:
+  expect: {}

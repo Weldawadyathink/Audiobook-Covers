@@ -40,3 +40,6 @@ docker:
 
 docker_it:
     docker build . -t audiobookcovers && docker run -it --rm audiobookcovers /bin/sh
+
+loadtest:
+    pnpm run loadtest
