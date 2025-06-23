@@ -48,9 +48,31 @@ export const getImageByIdAndSimilar = createServerFn({
     const start = performance.now();
     const pool = await getDbPool();
     const model = models[defaultModel];
+    const target = await pool.maybeOne(
+      sql.type(DBImageDataValidator)`
+        SELECT
+          id,
+          source,
+          extension,
+          blurhash,
+          from_old_database,
+          searchable
+        FROM image
+        WHERE id = ${id}
+      `
+    );
+    if (!target) {
+      return [];
+    }
     const results = await pool.any(
       sql.type(DBImageDataValidator)`
-      WITH target AS (
+      WITH searchable_images AS (
+        SELECT *
+        FROM image
+        WHERE searchable IS TRUE
+          AND deleted IS FALSE
+      ),
+      target AS (
         SELECT ${model.dbColumn} as e
         FROM image
         WHERE id = ${id}
@@ -65,9 +87,9 @@ export const getImageByIdAndSimilar = createServerFn({
         i.searchable,
         i.${model.dbColumn} <=> target.e as distance
       FROM
-        image as i
+        searchable_images as i
         CROSS JOIN target
-      WHERE i.deleted IS FALSE
+      WHERE i.id != ${id}
       ORDER BY distance
       LIMIT 96
     `
@@ -86,7 +108,7 @@ export const getImageByIdAndSimilar = createServerFn({
         },
       },
     });
-    return await shapeImageDataArray(results);
+    return await shapeImageDataArray([target, ...results]);
   });
 
 // export async function getImageById(id: string) {
@@ -117,31 +139,37 @@ export const getImageByIdAndSimilar = createServerFn({
 // }
 
 export const vectorSearchByString = createServerFn()
-  .validator(z.object({ q: z.string(), model: zModelOptions }))
+  .validator(z.object({ q: z.string() }))
   .handler(async ({ data }) => {
     if (data.q === "") {
       return [];
     }
-    const model = models[data.model];
+    const modelName = defaultModel;
+    const model = models[modelName];
+    const similarityThreshold = 0.765;
     const embedStart = performance.now();
     const vector = await model.getTextEmbedding(data.q);
     const dbStart = performance.now();
     const pool = await getDbPool();
-    const results = await pool.many(
+    const results = await pool.any(
       sql.type(DBImageDataValidator)`
-      SELECT
-        id,
-        source,
-        extension,
-        blurhash,
-        from_old_database,
-        searchable,
-        ${model.dbColumn} <=> ${JSON.stringify(vector.embedding)} as distance
-      FROM image
-      WHERE searchable
-        AND deleted IS FALSE
+      WITH searchable_images AS (
+        SELECT
+          id,
+          source,
+          extension,
+          blurhash,
+          from_old_database,
+          searchable,
+          ${model.dbColumn} <=> ${JSON.stringify(vector.embedding)} as distance
+        FROM image
+        WHERE searchable IS TRUE
+          AND deleted IS FALSE
+      )
+      SELECT *
+      FROM searchable_images
+      WHERE distance <= ${similarityThreshold}
       ORDER BY distance
-      LIMIT 96
     `
     );
     const finish = performance.now();
@@ -154,7 +182,7 @@ export const vectorSearchByString = createServerFn()
       data: {
         eventType: "vectorSearchByString",
         payload: {
-          model: data.model,
+          model: modelName,
           q: data.q,
           results: results.length,
           embedTime: dbStart - embedStart,

@@ -10,18 +10,16 @@ import { getIsAuthenticated } from "@/server/auth";
 
 const searchParameters = z.object({
   q: z.string().default(""),
-  model: z.string().default("mobileclip_s0"),
 });
 
 export const Route = createFileRoute("/search")({
   component: RouteComponent,
   validateSearch: zodValidator(searchParameters),
-  loaderDeps: ({ search: { q, model } }) => ({ q, model }),
+  loaderDeps: ({ search: { q } }) => ({ q }),
   loader: async ({ deps: data }) => {
     const auth = await getIsAuthenticated();
     return {
       q: data.q,
-      model: data.model,
       images: await vectorSearchByString({ data }),
       isAuthenticated: auth.isAuthenticated,
     };
@@ -29,7 +27,7 @@ export const Route = createFileRoute("/search")({
 });
 
 function RouteComponent() {
-  const { images, isAuthenticated, q, model } = Route.useLoaderData();
+  const { images, isAuthenticated, q } = Route.useLoaderData();
   const [searchQuery, setSearchQuery] = useState(q);
   const navigate = useNavigate();
   const submitForm = () => {
@@ -37,7 +35,6 @@ function RouteComponent() {
       to: "/search",
       search: {
         q: searchQuery,
-        model: model,
       },
     });
   };
@@ -57,6 +54,7 @@ function RouteComponent() {
         />
         <Button type="submit">Search</Button>
       </form>
+      {images.length === 0 && q !== "" && <div>No images found</div>}
       <div className="grid md:grid-cols-4 justify-center gap-6 sm:grid-cols-2 mx-6 my-6">
         {images.map((image) => (
           <ImageCard
