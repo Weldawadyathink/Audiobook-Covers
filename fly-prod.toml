@@ -2,7 +2,7 @@
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = "audiobook-covers-dev"
+app = "audiobook-covers"
 primary_region = "sjc"
 swap_size_mb = 2048
 
