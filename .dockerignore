@@ -20,6 +20,8 @@ migrations
 .idea
 .vscode
 _fresh
+.cursor
+.tanstack
 
 **/venv
 

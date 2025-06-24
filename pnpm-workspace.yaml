@@ -1,6 +1,13 @@
+nodeLinker: hoisted
+
 onlyBuiltDependencies:
   - '@parcel/watcher'
+  - '@playwright/browser-chromium'
+  - '@tailwindcss/oxide'
+  - argon2
+  - aws-sdk
   - esbuild
+  - protobufjs
+  - unix-dgram
 
-nodeLinker: hoisted
 packageImportMethod: clone-or-copy
