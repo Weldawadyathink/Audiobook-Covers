@@ -57,7 +57,14 @@ function RouteComponent() {
             className="h-8"
           />
           <ShieldsBadge
-            label="postgres"
+            label="Tigris Data"
+            color="EEE"
+            href="https://www.tigrisdata.com"
+            alt="Image hosting by Tigris Data"
+            className="h-8"
+          />
+          <ShieldsBadge
+            label="Postgres"
             color="EEE"
             logo="postgresql"
             logoColor="4169E1"
@@ -66,7 +73,7 @@ function RouteComponent() {
             className="h-8"
           />
           <ShieldsBadge
-            label="typescript"
+            label="Typescript"
             color="EEE"
             logo="typescript"
             logoColor="3178C6"
@@ -75,7 +82,7 @@ function RouteComponent() {
             className="h-8"
           />
           <ShieldsBadge
-            label="Node.js"
+            label="Node"
             color="EEE"
             logo="node.js"
             logoColor="339933"
