@@ -43,3 +43,6 @@ docker_it:
 
 loadtest:
     pnpm run loadtest
+
+deploy:
+    fly deploy --config fly.toml
