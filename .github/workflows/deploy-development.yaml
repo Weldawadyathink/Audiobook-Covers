@@ -12,11 +12,25 @@ jobs:
     concurrency: fly-deploy
     steps:
       - uses: actions/checkout@v4
+      - uses: 1password/install-cli-action@v1
       - uses: 1password/load-secrets-action@v3
         id: load_secrets
         env:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
           FLY_API_TOKEN: op://xdpqq36uuedlgindu4gaiwdify/3iaglpb6neh6ybhl54uvj5oioi/Github Deploy Token
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: pgschema
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - run: just devdb_rebuild
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - run: just db_migrate
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - uses: superfly/flyctl-actions/setup-flyctl@master
       - run: flyctl deploy --remote-only
         env:
