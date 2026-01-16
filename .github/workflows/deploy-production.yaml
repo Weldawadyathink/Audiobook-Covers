@@ -12,8 +12,13 @@ jobs:
     concurrency: fly-deploy
     steps:
       - uses: actions/checkout@v4
+      - uses: 1password/load-secrets-action@v3
+        id: load_secrets
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          FLY_API_TOKEN: op://xdpqq36uuedlgindu4gaiwdify/uszxjrl64y37urhuvr2ugjsd6u/Github Deploy Token
       - uses: superfly/flyctl-actions/setup-flyctl@master
       - run: flyctl deploy --remote-only --config fly-prod.toml
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ steps.load_secrets.outputs.FLY_API_TOKEN }}
           LOG_LEVEL: debug

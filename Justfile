@@ -2,35 +2,35 @@ dev:
     pnpm run dev | roarr pretty-print
 
 db_migrate:
-    @PGPASSWORD=$(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/password') \
+    @PGPASSWORD=$(op read 'op://xdpqq36uuedlgindu4gaiwdify/g3iocgcrscj2j2yavznalhux5u/password') \
     pgschema apply \
-    --host $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/host') \
-    --plan-host $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/host') \
-    --user $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/user') \
-    --plan-user $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/user') \
-    --db $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/database') \
-    --plan-db $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/database') \
+    --host $(op read 'op://xdpqq36uuedlgindu4gaiwdify/g3iocgcrscj2j2yavznalhux5u/host') \
+    --plan-host $(op read 'op://xdpqq36uuedlgindu4gaiwdify/g3iocgcrscj2j2yavznalhux5u/host') \
+    --user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/g3iocgcrscj2j2yavznalhux5u/user') \
+    --plan-user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/g3iocgcrscj2j2yavznalhux5u/user') \
+    --db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/g3iocgcrscj2j2yavznalhux5u/database') \
+    --plan-db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/g3iocgcrscj2j2yavznalhux5u/database') \
     --schema audiobookcovers_dev \
     --file database.sql
 
 prod_db_migrate:
-    @PGPASSWORD=$(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/password') \
+    @PGPASSWORD=$(op read 'op://xdpqq36uuedlgindu4gaiwdify/g3iocgcrscj2j2yavznalhux5u/password') \
     pgschema apply \
-    --host $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/host') \
-    --plan-host $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/host') \
-    --user $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/user') \
-    --plan-user $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/user') \
-    --db $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/database') \
-    --plan-db $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/database') \
+    --host $(op read 'op://xdpqq36uuedlgindu4gaiwdify/g3iocgcrscj2j2yavznalhux5u/host') \
+    --plan-host $(op read 'op://xdpqq36uuedlgindu4gaiwdify/g3iocgcrscj2j2yavznalhux5u/host') \
+    --user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/g3iocgcrscj2j2yavznalhux5u/user') \
+    --plan-user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/g3iocgcrscj2j2yavznalhux5u/user') \
+    --db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/g3iocgcrscj2j2yavznalhux5u/database') \
+    --plan-db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/g3iocgcrscj2j2yavznalhux5u/database') \
     --schema audiobookcovers \
     --file database.sql
 
 devdb_rebuild:
-    @PGPASSWORD=$(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/password') \
+    @PGPASSWORD=$(op read 'op://xdpqq36uuedlgindu4gaiwdify/g3iocgcrscj2j2yavznalhux5u/password') \
     psql \
-    -h $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/host') \
-    -U $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/user') \
-    -d $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/database') \
+    -h $(op read 'op://xdpqq36uuedlgindu4gaiwdify/g3iocgcrscj2j2yavznalhux5u/host') \
+    -U $(op read 'op://xdpqq36uuedlgindu4gaiwdify/g3iocgcrscj2j2yavznalhux5u/user') \
+    -d $(op read 'op://xdpqq36uuedlgindu4gaiwdify/g3iocgcrscj2j2yavznalhux5u/database') \
     -f rebuild_dev_db.sql
 
 docker:
