@@ -21,9 +21,11 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: just
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: pgschema
+      - run: |
+          PGSchema_VERSION=$(curl -s https://api.github.com/repos/pgschema/pgschema/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+          VERSION=${PGSchema_VERSION#v}
+          curl -LO https://github.com/pgschema/pgschema/releases/download/${PGSchema_VERSION}/pgschema_${VERSION}_amd64.deb
+          sudo dpkg -i pgschema_${VERSION}_amd64.deb || sudo apt-get install -f -y
       - run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - run: just devdb_rebuild
         env:
