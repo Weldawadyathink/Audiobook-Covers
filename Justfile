@@ -1,39 +1,37 @@
 dev:
     pnpm run dev | roarr pretty-print
 
-db_args:
-    #!/bin/zsh
-    source ~/.zshrc
-    flyway info
-
 db_migrate:
-    #!/bin/zsh
-    source ~/.zshrc
-    flyway migrate
+    @PGPASSWORD=$(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/password') \
+    pgschema apply \
+    --host $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/host') \
+    --plan-host $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/host') \
+    --user $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/user') \
+    --plan-user $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/user') \
+    --db $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/database') \
+    --plan-db $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/database') \
+    --schema audiobookcovers_dev \
+    --file database.sql
 
-production_db_args:
-    #!/bin/zsh
-    source ~/.zshrc
-    flyway info -environment=prod
-
-production_db_migrate:
-    #!/bin/zsh
-    source ~/.zshrc
-    flyway migrate -environment=prod
+prod_db_migrate:
+    @PGPASSWORD=$(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/password') \
+    pgschema apply \
+    --host $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/host') \
+    --plan-host $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/host') \
+    --user $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/user') \
+    --plan-user $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/user') \
+    --db $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/database') \
+    --plan-db $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/database') \
+    --schema audiobookcovers \
+    --file database.sql
 
 devdb_rebuild:
-    #!/bin/zsh
-    source ~/.zshrc
-    set -e
-
-    psql pgbouncer -X -c "PAUSE audiobookcovers_dev;"
-    psql pgbouncer -X -c "PAUSE audiobookcovers;"
-
-    psql postgres -X -c "DROP DATABASE audiobookcovers_dev;"
-    psql postgres -X -c "CREATE DATABASE audiobookcovers_dev WITH TEMPLATE audiobookcovers;"
-
-    psql pgbouncer -X -c "RESUME audiobookcovers;"
-    psql pgbouncer -X -c "RESUME audiobookcovers_dev;"
+    @PGPASSWORD=$(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/password') \
+    psql \
+    -h $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/host') \
+    -U $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/user') \
+    -d $(op read 'op://jf7irnmqruq2nacgqhpezgowx4/g3iocgcrscj2j2yavznalhux5u/database') \
+    -f rebuild_dev_db.sql
 
 docker:
     docker build . -t audiobookcovers && docker run -it --rm audiobookcovers
