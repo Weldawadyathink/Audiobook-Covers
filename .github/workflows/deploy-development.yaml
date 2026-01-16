@@ -16,7 +16,7 @@ jobs:
         id: load_secrets
         env:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-          FLY_API_TOKEN: op://xdpqq36uuedlgindu4gaiwdify/uszxjrl64y37urhuvr2ugjsd6u/Github Deploy Token
+          FLY_API_TOKEN: op://xdpqq36uuedlgindu4gaiwdify/3iaglpb6neh6ybhl54uvj5oioi/Github Deploy Token
       - uses: superfly/flyctl-actions/setup-flyctl@master
       - run: flyctl deploy --remote-only
         env:
