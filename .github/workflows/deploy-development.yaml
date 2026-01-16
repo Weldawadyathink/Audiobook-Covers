@@ -30,7 +30,7 @@ jobs:
       - run: just devdb_rebuild
         env:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-      - run: just db_migrate
+      - run: just db_migrate_force
         env:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - uses: superfly/flyctl-actions/setup-flyctl@master

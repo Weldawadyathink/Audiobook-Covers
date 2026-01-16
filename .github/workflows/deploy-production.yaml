@@ -27,7 +27,7 @@ jobs:
           curl -LO https://github.com/pgschema/pgschema/releases/download/${PGSchema_VERSION}/pgschema_${VERSION}_amd64.deb
           sudo dpkg -i pgschema_${VERSION}_amd64.deb || sudo apt-get install -f -y
       - run: sudo apt-get update && sudo apt-get install -y postgresql-client
-      - run: just prod_db_migrate
+      - run: just prod_db_migrate_force
         env:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - uses: superfly/flyctl-actions/setup-flyctl@master
