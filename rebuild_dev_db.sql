@@ -290,6 +290,56 @@ BEGIN
   END LOOP;
 END $$;
 
+-- After copying data, ensure dev sequences won't generate duplicates.
+-- We advance each sequence that is owned by a table column to at least MAX(column).
+DO $$
+DECLARE
+  dev_schema text := 'audiobookcovers_dev';
+  s record;
+  max_value bigint;
+  seq_fq text;
+BEGIN
+  FOR s IN
+    SELECT
+      seq_ns.nspname AS seq_schema,
+      seq.relname AS seq_name,
+      tbl.relname AS tbl_name,
+      att.attname AS col_name
+    FROM pg_class seq
+    JOIN pg_namespace seq_ns ON seq_ns.oid = seq.relnamespace
+    JOIN pg_depend dep
+      ON dep.classid = 'pg_class'::regclass
+     AND dep.objid = seq.oid
+     AND dep.refclassid = 'pg_class'::regclass
+    JOIN pg_class tbl
+      ON tbl.oid = dep.refobjid
+    JOIN pg_namespace tbl_ns
+      ON tbl_ns.oid = tbl.relnamespace
+    JOIN pg_attribute att
+      ON att.attrelid = tbl.oid
+     AND att.attnum = dep.refobjsubid
+    WHERE seq.relkind = 'S'
+      AND tbl.relkind IN ('r', 'p') -- table / partitioned table
+      AND seq_ns.nspname = dev_schema
+      AND tbl_ns.nspname = dev_schema
+      AND dep.deptype IN ('a', 'i') -- owned-by (serial) / internal (identity)
+    ORDER BY seq.relname
+  LOOP
+    EXECUTE format('SELECT COALESCE(MAX(%I), 0) FROM %I.%I', s.col_name, dev_schema, s.tbl_name)
+      INTO max_value;
+
+    seq_fq := s.seq_schema || '.' || s.seq_name;
+
+    IF max_value = 0 THEN
+      -- Empty table: reset so the next nextval() returns 1.
+      EXECUTE format('SELECT setval(%L, 1, false)', seq_fq);
+    ELSE
+      -- Non-empty: set to max so the next nextval() returns max+1.
+      EXECUTE format('SELECT setval(%L, %s, true)', seq_fq, max_value);
+    END IF;
+  END LOOP;
+END $$;
+
 -- Clone (non-materialized) views.
 DO $$
 DECLARE
@@ -354,6 +404,23 @@ BEGIN
   GRANT USAGE ON SCHEMA audiobookcovers_dev TO audiobookcovers_dev;
   GRANT SELECT ON ALL TABLES IN SCHEMA audiobookcovers_dev TO audiobookcovers_dev;
   ALTER DEFAULT PRIVILEGES IN SCHEMA audiobookcovers_dev GRANT SELECT ON TABLES TO audiobookcovers_dev;
+END $$;
+
+DO $$
+BEGIN
+  GRANT USAGE ON SCHEMA public TO audiobookcovers_dev;
+  GRANT SELECT, UPDATE, INSERT, DELETE ON ALL TABLES IN SCHEMA public TO audiobookcovers_dev;
+  ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, UPDATE, INSERT, DELETE ON TABLES TO audiobookcovers_dev;
+  GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO audiobookcovers_dev;
+  ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO audiobookcovers_dev;
+
+  GRANT USAGE ON SCHEMA audiobookcovers_dev TO audiobookcovers_dev;
+  GRANT SELECT, UPDATE, INSERT, DELETE ON ALL TABLES IN SCHEMA audiobookcovers_dev TO audiobookcovers_dev;
+  ALTER DEFAULT PRIVILEGES IN SCHEMA audiobookcovers_dev GRANT SELECT, UPDATE, INSERT, DELETE ON TABLES TO audiobookcovers_dev;
+  GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA audiobookcovers_dev TO audiobookcovers_dev;
+  ALTER DEFAULT PRIVILEGES IN SCHEMA audiobookcovers_dev GRANT USAGE, SELECT ON SEQUENCES TO audiobookcovers_dev;
+
+  ALTER USER audiobookcovers_dev SET SEARCH_PATH TO audiobookcovers_dev, public;
 END $$;
 
 COMMIT;
