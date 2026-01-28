@@ -3,6 +3,16 @@ BEGIN TRANSACTION;
 DROP SCHEMA IF EXISTS audiobookcovers_dev CASCADE;
 CREATE SCHEMA audiobookcovers_dev;
 
+GRANT USAGE ON SCHEMA public TO audiobookcovers_dev;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO audiobookcovers_dev;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO audiobookcovers_dev;
+
+GRANT USAGE ON SCHEMA audiobookcovers_dev TO audiobookcovers_dev;
+GRANT SELECT ON ALL TABLES IN SCHEMA audiobookcovers_dev TO audiobookcovers_dev;
+ALTER DEFAULT PRIVILEGES IN SCHEMA audiobookcovers_dev GRANT SELECT ON TABLES TO audiobookcovers_dev;
+
+ALTER USER audiobookcovers_dev SET SEARCH_PATH TO audiobookcovers_dev, public;
+
 CREATE TABLE audiobookcovers_dev.image
     (LIKE audiobookcovers.image INCLUDING ALL);
 
