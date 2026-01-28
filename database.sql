@@ -1,4 +1,31 @@
-CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Audiobookcovers user
+
+GRANT USAGE ON SCHEMA public TO audiobookcovers;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO audiobookcovers;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO audiobookcovers;
+
+GRANT USAGE ON SCHEMA audiobookcovers TO audiobookcovers;
+GRANT SELECT ON ALL TABLES IN SCHEMA audiobookcovers TO audiobookcovers;
+ALTER DEFAULT PRIVILEGES IN SCHEMA audiobookcovers GRANT SELECT ON TABLES TO audiobookcovers;
+
+ALTER USER audiobookcovers SET SEARCH_PATH TO audiobookcovers, public;
+
+-- Audiobookcovers_dev user
+
+GRANT USAGE ON SCHEMA public TO audiobookcovers_dev;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO audiobookcovers_dev;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO audiobookcovers_dev;
+
+ALTER USER audiobookcovers SET SEARCH_PATH TO audiobookcovers, public;
+
+GRANT USAGE ON SCHEMA audiobookcovers_dev TO audiobookcovers_dev;
+GRANT SELECT ON ALL TABLES IN SCHEMA audiobookcovers_dev TO audiobookcovers_dev;
+ALTER DEFAULT PRIVILEGES IN SCHEMA audiobookcovers_dev GRANT SELECT ON TABLES TO audiobookcovers_dev;
+
+ALTER USER audiobookcovers_dev SET SEARCH_PATH TO audiobookcovers_dev, public;
+
+
 
 CREATE TABLE image (
     id                       UUID NOT NULL,
