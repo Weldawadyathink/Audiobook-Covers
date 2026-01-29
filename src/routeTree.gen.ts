@@ -23,6 +23,7 @@ import { Route as ImagesIdRouteImport } from './routes/images.$id'
 import { Route as AdminTestRouteImport } from './routes/admin/test'
 import { Route as AdminSimilarRouteImport } from './routes/admin/similar'
 import { Route as AdminLogoutRouteImport } from './routes/admin/logout'
+import { Route as AdminDatabase_infoRouteImport } from './routes/admin/database_info'
 import { ServerRoute as CoverBytextServerRouteImport } from './routes/cover.bytext'
 import { ServerRoute as ApiLoginServerRouteImport } from './routes/api/login'
 import { ServerRoute as ApiHeartbeatServerRouteImport } from './routes/api/heartbeat'
@@ -89,6 +90,11 @@ const AdminLogoutRoute = AdminLogoutRouteImport.update({
   path: '/logout',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminDatabase_infoRoute = AdminDatabase_infoRouteImport.update({
+  id: '/database_info',
+  path: '/database_info',
+  getParentRoute: () => AdminRoute,
+} as any)
 const CoverBytextServerRoute = CoverBytextServerRouteImport.update({
   id: '/cover/bytext',
   path: '/cover/bytext',
@@ -113,6 +119,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/random': typeof RandomRoute
   '/search': typeof SearchRoute
+  '/admin/database_info': typeof AdminDatabase_infoRoute
   '/admin/logout': typeof AdminLogoutRoute
   '/admin/similar': typeof AdminSimilarRoute
   '/admin/test': typeof AdminTestRoute
@@ -126,6 +133,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/random': typeof RandomRoute
   '/search': typeof SearchRoute
+  '/admin/database_info': typeof AdminDatabase_infoRoute
   '/admin/logout': typeof AdminLogoutRoute
   '/admin/similar': typeof AdminSimilarRoute
   '/admin/test': typeof AdminTestRoute
@@ -141,6 +149,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/random': typeof RandomRoute
   '/search': typeof SearchRoute
+  '/admin/database_info': typeof AdminDatabase_infoRoute
   '/admin/logout': typeof AdminLogoutRoute
   '/admin/similar': typeof AdminSimilarRoute
   '/admin/test': typeof AdminTestRoute
@@ -157,6 +166,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/random'
     | '/search'
+    | '/admin/database_info'
     | '/admin/logout'
     | '/admin/similar'
     | '/admin/test'
@@ -170,6 +180,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/random'
     | '/search'
+    | '/admin/database_info'
     | '/admin/logout'
     | '/admin/similar'
     | '/admin/test'
@@ -184,6 +195,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/random'
     | '/search'
+    | '/admin/database_info'
     | '/admin/logout'
     | '/admin/similar'
     | '/admin/test'
@@ -317,6 +329,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLogoutRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/database_info': {
+      id: '/admin/database_info'
+      path: '/database_info'
+      fullPath: '/admin/database_info'
+      preLoaderRoute: typeof AdminDatabase_infoRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 declare module '@tanstack/react-start/server' {
@@ -346,6 +365,7 @@ declare module '@tanstack/react-start/server' {
 }
 
 interface AdminRouteChildren {
+  AdminDatabase_infoRoute: typeof AdminDatabase_infoRoute
   AdminLogoutRoute: typeof AdminLogoutRoute
   AdminSimilarRoute: typeof AdminSimilarRoute
   AdminTestRoute: typeof AdminTestRoute
@@ -353,6 +373,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminDatabase_infoRoute: AdminDatabase_infoRoute,
   AdminLogoutRoute: AdminLogoutRoute,
   AdminSimilarRoute: AdminSimilarRoute,
   AdminTestRoute: AdminTestRoute,

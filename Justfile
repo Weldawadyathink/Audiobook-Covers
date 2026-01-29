@@ -1,39 +1,64 @@
 dev:
     pnpm run dev | roarr pretty-print
 
-db_args:
-    #!/bin/zsh
-    source ~/.zshrc
-    flyway info
-
 db_migrate:
-    #!/bin/zsh
-    source ~/.zshrc
-    flyway migrate
+    @PGPASSWORD=$(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/password') \
+    pgschema apply \
+    --host $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/host') \
+    --plan-host $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/host') \
+    --user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
+    --plan-user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
+    --db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
+    --plan-db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
+    --schema audiobookcovers_dev \
+    --file database.sql
 
-production_db_args:
-    #!/bin/zsh
-    source ~/.zshrc
-    flyway info -environment=prod
+db_migrate_force:
+    @PGPASSWORD=$(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/password') \
+    pgschema apply \
+    --host $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/host') \
+    --plan-host $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/host') \
+    --user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
+    --plan-user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
+    --db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
+    --plan-db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
+    --schema audiobookcovers_dev \
+    --file database.sql \
+    --auto-approve
 
-production_db_migrate:
-    #!/bin/zsh
-    source ~/.zshrc
-    flyway migrate -environment=prod
+
+prod_db_migrate:
+    @PGPASSWORD=$(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/password') \
+    pgschema apply \
+    --host $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/host') \
+    --plan-host $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/host') \
+    --user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
+    --plan-user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
+    --db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
+    --plan-db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
+    --schema audiobookcovers \
+    --file database.sql
+
+prod_db_migrate_force:
+    @PGPASSWORD=$(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/password') \
+    pgschema apply \
+    --host $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/host') \
+    --plan-host $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/host') \
+    --user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
+    --plan-user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
+    --db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
+    --plan-db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
+    --schema audiobookcovers \
+    --file database.sql \
+    --auto-approve
 
 devdb_rebuild:
-    #!/bin/zsh
-    source ~/.zshrc
-    set -e
-
-    psql pgbouncer -X -c "PAUSE audiobookcovers_dev;"
-    psql pgbouncer -X -c "PAUSE audiobookcovers;"
-
-    psql postgres -X -c "DROP DATABASE audiobookcovers_dev;"
-    psql postgres -X -c "CREATE DATABASE audiobookcovers_dev WITH TEMPLATE audiobookcovers;"
-
-    psql pgbouncer -X -c "RESUME audiobookcovers;"
-    psql pgbouncer -X -c "RESUME audiobookcovers_dev;"
+    @PGPASSWORD=$(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/password') \
+    psql \
+    -h $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/host') \
+    -U $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
+    -d $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
+    -f rebuild_dev_db.sql
 
 docker:
     docker build . -t audiobookcovers && docker run -it --rm audiobookcovers
@@ -43,3 +68,6 @@ docker_it:
 
 loadtest:
     pnpm run loadtest
+
+deploy:
+    fly deploy --config fly.toml

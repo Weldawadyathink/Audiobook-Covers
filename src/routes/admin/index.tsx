@@ -13,9 +13,20 @@ function RouteComponent() {
           Logout
         </Link>
       </div>
-      <Link to="/admin/test">Test</Link>
-      <br />
-      <Link to="/admin/similar">Similar Pairs</Link>
+      <div className="flex flex-col gap-2">
+        <Link to="/admin/test" className="text-blue-400 hover:text-blue-300">
+          Test
+        </Link>
+        <Link to="/admin/similar" className="text-blue-400 hover:text-blue-300">
+          Similar Pairs
+        </Link>
+        <Link
+          to="/admin/database_info"
+          className="text-blue-400 hover:text-blue-300"
+        >
+          Database Info
+        </Link>
+      </div>
     </div>
   );
 }

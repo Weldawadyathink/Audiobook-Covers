@@ -30,12 +30,12 @@ function RouteComponent() {
     if (image.searchable) {
       toast("Setting image as not searchable");
       setImageNotSearchable({ data: { id: image.id } }).then(() =>
-        router.invalidate()
+        router.invalidate(),
       );
     } else {
       toast("Setting image as searchable");
       setImageSearchable({ data: { id: image.id } }).then(() =>
-        router.invalidate()
+        router.invalidate(),
       );
     }
   }
@@ -49,7 +49,7 @@ function RouteComponent() {
       <div className="flex flex-col items-center bg-white/80 rounded-2xl shadow-lg p-6 mb-8 max-w-lg w-full">
         <ImageCard imageData={image} className="max-w-96 w-full mb-4" />
         <div className="flex flex-col items-center gap-2 w-full">
-          {auth && (
+          {auth.isAuthenticated && (
             <Button className="w-full" onClick={toggleSearchable}>
               {image.searchable ? (
                 <>
