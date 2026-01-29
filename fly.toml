@@ -3,7 +3,7 @@
 #
 
 app = "audiobook-covers-dev"
-primary_region = "sjc"
+primary_region = "iad"
 swap_size_mb = 2048
 
 [build]
@@ -14,7 +14,7 @@ force_https = true
 auto_stop_machines = "suspend"
 auto_start_machines = true
 min_machines_running = 0
-processes = ["app"]
+processes = ["web"]
 
 [http_service.concurrency]
 type = "requests"
@@ -29,10 +29,24 @@ timeout = "5s"
 path = "/api/heartbeat"
 
 [[vm]]
+process = ["web"]
 cpus = 1
 memory = "256mb"
 cpu_kind = "shared"
 
+[[vm]]
+process = ["clip"]
+cpus = 1
+memory = "2gb"
+cpu_kind = "performance"
+
 [env]
 NODE_ENV = "production"
 ROARR_LOG = "true"
+
+[processes]
+web = "node /app/.output/server/index.mjs"
+clip = "/app/clip_server/.venv/bin/fastapi run /app/clip_server/main.py"
+
+[deploy]
+strategy = "immediate"
