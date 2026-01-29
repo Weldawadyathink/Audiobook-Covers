@@ -29,13 +29,13 @@ timeout = "5s"
 path = "/api/heartbeat"
 
 [[vm]]
-process = ["web"]
+processes = ["web"]
 cpus = 1
 memory = "256mb"
 cpu_kind = "shared"
 
 [[vm]]
-process = ["clip"]
+processes = ["clip"]
 cpus = 1
 memory = "2gb"
 cpu_kind = "performance"
