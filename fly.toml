@@ -28,6 +28,17 @@ method = "GET"
 timeout = "5s"
 path = "/api/heartbeat"
 
+[[services]]
+processes = ["clip"]
+internal_port = 8000
+protocol = "tcp"
+auto_start_machines = true
+auto_stop_machines = "suspend"
+min_machines_running = 0
+[[services.ports]]
+port = 8000
+concurrency = {type = "requests", soft_limit = 50, hard_limit = 100 }
+
 [[vm]]
 processes = ["web"]
 cpus = 1

@@ -1,6 +1,9 @@
 import { sql } from "@/server/db";
 import { z } from "zod/v4";
 import ky from "ky";
+import { getEnv } from "@/server/env";
+
+const flyAppName = getEnv().FLY_APP_NAME;
 
 export interface EmbeddingOutput {
   input: string;
@@ -25,8 +28,9 @@ const publicClipModelValidator = z
   .min(1);
 
 async function genericFlyClipModel(modelId: string, input: string) {
+  // TODO: temporary, all calls will return the s0 model results
   const json = await ky
-    .post(`https://${modelId}.fly.dev/predictions`, {
+    .post(`http://${flyAppName}.fly.dev:8000/predictions`, {
       json: {
         inputs: input,
       },
