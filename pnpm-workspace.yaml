@@ -8,6 +8,8 @@ onlyBuiltDependencies:
   - aws-sdk
   - esbuild
   - protobufjs
+  - sharp
   - unix-dgram
+  - workerd
 
 packageImportMethod: clone-or-copy

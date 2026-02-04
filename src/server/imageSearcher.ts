@@ -23,7 +23,7 @@ export const getRandom = createServerFn().handler(async () => {
         AND deleted IS FALSE
       ORDER BY RANDOM()
       LIMIT 54
-    `
+    `,
   );
   const time = performance.now() - start;
   console.log(`getRandom database lookup in ${time.toFixed(1)}ms`);
@@ -42,7 +42,7 @@ export const getRandom = createServerFn().handler(async () => {
 export const getImageByIdAndSimilar = createServerFn({
   method: "GET",
 })
-  .validator(z.uuid())
+  .inputValidator(z.uuid())
   .handler(async ({ data: id }) => {
     console.log(`getImageByIdAndSimilar: ${id}`);
     const start = performance.now();
@@ -59,7 +59,7 @@ export const getImageByIdAndSimilar = createServerFn({
           searchable
         FROM image
         WHERE id = ${id}
-      `
+      `,
     );
     if (!target) {
       return [];
@@ -92,11 +92,11 @@ export const getImageByIdAndSimilar = createServerFn({
       WHERE i.id != ${id}
       ORDER BY distance
       LIMIT 96
-    `
+    `,
     );
     const time = performance.now() - start;
     console.log(
-      `getImageByIdAnsSimilar database lookup in ${time.toFixed(1)}ms`
+      `getImageByIdAnsSimilar database lookup in ${time.toFixed(1)}ms`,
     );
     logAnalyticsEvent({
       data: {
@@ -139,7 +139,7 @@ export const getImageByIdAndSimilar = createServerFn({
 // }
 
 export const vectorSearchByString = createServerFn()
-  .validator(z.object({ q: z.string() }))
+  .inputValidator(z.object({ q: z.string() }))
   .handler(async ({ data }) => {
     if (data.q === "") {
       return [];
@@ -170,13 +170,13 @@ export const vectorSearchByString = createServerFn()
       FROM searchable_images
       WHERE distance <= ${similarityThreshold}
       ORDER BY distance
-    `
+    `,
     );
     const finish = performance.now();
     console.log(
       `Completed search with replicate embedding. Embed time: ${
         dbStart - embedStart
-      }ms, DB time: ${finish - dbStart}ms, Total time: ${finish - embedStart}ms`
+      }ms, DB time: ${finish - dbStart}ms, Total time: ${finish - embedStart}ms`,
     );
     logAnalyticsEvent({
       data: {

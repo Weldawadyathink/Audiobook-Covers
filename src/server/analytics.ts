@@ -15,11 +15,11 @@ const json = z.lazy(() => {
 });
 
 export const logAnalyticsEvent = createServerFn()
-  .validator(
+  .inputValidator(
     z.object({
       eventType: z.string(),
       payload: json,
-    })
+    }),
   )
   .handler(async ({ data }) => {
     const pool = await getDbPool();

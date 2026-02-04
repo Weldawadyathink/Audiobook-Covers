@@ -6,7 +6,7 @@ import { sql } from "slonik";
 import { logAnalyticsEvent } from "@/server/analytics";
 
 export const setImageDeleted = createServerFn()
-  .validator(z.object({ id: z.uuid() }))
+  .inputValidator(z.object({ id: z.uuid() }))
   .handler(async ({ data: { id } }) => {
     const auth = await getIsAuthenticated();
     if (!auth.isAuthenticated) {
@@ -14,7 +14,7 @@ export const setImageDeleted = createServerFn()
     }
     const pool = await getDbPool();
     await pool.query(
-      sql.unsafe`UPDATE image SET deleted = TRUE WHERE id = ${id}`
+      sql.unsafe`UPDATE image SET deleted = TRUE WHERE id = ${id}`,
     );
     await logAnalyticsEvent({
       data: {
@@ -26,7 +26,7 @@ export const setImageDeleted = createServerFn()
   });
 
 export const setImageNotDeleted = createServerFn()
-  .validator(z.object({ id: z.uuid() }))
+  .inputValidator(z.object({ id: z.uuid() }))
   .handler(async ({ data: { id } }) => {
     const auth = await getIsAuthenticated();
     if (!auth.isAuthenticated) {
@@ -34,7 +34,7 @@ export const setImageNotDeleted = createServerFn()
     }
     const pool = await getDbPool();
     await pool.query(
-      sql.unsafe`UPDATE image SET deleted = FALSE WHERE id = ${id}`
+      sql.unsafe`UPDATE image SET deleted = FALSE WHERE id = ${id}`,
     );
     await logAnalyticsEvent({
       data: {
@@ -46,7 +46,7 @@ export const setImageNotDeleted = createServerFn()
   });
 
 export const setImageSearchable = createServerFn()
-  .validator(z.object({ id: z.uuid() }))
+  .inputValidator(z.object({ id: z.uuid() }))
   .handler(async ({ data: { id } }) => {
     const auth = await getIsAuthenticated();
     if (!auth.isAuthenticated) {
@@ -55,7 +55,7 @@ export const setImageSearchable = createServerFn()
     console.log("Setting image as searchable", id);
     const pool = await getDbPool();
     await pool.query(
-      sql.unsafe`UPDATE image SET searchable = TRUE WHERE id = ${id}`
+      sql.unsafe`UPDATE image SET searchable = TRUE WHERE id = ${id}`,
     );
     await logAnalyticsEvent({
       data: {
@@ -67,7 +67,7 @@ export const setImageSearchable = createServerFn()
   });
 
 export const setImageNotSearchable = createServerFn()
-  .validator(z.object({ id: z.uuid() }))
+  .inputValidator(z.object({ id: z.uuid() }))
   .handler(async ({ data: { id } }) => {
     const auth = await getIsAuthenticated();
     if (!auth.isAuthenticated) {
@@ -76,7 +76,7 @@ export const setImageNotSearchable = createServerFn()
     console.log("Setting image as not searchable", id);
     const pool = await getDbPool();
     await pool.query(
-      sql.unsafe`UPDATE image SET searchable = FALSE WHERE id = ${id}`
+      sql.unsafe`UPDATE image SET searchable = FALSE WHERE id = ${id}`,
     );
     await logAnalyticsEvent({
       data: {

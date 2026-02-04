@@ -2,7 +2,7 @@ import { getDbPool, sql } from "@/server/db";
 import { z } from "zod/v4";
 import base64 from "base-64";
 import { createServerFn } from "@tanstack/react-start";
-import { getWebRequest } from "@tanstack/react-start/server";
+import { getRequest } from "@tanstack/react-start/server";
 import { redirect } from "@tanstack/react-router";
 import cookie from "cookie";
 import { logAnalyticsEvent } from "@/server/analytics";
@@ -20,7 +20,7 @@ type AuthenticationResult =
 export const getIsAuthenticated = createServerFn().handler(
   async (): Promise<AuthenticationResult> => {
     console.log("Checking auth");
-    const request = getWebRequest();
+    const request = getRequest();
     const cookies = cookie.parse(request.headers.get("cookie") ?? "");
     if (!cookies) {
       return { isAuthenticated: false };
@@ -48,7 +48,7 @@ export const getIsAuthenticated = createServerFn().handler(
         z.object({
           username: z.string(),
           session_id: z.string(),
-        })
+        }),
       )`
         SELECT s.session_id AS session_id, u.username AS username
         FROM session s
@@ -56,7 +56,7 @@ export const getIsAuthenticated = createServerFn().handler(
         WHERE session_id = ${auth.data.sessionId}
         AND expires_at > NOW()
         AND u.username = ${auth.data.username}
-      `
+      `,
     );
     if (!result) {
       return { isAuthenticated: false };
@@ -82,7 +82,7 @@ export const getIsAuthenticated = createServerFn().handler(
     } else {
       return { isAuthenticated: false };
     }
-  }
+  },
 );
 
 export const forceAuthenticated = createServerFn().handler(async () => {

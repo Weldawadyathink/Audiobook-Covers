@@ -61,18 +61,6 @@ export type ModelOptions = z.infer<typeof zModelOptions>;
 export const models: { readonly [K in ModelOptions]: ModelDefinition } = {
   "andreasjansson-clip": {
     dimensions: 768,
-    getBulkEmbeddings: async (inputs) => {
-      const combinedInput = inputs.join("\n");
-      const result = (await replicate.run(
-        "andreasjansson/clip-features:75b33f253f7714a281ad3e9b28f63e3232d583716ef6718f2e46641077ea040a",
-        {
-          input: {
-            inputs: combinedInput,
-          },
-        },
-      )) as EmbeddingOutput[];
-      return result;
-    },
     getTextEmbedding: async (input) => {
       const result = (await replicate.run(
         "andreasjansson/clip-features:75b33f253f7714a281ad3e9b28f63e3232d583716ef6718f2e46641077ea040a",

@@ -44,8 +44,8 @@ async function reindexAllImages(model: ModelDefinition) {
 }
 
 if (import.meta.main) {
-  const modelName = Deno.args[0];
-  const processes = Deno.args[1] || 2;
+  const modelName = "andreasjansson-clip";
+  const processes = 2;
   const model = models[modelName as ModelOptions];
   console.log(`Generating embeddings for ${modelName}`);
   await Promise.all(

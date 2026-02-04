@@ -1,19 +1,6 @@
-# dotenv environment variable files
+node_modules
+.DS_Store
+.cache
 .env
-.env.development.local
-.env.test.local
-.env.production.local
-.env.local
-
-# Fresh build directory
-_fresh/
-# npm + other dependencies
-node_modules/
-vendor/
-.tanstack
-
-*.parquet
-/images
-/cache
-
-venv
+dist
+.wrangler
