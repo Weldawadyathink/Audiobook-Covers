@@ -48,6 +48,7 @@ CREATE TABLE image (
     embedding_mobileclip_s2  VECTOR(512),
     embedding_mobileclip_b   VECTOR(512),
     embedding_mobileclip_blt VECTOR(512),
+    embedding_andreasjansson_clip VECTOR(768),
     hash                     TEXT,
     from_old_database        BOOLEAN DEFAULT FALSE,
     deleted                  BOOLEAN NOT NULL DEFAULT FALSE

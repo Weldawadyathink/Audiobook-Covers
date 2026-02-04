@@ -2,7 +2,9 @@ import { sql } from "@/server/db";
 import { z } from "zod/v4";
 import ky from "ky";
 import { getEnv } from "@/server/env";
+import Replicate from "replicate";
 
+const replicate = new Replicate();
 const flyAppName = getEnv().FLY_APP_NAME;
 
 export interface EmbeddingOutput {
@@ -51,12 +53,50 @@ export const modelOptions = [
   "mobileclip_s2",
   "mobileclip_b",
   "mobileclip_blt",
+  "andreasjansson-clip",
 ] as const;
-export const defaultModel = "mobileclip_s0" as const;
+export const defaultModel = "andreasjansson-clip" as const;
 export const zModelOptions = z.enum(modelOptions).catch(defaultModel);
 export type ModelOptions = z.infer<typeof zModelOptions>;
-
 export const models: { readonly [K in ModelOptions]: ModelDefinition } = {
+  "andreasjansson-clip": {
+    dimensions: 768,
+    getBulkEmbeddings: async (inputs) => {
+      const combinedInput = inputs.join("\n");
+      const result = (await replicate.run(
+        "andreasjansson/clip-features:75b33f253f7714a281ad3e9b28f63e3232d583716ef6718f2e46641077ea040a",
+        {
+          input: {
+            inputs: combinedInput,
+          },
+        },
+      )) as EmbeddingOutput[];
+      return result;
+    },
+    getTextEmbedding: async (input) => {
+      const result = (await replicate.run(
+        "andreasjansson/clip-features:75b33f253f7714a281ad3e9b28f63e3232d583716ef6718f2e46641077ea040a",
+        {
+          input: {
+            inputs: input,
+          },
+        },
+      )) as EmbeddingOutput[];
+      return result[0];
+    },
+    getImageEmbedding: async (input) => {
+      const result = (await replicate.run(
+        "andreasjansson/clip-features:75b33f253f7714a281ad3e9b28f63e3232d583716ef6718f2e46641077ea040a",
+        {
+          input: {
+            inputs: input,
+          },
+        },
+      )) as EmbeddingOutput[];
+      return result[0];
+    },
+    dbColumn: sql.identifier(["embedding_andreasjansson_clip"]),
+  },
   mobileclip_s0: {
     dimensions: 512,
     getTextEmbedding: async (input) => {
