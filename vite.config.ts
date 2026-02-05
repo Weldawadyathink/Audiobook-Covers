@@ -3,6 +3,7 @@ import tsConfigPaths from "vite-tsconfig-paths";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { cloudflare } from "@cloudflare/vite-plugin";
+import viteReact from "@vitejs/plugin-react";
 
 export default defineConfig({
   server: {
@@ -12,6 +13,7 @@ export default defineConfig({
     tsConfigPaths(),
     tanstackStart(),
     tailwindcss(),
+    viteReact(),
     cloudflare({ viteEnvironment: { name: "ssr" } }),
   ],
   optimizeDeps: {
