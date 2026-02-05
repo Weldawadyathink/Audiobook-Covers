@@ -4,8 +4,22 @@ import base64 from "base-64";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { redirect } from "@tanstack/react-router";
-import cookie from "cookie";
 import { logAnalyticsEvent } from "@/server/analytics";
+
+function parseCookie(str: string) {
+  if (!str || typeof str !== "string") return {} as Record<string, string>;
+  return str
+    .split(";")
+    .map((v) => v.split("="))
+    .filter((v): v is [string, string] => v.length >= 2 && v[0] != null && v[1] != null)
+    .reduce(
+      (acc, [key, val]) => {
+        acc[decodeURIComponent(key.trim())] = decodeURIComponent(val.trim());
+        return acc;
+      },
+      {} as Record<string, string>,
+    );
+}
 
 type AuthenticationResult =
   | {
@@ -21,7 +35,7 @@ export const getIsAuthenticated = createServerFn().handler(
   async (): Promise<AuthenticationResult> => {
     console.log("Checking auth");
     const request = getRequest();
-    const cookies = cookie.parse(request.headers.get("cookie") ?? "");
+    const cookies = parseCookie(request.headers.get("cookie") ?? "");
     if (!cookies) {
       return { isAuthenticated: false };
     }
