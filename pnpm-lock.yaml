@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@slonik/driver@48.10.0':
+    hash: b4875207a51e86ec94bfe64ca33283d757fefa8130a5ca65539490a6ad610031
+    path: patches/@slonik__driver@48.10.0.patch
+
 importers:
 
   .:
@@ -8009,7 +8014,7 @@ snapshots:
 
   '@sindresorhus/is@7.2.0': {}
 
-  '@slonik/driver@48.10.0(zod@3.25.76)':
+  '@slonik/driver@48.10.0(patch_hash=b4875207a51e86ec94bfe64ca33283d757fefa8130a5ca65539490a6ad610031)(zod@3.25.76)':
     dependencies:
       '@slonik/types': 48.10.0(zod@3.25.76)
       '@slonik/utilities': 48.10.0(zod@3.25.76)
@@ -8018,7 +8023,7 @@ snapshots:
       strict-event-emitter-types: 2.0.0
       zod: 3.25.76
 
-  '@slonik/driver@48.10.0(zod@4.3.6)':
+  '@slonik/driver@48.10.0(patch_hash=b4875207a51e86ec94bfe64ca33283d757fefa8130a5ca65539490a6ad610031)(zod@4.3.6)':
     dependencies:
       '@slonik/types': 48.10.0(zod@4.3.6)
       '@slonik/utilities': 48.10.0(zod@4.3.6)
@@ -8041,7 +8046,7 @@ snapshots:
 
   '@slonik/pg-driver@48.10.0(zod@3.25.76)':
     dependencies:
-      '@slonik/driver': 48.10.0(zod@3.25.76)
+      '@slonik/driver': 48.10.0(patch_hash=b4875207a51e86ec94bfe64ca33283d757fefa8130a5ca65539490a6ad610031)(zod@3.25.76)
       '@slonik/errors': 48.10.0(zod@3.25.76)
       '@slonik/sql-tag': 48.10.0
       '@slonik/types': 48.10.0(zod@3.25.76)
@@ -8056,7 +8061,7 @@ snapshots:
 
   '@slonik/pg-driver@48.10.0(zod@4.3.6)':
     dependencies:
-      '@slonik/driver': 48.10.0(zod@4.3.6)
+      '@slonik/driver': 48.10.0(patch_hash=b4875207a51e86ec94bfe64ca33283d757fefa8130a5ca65539490a6ad610031)(zod@4.3.6)
       '@slonik/errors': 48.10.0(zod@4.3.6)
       '@slonik/sql-tag': 48.10.0
       '@slonik/types': 48.10.0(zod@4.3.6)
@@ -11408,7 +11413,7 @@ snapshots:
   slonik@48.10.0:
     dependencies:
       '@opentelemetry/api': 1.9.0
-      '@slonik/driver': 48.10.0(zod@4.3.6)
+      '@slonik/driver': 48.10.0(patch_hash=b4875207a51e86ec94bfe64ca33283d757fefa8130a5ca65539490a6ad610031)(zod@4.3.6)
       '@slonik/errors': 48.10.0(zod@4.3.6)
       '@slonik/pg-driver': 48.10.0(zod@4.3.6)
       '@slonik/sql-tag': 48.10.0

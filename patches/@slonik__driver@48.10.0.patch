@@ -1,0 +1,26 @@
+diff --git a/dist/factories/createDriverFactory.js b/dist/factories/createDriverFactory.js
+index 3a1529b78cb900ec599786123aa94a50beba6aa6..4b959dc72ea8ea95e5b11cbc0bafc9a1f4118e5e 100644
+--- a/dist/factories/createDriverFactory.js
++++ b/dist/factories/createDriverFactory.js
+@@ -118,7 +118,7 @@ export const createDriverFactory = (setup) => {
+                         idleTimeout = setTimeout(() => {
+                             void destroy();
+                             idleTimeout = null;
+-                        }, driverConfiguration.idleTimeout).unref();
++                        }, driverConfiguration.idleTimeout).unref?.();
+                     }
+                     isAcquired = false;
+                     releasePromise = null;
+diff --git a/src/factories/createDriverFactory.ts b/src/factories/createDriverFactory.ts
+index 3eaa73acec941eedfd04abce635a90fa811584d4..4a91a816e125602748164fe927bfff419ec905d4 100644
+--- a/src/factories/createDriverFactory.ts
++++ b/src/factories/createDriverFactory.ts
+@@ -326,7 +326,7 @@ export const createDriverFactory = (setup: DriverSetup): DriverFactory => {
+               void destroy();
+ 
+               idleTimeout = null;
+-            }, driverConfiguration.idleTimeout).unref();
++            }, driverConfiguration.idleTimeout).unref?.();
+           }
+ 
+           isAcquired = false;
