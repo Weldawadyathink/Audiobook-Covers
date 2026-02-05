@@ -6,9 +6,6 @@ export const getEnv = createIsomorphicFn()
     const env = z
       .object({
         DATABASE_URL: z.url(),
-        DATABASE_SCHEMA: z.string().optional(),
-        NODE_ENV: z.string().optional(),
-        FLY_APP_NAME: z.string(),
         REPLICATE_API_TOKEN: z.string(),
       })
       .parse(process.env);
