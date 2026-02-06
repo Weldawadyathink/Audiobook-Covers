@@ -14,6 +14,7 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA audiobookcovers TO audiobookcover
 ALTER DEFAULT PRIVILEGES IN SCHEMA audiobookcovers GRANT USAGE, SELECT ON SEQUENCES TO audiobookcovers;
 
 ALTER USER audiobookcovers SET SEARCH_PATH TO audiobookcovers, public;
+GRANT audiobookcovers TO pscale_api_bjroyz1lcgxf; -- Allow hyperdrive to masquerade as this user
 
 -- Audiobookcovers_dev user
 
@@ -30,6 +31,8 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA audiobookcovers_dev TO audiobookc
 ALTER DEFAULT PRIVILEGES IN SCHEMA audiobookcovers_dev GRANT USAGE, SELECT ON SEQUENCES TO audiobookcovers_dev;
 
 ALTER USER audiobookcovers_dev SET SEARCH_PATH TO audiobookcovers_dev, public;
+GRANT audiobookcovers_dev TO pscale_api_bjroyz1lcgxf; -- Allow hyperdrive to masquerade as this user
+
 
 -- TODO: Restrict permissions to only the necessary tables
 

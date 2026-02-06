@@ -14,6 +14,7 @@ export async function getDbPool(): Promise<DatabasePool> {
     global.slonikDbPool = await createPool(getEnv().DATABASE_URL, {
       driverFactory: createPgDriverFactory(),
       interceptors: [createQueryLoggingInterceptor()],
+      maximumPoolSize: 2,
     });
   }
   return global.slonikDbPool;

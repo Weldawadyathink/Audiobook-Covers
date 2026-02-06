@@ -7,6 +7,7 @@ export const getEnv = createIsomorphicFn()
       .object({
         DATABASE_URL: z.url(),
         REPLICATE_API_TOKEN: z.string(),
+        APP_STAGE: z.enum(["local", "development", "production"]),
       })
       .parse(process.env);
 

@@ -7,4 +7,27 @@
   "observability": {
     "enabled": true,
   },
+  "vars": {
+    "APP_STAGE": "production",
+  },
+  "routes": [
+    {
+      "pattern": "cf.audiobookcovers.com/*",
+      "custom_domain": true,
+    },
+  ],
+  "env": {
+    "development": {
+      "name": "audiobook-covers-dev",
+      "vars": {
+        "APP_STAGE": "development",
+      },
+    },
+    "local": {
+      "name": "audiobook-covers-local",
+      "vars": {
+        "APP_STAGE": "local",
+      },
+    },
+  },
 }

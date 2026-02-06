@@ -9,7 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "cf-typegen": "wrangler types",
-    "deploy": "pnpm run build &&wrangler deploy",
+    "deploy": "pnpm run build && wrangler deploy --env development",
     "start": "node .output/server/index.mjs",
     "loadtest": "artillery run artillery.yaml",
     "reindex-images": "tsx reindex_images.ts"
