@@ -1,4 +1,4 @@
-import { getDbPool, sql } from "@/server/db";
+import { dbTransaction, sql } from "@/server/db";
 import { z } from "zod/v4";
 import base64 from "base-64";
 import { createServerFn } from "@tanstack/react-start";
@@ -11,7 +11,10 @@ function parseCookie(str: string) {
   return str
     .split(";")
     .map((v) => v.split("="))
-    .filter((v): v is [string, string] => v.length >= 2 && v[0] != null && v[1] != null)
+    .filter(
+      (v): v is [string, string] =>
+        v.length >= 2 && v[0] != null && v[1] != null,
+    )
     .reduce(
       (acc, [key, val]) => {
         acc[decodeURIComponent(key.trim())] = decodeURIComponent(val.trim());
@@ -56,14 +59,14 @@ export const getIsAuthenticated = createServerFn().handler(
       return { isAuthenticated: false };
     }
 
-    const pool = await getDbPool();
-    const result = await pool.maybeOne(
-      sql.type(
-        z.object({
-          username: z.string(),
-          session_id: z.string(),
-        }),
-      )`
+    const result = await dbTransaction(async (trx) => {
+      return trx.maybeOne(
+        sql.type(
+          z.object({
+            username: z.string(),
+            session_id: z.string(),
+          }),
+        )`
         SELECT s.session_id AS session_id, u.username AS username
         FROM session s
         JOIN web_user u ON s.user_id = u.id
@@ -71,7 +74,8 @@ export const getIsAuthenticated = createServerFn().handler(
         AND expires_at > NOW()
         AND u.username = ${auth.data.username}
       `,
-    );
+      );
+    });
     if (!result) {
       return { isAuthenticated: false };
     }
