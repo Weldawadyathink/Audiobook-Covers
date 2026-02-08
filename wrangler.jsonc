@@ -7,15 +7,8 @@
   "observability": {
     "enabled": true,
   },
-  "vars": {
-    "APP_STAGE": "production",
-  },
-  "routes": [
-    {
-      "pattern": "cf.audiobookcovers.com/*",
-      "custom_domain": true,
-    },
-  ],
+  "upload_source_maps": true,
+  "keep_vars": false,
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",
@@ -29,12 +22,32 @@
       "vars": {
         "APP_STAGE": "development",
       },
+      "routes": [
+        {
+          "pattern": "dev.audiobookcovers.com",
+          "custom_domain": true,
+        },
+      ],
     },
-    "local": {
-      "name": "audiobook-covers-local",
+    "production": {
+      "name": "audiobook-covers-prod",
       "vars": {
-        "APP_STAGE": "local",
+        "APP_STAGE": "production",
       },
+      "routes": [
+        {
+          "pattern": "api.audiobookcovers.com",
+          "custom_domain": true,
+        },
+        {
+          "pattern": "audiobookcovers.com",
+          "custom_domain": true,
+        },
+        {
+          "pattern": "www.audiobookcovers.com",
+          "custom_domain": true,
+        },
+      ],
     },
   },
 }

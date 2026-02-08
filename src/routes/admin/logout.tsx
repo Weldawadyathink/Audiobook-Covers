@@ -2,13 +2,12 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import cookie from "cookie";
-import { getDbPool, sql } from "@/server/db";
+import { dbTransaction, sql } from "@/server/db";
 import { useEffect } from "react";
 import { logAnalyticsEvent } from "@/server/analytics";
 
 export const logout = createServerFn({ method: "POST" }).handler(async () => {
   const request = getRequest();
-  const pool = await getDbPool();
   const authCookie = request.headers.get("cookie");
   if (authCookie) {
     const parsed = cookie.parse(authCookie);
@@ -18,9 +17,11 @@ export const logout = createServerFn({ method: "POST" }).handler(async () => {
         const sessionId = JSON.parse(
           Buffer.from(auth, "base64").toString(),
         ).sessionId;
-        await pool.query(sql.typeAlias("void")`
-          DELETE FROM session WHERE session_id = ${sessionId}
-        `);
+        await dbTransaction(async (trx) => {
+          return trx.query(sql.typeAlias("void")`
+            DELETE FROM session WHERE session_id = ${sessionId}
+          `);
+        });
       } catch (e) {
         // If parsing fails, just continue with cookie removal
       }
