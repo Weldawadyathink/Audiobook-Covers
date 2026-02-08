@@ -14,6 +14,7 @@ export const getEnv = createIsomorphicFn()
       `Using ${process.env.HYPERDRIVE ? "HYPERDRIVE" : "DATABASE_URL"} for database connection`,
     );
     console.log(process.env);
+    console.log(process.env);
     return serverEnvSchema.parse({
       ...process.env,
       DATABASE_URL:

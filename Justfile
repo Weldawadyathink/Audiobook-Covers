@@ -60,14 +60,11 @@ devdb_rebuild:
     -d $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
     -f rebuild_dev_db.sql
 
-docker:
-    docker build . -t audiobookcovers && docker run -it --rm audiobookcovers
-
-docker_it:
-    docker build . -t audiobookcovers && docker run -it --rm audiobookcovers /bin/sh
-
 loadtest:
     pnpm run loadtest
 
 deploy:
-    fly deploy --config fly.toml
+    pnpm run deploy
+
+deploy-prod:
+    pnpm run deploy-prod
