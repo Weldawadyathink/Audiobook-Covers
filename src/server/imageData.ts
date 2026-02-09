@@ -8,9 +8,9 @@ export const DBImageDataValidator = z.object({
   source: z.string(),
   extension: z.string(),
   blurhash: z.string(),
-  searchable: z.stringbool(),
+  searchable: z.boolean().optional(),
   distance: z.number().optional(),
-  from_old_database: z.stringbool().optional(),
+  from_old_database: z.boolean().optional(),
 });
 
 export interface ImageData {
@@ -48,7 +48,9 @@ const DEFAULT_PRIMARY_COLOR: ImageData["primaryColor"] = {
   area: 1,
 };
 
-async function getPrimaryImageColor(blurhashUrl: string): Promise<ImageData["primaryColor"]> {
+async function getPrimaryImageColor(
+  blurhashUrl: string,
+): Promise<ImageData["primaryColor"]> {
   if (!blurhashUrl) return DEFAULT_PRIMARY_COLOR;
 
   const base64 = blurhashUrl.split(",")[1];
@@ -75,7 +77,7 @@ async function getPrimaryImageColor(blurhashUrl: string): Promise<ImageData["pri
 }
 
 export async function shapeImageData(
-  image: Readonly<z.infer<typeof DBImageDataValidator>>
+  image: Readonly<z.infer<typeof DBImageDataValidator>>,
 ): Promise<ImageData> {
   const blurhashUrl = image.blurhash ? getBlurhashUrl(image.blurhash) : "";
   const primaryColor = await getPrimaryImageColor(blurhashUrl);
@@ -108,7 +110,7 @@ export async function shapeImageData(
 }
 
 export function shapeImageDataArray(
-  data: Readonly<Array<z.infer<typeof DBImageDataValidator>>>
+  data: Readonly<Array<z.infer<typeof DBImageDataValidator>>>,
 ): Promise<ImageData[]> {
   return Promise.all(data.map(shapeImageData));
 }

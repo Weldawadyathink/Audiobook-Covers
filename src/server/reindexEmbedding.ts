@@ -4,7 +4,7 @@ import {
   shapeImageDataArray,
 } from "@/server/imageData";
 import { ModelDefinition, ModelOptions, models } from "@/server/models";
-import { getDbPool, sql } from "@/server/db";
+import { getDbPool, sql } from "@/server/slonik";
 
 async function reindexPicture(img: ImageData, model: ModelDefinition) {
   const replicate = await model.getImageEmbedding(img.url);

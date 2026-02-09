@@ -1,4 +1,4 @@
-import { dbTransaction, sql } from "@/server/db";
+import { getDbConnection } from "@/server/db";
 import { z } from "zod/v4";
 import base64 from "base-64";
 import { createServerFn } from "@tanstack/react-start";
@@ -59,23 +59,21 @@ export const getIsAuthenticated = createServerFn().handler(
       return { isAuthenticated: false };
     }
 
-    const result = await dbTransaction(async (trx) => {
-      return trx.maybeOne(
-        sql.type(
-          z.object({
-            username: z.string(),
-            session_id: z.string(),
-          }),
-        )`
-        SELECT s.session_id AS session_id, u.username AS username
-        FROM session s
-        JOIN web_user u ON s.user_id = u.id
-        WHERE session_id = ${auth.data.sessionId}
-        AND expires_at > NOW()
-        AND u.username = ${auth.data.username}
-      `,
-      );
-    });
+    const { sqlTools } = getDbConnection();
+    const result = await sqlTools.maybeOne(
+      z.object({
+        username: z.string(),
+        session_id: z.string(),
+      }),
+    )`
+      SELECT s.session_id AS session_id, u.username AS username
+      FROM session s
+      JOIN web_user u ON s.user_id = u.id
+      WHERE session_id = ${auth.data.sessionId}
+      AND expires_at > NOW()
+      AND u.username = ${auth.data.username}
+    `;
+
     if (!result) {
       return { isAuthenticated: false };
     }

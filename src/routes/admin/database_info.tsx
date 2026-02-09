@@ -1,70 +1,57 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { dbTransaction, sql } from "@/server/db";
+import { getDbConnection } from "@/server/db";
 import { z } from "zod/v4";
 import StatCard from "@/components/StatCard";
 
 const getDatabaseStats = createServerFn().handler(async () => {
   console.log("ADMIN: Getting database statistics.");
-  const overallStats = await dbTransaction(async (trx) => {
-    return trx.one(
-      sql.type(
-        z.object({
-          total: z.number(),
-          deleted: z.number(),
-          searchable: z.number(),
-        }),
-      )`
-        SELECT
-          COUNT(*)::int AS total,
-          COUNT(*) FILTER (WHERE deleted = TRUE)::int AS deleted,
-          COUNT(*) FILTER (WHERE searchable = TRUE)::int AS searchable
-        FROM image
-      `,
-    );
-  });
+  const { sqlTools } = getDbConnection();
+  const overallStats = await sqlTools.one(
+    z.object({
+      total: z.number(),
+      deleted: z.number(),
+      searchable: z.number(),
+    }),
+  )`
+    SELECT
+      COUNT(*)::int AS total,
+      COUNT(*) FILTER (WHERE deleted = TRUE)::int AS deleted,
+      COUNT(*) FILTER (WHERE searchable = TRUE)::int AS searchable
+    FROM image
+  `;
 
-  // Get images by extension
-  const extensionStats = await dbTransaction(async (trx) => {
-    return trx.many(
-      sql.type(
-        z.object({
-          extension: z.string().nullable(),
-          count: z.number(),
-        }),
-      )`
-        SELECT
-          extension,
-          COUNT(*)::int AS count
-        FROM image
-        WHERE extension IS NOT NULL
-        GROUP BY extension
-        ORDER BY count DESC
-        LIMIT 10
-      `,
-    );
-  });
+  const extensionStats = await sqlTools.many(
+    z.object({
+      extension: z.string().nullable(),
+      count: z.number(),
+    }),
+  )`
+    SELECT
+      extension,
+      COUNT(*)::int AS count
+    FROM image
+    WHERE extension IS NOT NULL
+    GROUP BY extension
+    ORDER BY count DESC
+    LIMIT 10
+  `;
 
-  // Get analytics event counts
-  const analyticsStats = await dbTransaction(async (trx) => {
-    return trx.one(
-      sql.type(
-        z.object({
-          totalEvents: z.number(),
-          imageDeletedEvents: z.number(),
-          imageUndeletedEvents: z.number(),
-          recentEvents: z.number(),
-        }),
-      )`
-      SELECT
-        COUNT(*)::int AS totalEvents,
-        COUNT(*) FILTER (WHERE event_type = 'imageDeleted')::int AS imageDeletedEvents,
-        COUNT(*) FILTER (WHERE event_type = 'imageUndeleted')::int AS imageUndeletedEvents,
-        COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '7 days')::int AS recentEvents
-      FROM analytics_event
-    `,
-    );
-  });
+  const analyticsStats = await sqlTools.one(
+    z.object({
+      totalEvents: z.number(),
+      imageDeletedEvents: z.number(),
+      imageUndeletedEvents: z.number(),
+      recentEvents: z.number(),
+    }),
+  )`
+    SELECT
+      COUNT(*)::int AS totalEvents,
+      COUNT(*) FILTER (WHERE event_type = 'imageDeleted')::int AS imageDeletedEvents,
+      COUNT(*) FILTER (WHERE event_type = 'imageUndeleted')::int AS imageUndeletedEvents,
+      COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '7 days')::int AS recentEvents
+    FROM analytics_event
+  `;
 
   return {
     overall: overallStats,

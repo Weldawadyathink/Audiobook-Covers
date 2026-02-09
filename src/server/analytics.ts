@@ -1,4 +1,4 @@
-import { dbTransaction, sql } from "@/server/db";
+import { getDbConnection } from "@/server/db";
 import { z } from "zod/v4";
 import { createServerFn } from "@tanstack/react-start";
 
@@ -22,10 +22,9 @@ export const logAnalyticsEvent = createServerFn()
     }),
   )
   .handler(async ({ data }) => {
-    await dbTransaction(async (trx) => {
-      return trx.query(sql.typeAlias("void")`
-        INSERT INTO analytics_event (event_type, payload)
-        VALUES (${data.eventType}, ${JSON.stringify(data.payload)})
-      `);
-    });
+    const { sqlTools } = getDbConnection();
+    await sqlTools.query`
+      INSERT INTO analytics_event (event_type, payload)
+      VALUES (${data.eventType}, ${JSON.stringify(data.payload)})
+    `;
   });

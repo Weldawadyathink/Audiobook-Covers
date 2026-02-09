@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import cookie from "cookie";
-import { dbTransaction, sql } from "@/server/db";
+import { getDbConnection } from "@/server/db";
 import { useEffect } from "react";
 import { logAnalyticsEvent } from "@/server/analytics";
 
@@ -17,11 +17,10 @@ export const logout = createServerFn({ method: "POST" }).handler(async () => {
         const sessionId = JSON.parse(
           Buffer.from(auth, "base64").toString(),
         ).sessionId;
-        await dbTransaction(async (trx) => {
-          return trx.query(sql.typeAlias("void")`
-            DELETE FROM session WHERE session_id = ${sessionId}
-          `);
-        });
+        const { sqlTools } = getDbConnection();
+        await sqlTools.query`
+          DELETE FROM session WHERE session_id = ${sessionId}
+        `;
       } catch (e) {
         // If parsing fails, just continue with cookie removal
       }

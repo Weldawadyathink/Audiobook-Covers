@@ -1,5 +1,5 @@
 import { z } from "zod/v4";
-import { dbTransaction, sql } from "@/server/db";
+import { getDbConnection } from "@/server/db";
 import base64 from "base-64";
 import { createFileRoute } from "@tanstack/react-router";
 import cookie from "cookie";
@@ -25,21 +25,18 @@ export const Route = createFileRoute("/api/login")({
             status: 400,
           });
         }
-        const result = await dbTransaction(async (trx) => {
-          return trx.maybeOne(
-            sql.type(
-              z.object({
-                id: z.number(),
-                username: z.string(),
-                password_hash: z.string(),
-              }),
-            )`
-              SELECT id, username, password_hash
-              FROM web_user
-              WHERE username = ${form.username}
-            `,
-          );
-        });
+        const { sqlTools } = getDbConnection();
+        const result = await sqlTools.maybeOne(
+          z.object({
+            id: z.number(),
+            username: z.string(),
+            password_hash: z.string(),
+          }),
+        )`
+          SELECT id, username, password_hash
+          FROM web_user
+          WHERE username = ${form.username}
+        `;
         if (!result) {
           await logAnalyticsEvent({
             data: {
@@ -66,14 +63,10 @@ export const Route = createFileRoute("/api/login")({
           return new Response("Invalid username or password", { status: 401 });
         }
         const sessionId = randomBytes(32).toString("hex");
-        await dbTransaction(async (trx) => {
-          return trx.query(
-            sql.typeAlias("void")`
-            INSERT INTO session(session_id, user_id, expires_at)
-            VALUES(${sessionId}, ${result.id}, NOW() + INTERVAL '1 day')
-          `,
-          );
-        });
+        await sql.query`
+          INSERT INTO session(session_id, user_id, expires_at)
+          VALUES(${sessionId}, ${result.id}, NOW() + INTERVAL '1 day')
+        `;
         await logAnalyticsEvent({
           data: {
             eventType: "adminUserLoginSuccess",

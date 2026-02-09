@@ -1,5 +1,6 @@
 import { z } from "zod/v4";
 import { createIsomorphicFn } from "@tanstack/react-start";
+import { env as workerEnv } from "cloudflare:workers";
 
 const serverEnvSchema = z.object({
   DATABASE_URL: z.url(),
@@ -10,14 +11,14 @@ const serverEnvSchema = z.object({
 export const getEnv = createIsomorphicFn()
   .server(() => {
     // Uses hyperdrive in production. Otherwise uses DATABASE_URL for local development.
-    console.log(
-      `Using ${process.env.HYPERDRIVE ? "HYPERDRIVE" : "DATABASE_URL"} for database connection`,
-    );
+    console.log(workerEnv);
+    const hyperdrive = workerEnv.HYPERDRIVE?.connectionString ?? null;
+    const appStage = workerEnv.APP_STAGE ?? "local";
     return serverEnvSchema.parse({
       ...process.env,
       DATABASE_URL:
-        process.env.HYPERDRIVE ?? process.env.LOCAL_DATABASE_URL ?? null,
-      APP_STAGE: process.env.APP_STAGE ?? "local",
+        appStage === "local" ? process.env.LOCAL_DATABASE_URL : hyperdrive,
+      APP_STAGE: appStage,
     });
   })
   .client(() => {

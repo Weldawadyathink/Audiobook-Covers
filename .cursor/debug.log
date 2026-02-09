@@ -1,0 +1,22 @@
+{"location":"env.ts:getEnv","message":"getEnv server entry","data":{},"timestamp":1770613289492,"hypothesisId":"getEnv"}
+{"location":"env.ts:getEnv","message":"getEnv parse success","data":{"hasDb":true},"timestamp":1770613289493,"hypothesisId":"getEnv"}
+{"location":"routes/index.tsx:loader","message":"index loader entry","data":{},"timestamp":1770613289598,"hypothesisId":"loader"}
+{"location":"imageSearcher.ts:getRandom","message":"getRandom entry","data":{},"timestamp":1770613289700,"hypothesisId":"getRandom"}
+{"location":"db.ts:runQuery","message":"db runQuery entry","data":{},"timestamp":1770613289700,"hypothesisId":"db"}
+{"location":"imageSearcher.ts:getRandom","message":"getRandom after sql","data":{"count":54},"timestamp":1770613290454,"hypothesisId":"getRandom"}
+{"location":"imageData.ts:shapeImageDataArray","message":"shapeImageDataArray entry","data":{"len":54},"timestamp":1770613290454,"hypothesisId":"shapeImageData"}
+{"location":"imageSearcher.ts:getRandom","message":"getRandom after shape","data":{"count":54},"timestamp":1770613290500,"hypothesisId":"getRandom"}
+{"location":"db.ts:runQuery","message":"db runQuery entry","data":{},"timestamp":1770613290517,"hypothesisId":"db"}
+{"location":"auth.ts:getIsAuthenticated","message":"auth entry","data":{},"timestamp":1770613290519,"hypothesisId":"getIsAuthenticated"}
+{"location":"routes/index.tsx:loader","message":"index loader success","data":{},"timestamp":1770613290519,"hypothesisId":"loader"}
+{"location":"auth.ts:getIsAuthenticated","message":"auth entry","data":{},"timestamp":1770613299122,"hypothesisId":"getIsAuthenticated"}
+{"location":"auth.ts:getIsAuthenticated","message":"auth entry","data":{},"timestamp":1770613299560,"hypothesisId":"getIsAuthenticated"}
+{"location":"auth.ts:getIsAuthenticated","message":"auth entry","data":{},"timestamp":1770613301642,"hypothesisId":"getIsAuthenticated"}
+{"location":"db.ts:runQuery","message":"db runQuery entry","data":{},"timestamp":1770613302717,"hypothesisId":"db"}
+{"location":"auth.ts:getIsAuthenticated","message":"auth entry","data":{},"timestamp":1770613411981,"hypothesisId":"getIsAuthenticated"}
+{"location":"env.ts:getEnv","message":"getEnv server entry","data":{},"timestamp":1770613507735,"hypothesisId":"getEnv"}
+{"location":"env.ts:getEnv","message":"getEnv parse success","data":{"hasDb":true},"timestamp":1770613507735,"hypothesisId":"getEnv"}
+{"location":"auth.ts:getIsAuthenticated","message":"auth entry","data":{},"timestamp":1770613507758,"hypothesisId":"getIsAuthenticated"}
+{"location":"env.ts:getEnv","message":"getEnv server entry","data":{},"timestamp":1770613513589,"hypothesisId":"getEnv"}
+{"location":"env.ts:getEnv","message":"getEnv parse success","data":{"hasDb":true},"timestamp":1770613513589,"hypothesisId":"getEnv"}
+{"location":"auth.ts:getIsAuthenticated","message":"auth entry","data":{},"timestamp":1770613513609,"hypothesisId":"getIsAuthenticated"}

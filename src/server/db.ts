@@ -1,58 +1,111 @@
-import {
-  createPool,
-  createSqlTag,
-  DatabasePool,
-  type DatabaseTransactionConnection,
-} from "slonik";
-import { createPgDriverFactory } from "@slonik/pg-driver";
+import postgres from "postgres";
 import { z } from "zod/v4";
-import { createQueryLoggingInterceptor } from "slonik-interceptor-query-logging";
 import { getEnv } from "@/server/env";
 
-export const sql = createSqlTag({
-  typeAliases: {
-    void: z.object({}).strict(),
-  },
-});
+type TaggedQuery<T> = (
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+) => Promise<T>;
+
+type Row = Record<string, unknown>;
+
+type PostgresTag = (
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+) => PromiseLike<Row[]>;
 
 const global = globalThis as unknown as {
-  slonikDbPool: DatabasePool | undefined;
+  databaseConnection:
+    | undefined
+    | {
+        sql: ReturnType<typeof postgres>;
+        sqlTools: ReturnType<typeof getSqlTools>;
+      };
 };
 
-async function getDbPool(): Promise<DatabasePool> {
-  if (!global.slonikDbPool) {
-    console.log("Creating database pool");
-    global.slonikDbPool = await createPool(getEnv().DATABASE_URL, {
-      driverFactory: createPgDriverFactory(),
-      interceptors: [createQueryLoggingInterceptor()],
-      maximumPoolSize: 2,
+export function getDbConnection() {
+  if (!global.databaseConnection) {
+    console.log("Creating new db connection");
+    const sql = postgres(getEnv().DATABASE_URL, {
+      max: 2,
+      fetch_types: false,
+      prepare: true,
     });
+    const sqlTools = getSqlTools(sql);
+    global.databaseConnection = { sql, sqlTools };
   }
-  return global.slonikDbPool;
+  return global.databaseConnection;
 }
 
-async function setContext(trx: DatabaseTransactionConnection): Promise<void> {
-  if (getEnv().APP_STAGE === "local" || getEnv().APP_STAGE === "development") {
-    await trx.query(sql.unsafe`SET LOCAL ROLE audiobookcovers_dev`);
-  }
-  if (getEnv().APP_STAGE === "production") {
-    await trx.query(sql.unsafe`SET LOCAL ROLE audiobookcovers`);
-  }
-}
+function getSqlTools(sql: ReturnType<typeof postgres>) {
+  return {
+    /** One or more rows; validated as array of T. */
+    many<T extends z.ZodTypeAny>(validator: T): TaggedQuery<z.infer<T>[]> {
+      const arrayValidator = z.array(validator);
+      return async (strings, ...values) => {
+        const rows = await (sql as PostgresTag)(strings, values);
+        return arrayValidator.parse(rows) as z.infer<T>[];
+      };
+    },
 
-/**
- * Runs the given handler inside a transaction with role context set (e.g. SET LOCAL ROLE).
- * Use the passed `trx` for all queries in that transaction; it has the same API as the pool
- * (query, one, oneFirst, any, many, maybeOne, etc.). The transaction commits when the
- * handler resolves, or rolls back if it throws.
- */
-export async function dbTransaction<T>(
-  handler: (trx: DatabaseTransactionConnection) => Promise<T>,
-  transactionRetryLimit?: number,
-): Promise<T> {
-  const pool = await getDbPool();
-  return pool.transaction(async (trx) => {
-    await setContext(trx);
-    return handler(trx);
-  }, transactionRetryLimit);
+    /** Exactly one row; throws if 0 or >1. */
+    one<T extends z.ZodTypeAny>(validator: T): TaggedQuery<z.infer<T>> {
+      return async (strings, ...values) => {
+        const rows = await (sql as PostgresTag)(strings, values);
+        if (rows.length === 0) {
+          throw new Error("Expected one row, got zero.");
+        }
+        if (rows.length > 1) {
+          throw new Error(`Expected one row, got ${rows.length}.`);
+        }
+        return validator.parse(rows[0]) as z.infer<T>;
+      };
+    },
+
+    /** Zero or one row; returns null if 0. */
+    maybeOne<T extends z.ZodTypeAny>(
+      validator: T,
+    ): TaggedQuery<z.infer<T> | null> {
+      return async (strings, ...values) => {
+        const rows = await (sql as PostgresTag)(strings, values);
+        if (rows.length === 0) return null;
+        if (rows.length > 1) {
+          throw new Error(`Expected at most one row, got ${rows.length}.`);
+        }
+        return validator.parse(rows[0]) as z.infer<T>;
+      };
+    },
+
+    /** Zero or more rows; same as many. */
+    any<T extends z.ZodTypeAny>(validator: T): TaggedQuery<z.infer<T>[]> {
+      const arrayValidator = z.array(validator);
+      return async (strings, ...values) => {
+        const rows = await (sql as PostgresTag)(strings, values);
+        return arrayValidator.parse(rows) as z.infer<T>[];
+      };
+    },
+
+    /** Exactly one row; return first column value only. */
+    oneFirst<T extends z.ZodTypeAny>(validator: T): TaggedQuery<z.infer<T>> {
+      return async (strings, ...values) => {
+        const rows = await (sql as PostgresTag)(strings, values);
+        if (rows.length === 0) {
+          throw new Error("Expected one row, got zero.");
+        }
+        if (rows.length > 1) {
+          throw new Error(`Expected one row, got ${rows.length}.`);
+        }
+        return validator.parse(rows[0]) as z.infer<T>;
+      };
+    },
+
+    /** For now, same as unsafe. Just provides a better understanding of the goal. */
+    /** query is for updates/inserts, unsafe is for non-verified reads */
+    query: (async (strings: TemplateStringsArray, ...values: unknown[]) =>
+      (sql as PostgresTag)(strings, values)) as TaggedQuery<Row[]>,
+
+    /** Execute without validation; returns raw rows. */
+    unsafe: (async (strings: TemplateStringsArray, ...values: unknown[]) =>
+      (sql as PostgresTag)(strings, values)) as TaggedQuery<Row[]>,
+  };
 }

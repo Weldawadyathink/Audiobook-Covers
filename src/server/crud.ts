@@ -1,8 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
 import { getIsAuthenticated } from "./auth";
-import { dbTransaction } from "./db";
-import { sql } from "slonik";
+import { getDbConnection } from "@/server/db";
 import { logAnalyticsEvent } from "@/server/analytics";
 
 export const setImageDeleted = createServerFn()
@@ -12,11 +11,10 @@ export const setImageDeleted = createServerFn()
     if (!auth.isAuthenticated) {
       throw new Error("Not authorized");
     }
-    await dbTransaction(async (trx) => {
-      return trx.query(
-        sql.unsafe`UPDATE image SET deleted = TRUE WHERE id = ${id}`,
-      );
-    });
+    const { sqlTools } = getDbConnection();
+    await sqlTools.query`
+      UPDATE image SET deleted = TRUE WHERE id = ${id}
+    `;
     await logAnalyticsEvent({
       data: {
         eventType: "imageDeleted",
@@ -33,11 +31,10 @@ export const setImageNotDeleted = createServerFn()
     if (!auth.isAuthenticated) {
       throw new Error("Not authorized");
     }
-    await dbTransaction(async (trx) => {
-      return trx.query(
-        sql.unsafe`UPDATE image SET deleted = FALSE WHERE id = ${id}`,
-      );
-    });
+    const { sqlTools } = getDbConnection();
+    await sqlTools.query`
+      UPDATE image SET deleted = FALSE WHERE id = ${id}
+    `;
     await logAnalyticsEvent({
       data: {
         eventType: "imageUndeleted",
@@ -55,11 +52,10 @@ export const setImageSearchable = createServerFn()
       throw new Error("Not authorized");
     }
     console.log("Setting image as searchable", id);
-    await dbTransaction(async (trx) => {
-      return trx.query(
-        sql.unsafe`UPDATE image SET searchable = TRUE WHERE id = ${id}`,
-      );
-    });
+    const { sqlTools } = getDbConnection();
+    await sqlTools.query`
+      UPDATE image SET searchable = TRUE WHERE id = ${id}
+    `;
     await logAnalyticsEvent({
       data: {
         eventType: "setImageSearchable",
@@ -77,11 +73,10 @@ export const setImageNotSearchable = createServerFn()
       throw new Error("Not authorized");
     }
     console.log("Setting image as not searchable", id);
-    await dbTransaction(async (trx) => {
-      return trx.query(
-        sql.unsafe`UPDATE image SET searchable = FALSE WHERE id = ${id}`,
-      );
-    });
+    const { sqlTools } = getDbConnection();
+    await sqlTools.query`
+      UPDATE image SET searchable = FALSE WHERE id = ${id}
+    `;
     await logAnalyticsEvent({
       data: {
         eventType: "setImageNotSearchable",
