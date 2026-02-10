@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "audiobook-covers-dev",
+  "name": "audiobook-covers",
   "compatibility_date": "2026-01-31",
   "compatibility_flags": ["nodejs_compat"],
   "main": "@tanstack/react-start/server-entry",
@@ -13,16 +13,24 @@
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",
-      "id": "38ec53fe733944538f484d9658a5b299",
+      "id": "53cd95544a994903b3a979766b9adaeb",
       "localConnectionString": "postgres://postgres:postgres@localhost:5432/postgres",
     },
   ],
   "vars": {
-    "APP_STAGE": "development",
+    "APP_STAGE": "production",
   },
   "routes": [
     {
-      "pattern": "dev.audiobookcovers.com",
+      "pattern": "api.audiobookcovers.com",
+      "custom_domain": true,
+    },
+    {
+      "pattern": "www.audiobookcovers.com",
+      "custom_domain": true,
+    },
+    {
+      "pattern": "audiobookcovers.com",
       "custom_domain": true,
     },
   ],
