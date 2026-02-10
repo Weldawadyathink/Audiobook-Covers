@@ -44,7 +44,7 @@ export const getImageByIdAndSimilar = createServerFn({
   .handler(async ({ data: id }) => {
     console.log(`getImageByIdAndSimilar: ${id}`);
     const start = performance.now();
-    const { sqlTools } = getDbConnection();
+    const { sqlTools, sql } = getDbConnection();
     const target = await sqlTools.maybeOne(DBImageDataValidator)`
       SELECT
         id,
@@ -70,7 +70,7 @@ export const getImageByIdAndSimilar = createServerFn({
           AND deleted IS FALSE
       ),
       target AS (
-        SELECT ${model.dbColumn} AS e
+        SELECT ${sql(model.dbColumn)} AS e
         FROM image
         WHERE id = ${id}
           AND deleted IS FALSE
@@ -82,7 +82,7 @@ export const getImageByIdAndSimilar = createServerFn({
         i.blurhash,
         i.from_old_database,
         i.searchable,
-        i.${model.dbColumn} <=> target.e as distance
+        i.${sql(model.dbColumn)} <=> target.e as distance
       FROM
         searchable_images as i
         CROSS JOIN target

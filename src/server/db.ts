@@ -14,27 +14,15 @@ type PostgresTag = (
   ...values: unknown[]
 ) => PromiseLike<Row[]>;
 
-const global = globalThis as unknown as {
-  databaseConnection:
-    | undefined
-    | {
-        sql: ReturnType<typeof postgres>;
-        sqlTools: ReturnType<typeof getSqlTools>;
-      };
-};
-
 export function getDbConnection() {
-  if (!global.databaseConnection) {
-    console.log("Creating new db connection");
-    const sql = postgres(getEnv().DATABASE_URL, {
-      max: 2,
-      fetch_types: false,
-      prepare: true,
-    });
-    const sqlTools = getSqlTools(sql);
-    global.databaseConnection = { sql, sqlTools };
-  }
-  return global.databaseConnection;
+  console.log("Creating new db connection");
+  const sql = postgres(getEnv().DATABASE_URL, {
+    max: 2,
+    fetch_types: false,
+    prepare: true,
+  });
+  const sqlTools = getSqlTools(sql);
+  return { sql, sqlTools };
 }
 
 function getSqlTools(sql: ReturnType<typeof postgres>) {
@@ -43,7 +31,7 @@ function getSqlTools(sql: ReturnType<typeof postgres>) {
     many<T extends z.ZodTypeAny>(validator: T): TaggedQuery<z.infer<T>[]> {
       const arrayValidator = z.array(validator);
       return async (strings, ...values) => {
-        const rows = await (sql as PostgresTag)(strings, values);
+        const rows = await (sql as PostgresTag)(strings, ...values);
         return arrayValidator.parse(rows) as z.infer<T>[];
       };
     },
@@ -51,7 +39,7 @@ function getSqlTools(sql: ReturnType<typeof postgres>) {
     /** Exactly one row; throws if 0 or >1. */
     one<T extends z.ZodTypeAny>(validator: T): TaggedQuery<z.infer<T>> {
       return async (strings, ...values) => {
-        const rows = await (sql as PostgresTag)(strings, values);
+        const rows = await (sql as PostgresTag)(strings, ...values);
         if (rows.length === 0) {
           throw new Error("Expected one row, got zero.");
         }
@@ -67,7 +55,7 @@ function getSqlTools(sql: ReturnType<typeof postgres>) {
       validator: T,
     ): TaggedQuery<z.infer<T> | null> {
       return async (strings, ...values) => {
-        const rows = await (sql as PostgresTag)(strings, values);
+        const rows = await (sql as PostgresTag)(strings, ...values);
         if (rows.length === 0) return null;
         if (rows.length > 1) {
           throw new Error(`Expected at most one row, got ${rows.length}.`);
@@ -80,7 +68,7 @@ function getSqlTools(sql: ReturnType<typeof postgres>) {
     any<T extends z.ZodTypeAny>(validator: T): TaggedQuery<z.infer<T>[]> {
       const arrayValidator = z.array(validator);
       return async (strings, ...values) => {
-        const rows = await (sql as PostgresTag)(strings, values);
+        const rows = await (sql as PostgresTag)(strings, ...values);
         return arrayValidator.parse(rows) as z.infer<T>[];
       };
     },
@@ -88,7 +76,7 @@ function getSqlTools(sql: ReturnType<typeof postgres>) {
     /** Exactly one row; return first column value only. */
     oneFirst<T extends z.ZodTypeAny>(validator: T): TaggedQuery<z.infer<T>> {
       return async (strings, ...values) => {
-        const rows = await (sql as PostgresTag)(strings, values);
+        const rows = await (sql as PostgresTag)(strings, ...values);
         if (rows.length === 0) {
           throw new Error("Expected one row, got zero.");
         }
@@ -102,10 +90,10 @@ function getSqlTools(sql: ReturnType<typeof postgres>) {
     /** For now, same as unsafe. Just provides a better understanding of the goal. */
     /** query is for updates/inserts, unsafe is for non-verified reads */
     query: (async (strings: TemplateStringsArray, ...values: unknown[]) =>
-      (sql as PostgresTag)(strings, values)) as TaggedQuery<Row[]>,
+      (sql as PostgresTag)(strings, ...values)) as TaggedQuery<Row[]>,
 
     /** Execute without validation; returns raw rows. */
     unsafe: (async (strings: TemplateStringsArray, ...values: unknown[]) =>
-      (sql as PostgresTag)(strings, values)) as TaggedQuery<Row[]>,
+      (sql as PostgresTag)(strings, ...values)) as TaggedQuery<Row[]>,
   };
 }

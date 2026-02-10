@@ -11,13 +11,17 @@ const serverEnvSchema = z.object({
 export const getEnv = createIsomorphicFn()
   .server(() => {
     // Uses hyperdrive in production. Otherwise uses DATABASE_URL for local development.
-    console.log(workerEnv);
     const hyperdrive = workerEnv.HYPERDRIVE?.connectionString ?? null;
-    const appStage = workerEnv.APP_STAGE ?? "local";
+    const appStage =
+      workerEnv.APP_STAGE ?? process.env.APP_STAGE ?? "production";
+    const isLocalDev = process.env.LOCAL_DATABASE_URL ? true : false;
+    console.log(
+      isLocalDev ? `Using local database url` : `Using hyperdrive database url`,
+    );
     return serverEnvSchema.parse({
       ...process.env,
-      DATABASE_URL:
-        appStage === "local" ? process.env.LOCAL_DATABASE_URL : hyperdrive,
+      ...workerEnv,
+      DATABASE_URL: isLocalDev ? process.env.LOCAL_DATABASE_URL : hyperdrive,
       APP_STAGE: appStage,
     });
   })

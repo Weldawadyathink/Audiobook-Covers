@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "vite dev",
+    "dev": "APP_STAGE=local vite dev",
     "build": "vite build",
     "preview": "vite preview",
     "cf-typegen": "wrangler types",

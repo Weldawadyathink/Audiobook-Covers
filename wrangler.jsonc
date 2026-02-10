@@ -9,6 +9,7 @@
   },
   "upload_source_maps": true,
   "keep_vars": false,
+  "workers_dev": true,
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",
@@ -16,38 +17,25 @@
       "localConnectionString": "postgres://postgres:postgres@localhost:5432/postgres",
     },
   ],
-  "env": {
-    "development": {
-      "name": "audiobook-covers-dev",
-      "vars": {
-        "APP_STAGE": "development",
-      },
-      "routes": [
-        {
-          "pattern": "dev.audiobookcovers.com",
-          "custom_domain": true,
-        },
-      ],
-    },
-    "production": {
-      "name": "audiobook-covers-prod",
-      "vars": {
-        "APP_STAGE": "production",
-      },
-      "routes": [
-        {
-          "pattern": "api.audiobookcovers.com",
-          "custom_domain": true,
-        },
-        {
-          "pattern": "audiobookcovers.com",
-          "custom_domain": true,
-        },
-        {
-          "pattern": "www.audiobookcovers.com",
-          "custom_domain": true,
-        },
-      ],
-    },
+  "vars": {
+    "APP_STAGE": "production",
   },
+  "routes": [
+    {
+      "pattern": "api.audiobookcovers.com",
+      "custom_domain": true,
+    },
+    {
+      "pattern": "www.audiobookcovers.com",
+      "custom_domain": true,
+    },
+    {
+      "pattern": "dev.audiobookcovers.com",
+      "custom_domain": true,
+    },
+    {
+      "pattern": "audiobookcovers.com",
+      "custom_domain": true,
+    },
+  ],
 }

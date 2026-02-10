@@ -82,7 +82,7 @@ function getEnv() {
 async function getDbPool(): Promise<DatabasePool> {
   if (!global.slonikDbPool) {
     console.log("Creating database pool");
-    global.slonikDbPool = await createPool(getEnv().DATABASE_URL, {
+    global.slonikDbPool = await createPool(process.env.PROD_DATABASE_URL!, {
       driverFactory: createPgDriverFactory(),
       interceptors: [createQueryLoggingInterceptor()],
     });
