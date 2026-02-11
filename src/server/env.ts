@@ -6,6 +6,9 @@ const serverEnvSchema = z.object({
   DATABASE_URL: z.url(),
   REPLICATE_API_TOKEN: z.string(),
   APP_STAGE: z.enum(["local", "development", "production"]),
+  GOOGLE_CLOUD_PROJECT: z.string(),
+  GOOGLE_VERTEX_LOCATION: z.string(),
+  GOOGLE_API_KEY: z.string(),
 });
 
 export const getEnv = createIsomorphicFn()
