@@ -17,7 +17,7 @@ jobs:
         id: load_secrets
         env:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-          FLY_API_TOKEN: op://xdpqq36uuedlgindu4gaiwdify/3iaglpb6neh6ybhl54uvj5oioi/Github Deploy Token
+          CLOUDFLARE_API_TOKEN: op://xdpqq36uuedlgindu4gaiwdify/jxjrrnqlbka5p5i23bbktexyky/password
       - uses: taiki-e/install-action@v2
         with:
           tool: just
@@ -33,8 +33,6 @@ jobs:
       - run: just db_migrate_force
         env:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --remote-only
+      - run: just deploy
         env:
-          FLY_API_TOKEN: ${{ steps.load_secrets.outputs.FLY_API_TOKEN }}
-          LOG_LEVEL: debug
+          CLOUDFLARE_API_TOKEN: ${{ steps.load_secrets.outputs.CLOUDFLARE_API_TOKEN }}
