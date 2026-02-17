@@ -1,6 +1,7 @@
 import { getDbConnection } from "@/server/db";
 import { z } from "zod/v4";
 import { createServerFn } from "@tanstack/react-start";
+import { waitUntil } from "cloudflare:workers";
 
 // In theory, z.json() should work, but typescript complains about recursion with a server function
 const json = z.lazy(() => {
@@ -23,8 +24,9 @@ export const logAnalyticsEvent = createServerFn()
   )
   .handler(async ({ data }) => {
     const { sqlTools } = getDbConnection();
-    await sqlTools.query`
+    const promise = sqlTools.query`
       INSERT INTO analytics_event (event_type, payload)
       VALUES (${data.eventType}, ${JSON.stringify(data.payload)})
     `;
+    waitUntil(promise);
   });
