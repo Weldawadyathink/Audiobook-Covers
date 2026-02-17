@@ -17,6 +17,6 @@ export default defineConfig({
     cloudflare({ viteEnvironment: { name: "ssr" } }),
   ],
   optimizeDeps: {
-    exclude: ["pg"],
+    exclude: ["pg", "postgres"],
   },
 });

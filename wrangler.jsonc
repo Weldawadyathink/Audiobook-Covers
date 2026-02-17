@@ -1,6 +1,5 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "audiobook-covers",
   "compatibility_date": "2026-01-31",
   "compatibility_flags": ["nodejs_compat"],
   "main": "@tanstack/react-start/server-entry",
@@ -10,28 +9,54 @@
   "upload_source_maps": true,
   "keep_vars": false,
   "workers_dev": true,
-  "hyperdrive": [
-    {
-      "binding": "HYPERDRIVE",
-      "id": "53cd95544a994903b3a979766b9adaeb",
-      "localConnectionString": "postgres://postgres:postgres@localhost:5432/postgres",
+  "env": {
+    "development": {
+      "name": "audiobook-covers-dev",
+      "hyperdrive": [
+        {
+          "binding": "HYPERDRIVE",
+          "id": "38ec53fe733944538f484d9658a5b299",
+          "localConnectionString": "postgres://postgres:postgres@localhost:5432/postgres",
+        },
+      ],
+      "vars": {
+        "APP_STAGE": "development",
+        "GOOGLE_VERTEX_LOCATION": "us-east1",
+      },
+      "routes": [
+        {
+          "pattern": "dev.audiobookcovers.com",
+          "custom_domain": true,
+        },
+      ],
     },
-  ],
-  "vars": {
-    "APP_STAGE": "production",
+    "production": {
+      "name": "audiobook-covers",
+      "hyperdrive": [
+        {
+          "binding": "HYPERDRIVE",
+          "id": "53cd95544a994903b3a979766b9adaeb",
+          "localConnectionString": "postgres://postgres:postgres@localhost:5432/postgres",
+        },
+      ],
+      "vars": {
+        "APP_STAGE": "production",
+        "GOOGLE_VERTEX_LOCATION": "us-east1",
+      },
+      "routes": [
+        {
+          "pattern": "www.audiobookcovers.com",
+          "custom_domain": true,
+        },
+        {
+          "pattern": "audiobookcovers.com",
+          "custom_domain": true,
+        },
+        {
+          "pattern": "api.audiobookcovers.com",
+          "custom_domain": true,
+        },
+      ],
+    },
   },
-  "routes": [
-    {
-      "pattern": "api.audiobookcovers.com",
-      "custom_domain": true,
-    },
-    {
-      "pattern": "www.audiobookcovers.com",
-      "custom_domain": true,
-    },
-    {
-      "pattern": "audiobookcovers.com",
-      "custom_domain": true,
-    },
-  ],
 }
