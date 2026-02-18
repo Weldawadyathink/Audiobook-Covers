@@ -421,6 +421,8 @@ BEGIN
   ALTER DEFAULT PRIVILEGES IN SCHEMA audiobookcovers_dev GRANT USAGE, SELECT ON SEQUENCES TO audiobookcovers_dev;
 
   ALTER USER audiobookcovers_dev SET SEARCH_PATH TO audiobookcovers_dev, public;
+  GRANT audiobookcovers_dev TO pscale_api_bjroyz1lcgxf; -- Allow hyperdrive to masquerade as this user
+
 END $$;
 
 COMMIT;

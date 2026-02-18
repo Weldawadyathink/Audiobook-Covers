@@ -1,19 +1,9 @@
 {
-  "name": "tanstack",
+  "name": "audiobook-covers",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Audiobook Covers",
   "type": "module",
-  "scripts": {
-    "dev": "vite dev",
-    "build": "vite build",
-    "start": "node .output/server/index.mjs",
-    "loadtest": "artillery run artillery.yaml"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "packageManager": "pnpm@10.12.1",
+  "packageManager": "pnpm@10.29.3",
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.14",
     "@radix-ui/react-separator": "^1.1.7",
@@ -23,20 +13,28 @@
     "@tanstack/react-router": "^1.121.21",
     "@tanstack/react-start": "^1.121.21",
     "@tanstack/zod-adapter": "^1.121.21",
+    "@vitejs/plugin-react": "^5.1.4",
     "argon2": "^0.43.0",
+    "argon2-browser": "^1.18.0",
     "base-64": "^1.0.0",
     "blurhash": "^2.0.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cookie": "^1.0.2",
+    "dotenv": "^17.2.3",
     "extract-colors": "^4.2.0",
+    "fast-png": "^8.0.0",
     "get-pixels": "^3.3.3",
     "ky": "^1.8.1",
     "lucide-react": "^0.516.0",
     "next-themes": "^0.4.6",
+    "postgres": "^3.4.8",
+    "posthog-js": "^1.350.0",
+    "posthog-node": "^5.24.16",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-use-downloader": "^1.3.0",
+    "replicate": "^1.4.0",
     "slonik": "^48.1.2",
     "slonik-interceptor-query-logging": "^48.1.2",
     "sonner": "^2.0.5",
@@ -46,6 +44,7 @@
     "zod": "^3.25.67"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.23.0",
     "@eslint/js": "^9.29.0",
     "@types/base-64": "^1.0.2",
     "@types/get-pixels": "^3.3.4",
@@ -59,6 +58,7 @@
     "tw-animate-css": "^1.3.4",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.35.0",
-    "vite-tsconfig-paths": "^5.1.4"
+    "vite-tsconfig-paths": "^5.1.4",
+    "wrangler": "^4.62.0"
   }
 }

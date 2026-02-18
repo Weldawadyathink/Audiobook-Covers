@@ -1,19 +1,16 @@
 import { getBlurhashUrl } from "@/server/blurhash";
-import { promisify } from "node:util";
-import getPixels from "get-pixels";
+import { decode as decodePng } from "fast-png";
 import { extractColors } from "extract-colors";
 import { z } from "zod/v4";
-
-const getPixelsAsync = promisify(getPixels);
 
 export const DBImageDataValidator = z.object({
   id: z.uuid(),
   source: z.string(),
   extension: z.string(),
   blurhash: z.string(),
-  searchable: z.stringbool(),
+  searchable: z.boolean().optional(),
   distance: z.number().optional(),
-  from_old_database: z.stringbool().optional(),
+  from_old_database: z.boolean().optional(),
 });
 
 export interface ImageData {
@@ -39,24 +36,48 @@ export interface ImageData {
 
 const imageUrlPrefix = "https://images.audiobookcovers.com";
 
-async function getPrimaryImageColor(blurhashUrl: string) {
-  // TODO: look at https://www.npmjs.com/package/fast-blurhash
-  // Gets the average color of a blurhash
-  const pixels = await getPixelsAsync(blurhashUrl);
-  const data = [...pixels.data];
-  const [width, height] = pixels.shape;
-  const colors = await extractColors({ data, width, height });
+const DEFAULT_PRIMARY_COLOR: ImageData["primaryColor"] = {
+  hex: "#808080",
+  red: 128,
+  green: 128,
+  blue: 128,
+  hue: 0,
+  saturation: 0,
+  lightness: 50,
+  intensity: 0.5,
+  area: 1,
+};
+
+async function getPrimaryImageColor(
+  blurhashUrl: string,
+): Promise<ImageData["primaryColor"]> {
+  if (!blurhashUrl) return DEFAULT_PRIMARY_COLOR;
+
+  const base64 = blurhashUrl.split(",")[1];
+  if (!base64) return DEFAULT_PRIMARY_COLOR;
+
+  const binary = atob(base64);
+  const pngBytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) pngBytes[i] = binary.charCodeAt(i);
+
+  const decoded = decodePng(pngBytes);
+  const data = [...decoded.data];
+  const colors = await extractColors({
+    data,
+    width: decoded.width,
+    height: decoded.height,
+  });
   const color = colors[0];
 
   // Library uses 0-1, convert to levels compatible with css
   color.hue = color.hue * 360;
   color.saturation = color.saturation * 100;
   color.lightness = color.lightness * 100;
-  return colors[0];
+  return color;
 }
 
 export async function shapeImageData(
-  image: Readonly<z.infer<typeof DBImageDataValidator>>
+  image: Readonly<z.infer<typeof DBImageDataValidator>>,
 ): Promise<ImageData> {
   const blurhashUrl = image.blurhash ? getBlurhashUrl(image.blurhash) : "";
   const primaryColor = await getPrimaryImageColor(blurhashUrl);
@@ -89,7 +110,7 @@ export async function shapeImageData(
 }
 
 export function shapeImageDataArray(
-  data: Readonly<Array<z.infer<typeof DBImageDataValidator>>>
+  data: Readonly<Array<z.infer<typeof DBImageDataValidator>>>,
 ): Promise<ImageData[]> {
   return Promise.all(data.map(shapeImageData));
 }

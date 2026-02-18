@@ -1,9 +1,9 @@
-import { sql } from "@/server/db";
 import { z } from "zod/v4";
 import ky from "ky";
 import { getEnv } from "@/server/env";
+import Replicate from "replicate";
 
-const flyAppName = getEnv().FLY_APP_NAME;
+const replicate = new Replicate();
 
 export interface EmbeddingOutput {
   input: string;
@@ -12,7 +12,7 @@ export interface EmbeddingOutput {
 
 export interface ModelDefinition {
   dimensions: number;
-  dbColumn: ReturnType<typeof sql.identifier>;
+  dbColumn: string;
   getTextEmbedding: (input: string) => Promise<EmbeddingOutput>;
   getImageEmbedding: (input: string) => Promise<EmbeddingOutput>;
 }
@@ -30,7 +30,7 @@ const publicClipModelValidator = z
 async function genericFlyClipModel(modelId: string, input: string) {
   // TODO: temporary, all calls will return the s0 model results
   const json = await ky
-    .post(`http://${flyAppName}.fly.dev:8000/predictions`, {
+    .post(`http://clip-features.fly.dev:8000/predictions`, {
       json: {
         inputs: input,
       },
@@ -51,12 +51,38 @@ export const modelOptions = [
   "mobileclip_s2",
   "mobileclip_b",
   "mobileclip_blt",
+  "andreasjansson-clip",
 ] as const;
-export const defaultModel = "mobileclip_s0" as const;
+export const defaultModel = "andreasjansson-clip" as const;
 export const zModelOptions = z.enum(modelOptions).catch(defaultModel);
 export type ModelOptions = z.infer<typeof zModelOptions>;
-
 export const models: { readonly [K in ModelOptions]: ModelDefinition } = {
+  "andreasjansson-clip": {
+    dimensions: 768,
+    getTextEmbedding: async (input) => {
+      const result = (await replicate.run(
+        "andreasjansson/clip-features:75b33f253f7714a281ad3e9b28f63e3232d583716ef6718f2e46641077ea040a",
+        {
+          input: {
+            inputs: input,
+          },
+        },
+      )) as EmbeddingOutput[];
+      return result[0];
+    },
+    getImageEmbedding: async (input) => {
+      const result = (await replicate.run(
+        "andreasjansson/clip-features:75b33f253f7714a281ad3e9b28f63e3232d583716ef6718f2e46641077ea040a",
+        {
+          input: {
+            inputs: input,
+          },
+        },
+      )) as EmbeddingOutput[];
+      return result[0];
+    },
+    dbColumn: "embedding_andreasjansson_clip",
+  },
   mobileclip_s0: {
     dimensions: 512,
     getTextEmbedding: async (input) => {
@@ -67,7 +93,7 @@ export const models: { readonly [K in ModelOptions]: ModelDefinition } = {
       const result = await genericFlyClipModel("mobileclip-s0", input);
       return result[0];
     },
-    dbColumn: sql.identifier(["embedding_mobileclip_s0"]),
+    dbColumn: "embedding_mobileclip_s0",
   },
   mobileclip_s1: {
     dimensions: 512,
@@ -79,7 +105,7 @@ export const models: { readonly [K in ModelOptions]: ModelDefinition } = {
       const result = await genericFlyClipModel("mobileclip-s1", input);
       return result[0];
     },
-    dbColumn: sql.identifier(["embedding_mobileclip_s1"]),
+    dbColumn: "embedding_mobileclip_s1",
   },
   mobileclip_s2: {
     dimensions: 512,
@@ -91,7 +117,7 @@ export const models: { readonly [K in ModelOptions]: ModelDefinition } = {
       const result = await genericFlyClipModel("mobileclip-s2", input);
       return result[0];
     },
-    dbColumn: sql.identifier(["embedding_mobileclip_s2"]),
+    dbColumn: "embedding_mobileclip_s2",
   },
   mobileclip_b: {
     dimensions: 512,
@@ -103,7 +129,7 @@ export const models: { readonly [K in ModelOptions]: ModelDefinition } = {
       const result = await genericFlyClipModel("mobileclip-b", input);
       return result[0];
     },
-    dbColumn: sql.identifier(["embedding_mobileclip_b"]),
+    dbColumn: "embedding_mobileclip_b",
   },
   mobileclip_blt: {
     dimensions: 512,
@@ -115,6 +141,6 @@ export const models: { readonly [K in ModelOptions]: ModelDefinition } = {
       const result = await genericFlyClipModel("mobileclip-blt", input);
       return result[0];
     },
-    dbColumn: sql.identifier(["embedding_mobileclip_blt"]),
+    dbColumn: "embedding_mobileclip_blt",
   },
 } as const;

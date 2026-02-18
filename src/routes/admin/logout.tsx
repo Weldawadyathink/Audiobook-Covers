@@ -1,14 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { getWebRequest } from "@tanstack/react-start/server";
+import { getRequest } from "@tanstack/react-start/server";
 import cookie from "cookie";
-import { getDbPool, sql } from "@/server/db";
+import { getDbConnection } from "@/server/db";
 import { useEffect } from "react";
 import { logAnalyticsEvent } from "@/server/analytics";
 
 export const logout = createServerFn({ method: "POST" }).handler(async () => {
-  const request = getWebRequest();
-  const pool = await getDbPool();
+  const request = getRequest();
   const authCookie = request.headers.get("cookie");
   if (authCookie) {
     const parsed = cookie.parse(authCookie);
@@ -16,11 +15,12 @@ export const logout = createServerFn({ method: "POST" }).handler(async () => {
     if (auth) {
       try {
         const sessionId = JSON.parse(
-          Buffer.from(auth, "base64").toString()
+          Buffer.from(auth, "base64").toString(),
         ).sessionId;
-        await pool.query(sql.typeAlias("void")`
+        const { sqlTools } = getDbConnection();
+        await sqlTools.query`
           DELETE FROM session WHERE session_id = ${sessionId}
-        `);
+        `;
       } catch (e) {
         // If parsing fails, just continue with cookie removal
       }
@@ -45,7 +45,7 @@ export const logout = createServerFn({ method: "POST" }).handler(async () => {
       path: "/",
       secure: process.env.NODE_ENV === "production",
       httpOnly: true,
-    })
+    }),
   );
   return { success: true };
 });

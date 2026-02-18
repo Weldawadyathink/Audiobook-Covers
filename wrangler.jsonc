@@ -1,0 +1,65 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "compatibility_date": "2026-01-31",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "@tanstack/react-start/server-entry",
+  "account_id": "57d01014eca6e2153041393f3114dc60",
+  "observability": {
+    "enabled": true,
+  },
+  "upload_source_maps": true,
+  "keep_vars": false,
+  "workers_dev": true,
+  "env": {
+    "development": {
+      "name": "audiobook-covers-dev",
+      "hyperdrive": [
+        {
+          "binding": "HYPERDRIVE",
+          "id": "38ec53fe733944538f484d9658a5b299",
+          "localConnectionString": "postgres://postgres:postgres@localhost:5432/postgres",
+        },
+      ],
+      "vars": {
+        "APP_STAGE": "development",
+        "GOOGLE_VERTEX_LOCATION": "us-east1",
+        "VITE_PUBLIC_POSTHOG_HOST": "https://us.i.posthog.com",
+      },
+      "routes": [
+        {
+          "pattern": "dev.audiobookcovers.com",
+          "custom_domain": true,
+        },
+      ],
+    },
+    "production": {
+      "name": "audiobook-covers",
+      "hyperdrive": [
+        {
+          "binding": "HYPERDRIVE",
+          "id": "53cd95544a994903b3a979766b9adaeb",
+          "localConnectionString": "postgres://postgres:postgres@localhost:5432/postgres",
+        },
+      ],
+      "vars": {
+        "APP_STAGE": "production",
+        "GOOGLE_VERTEX_LOCATION": "us-east1",
+        "VITE_PUBLIC_POSTHOG_HOST": "https://us.i.posthog.com",
+      },
+      "routes": [
+        {
+          "pattern": "www.audiobookcovers.com",
+          "custom_domain": true,
+        },
+        {
+          "pattern": "audiobookcovers.com",
+          "custom_domain": true,
+        },
+        {
+          "pattern": "api.audiobookcovers.com",
+          "custom_domain": true,
+        },
+      ],
+    },
+  },
+}

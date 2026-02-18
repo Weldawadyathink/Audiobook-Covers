@@ -8,8 +8,6 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { createServerRootRoute } from '@tanstack/react-start/server'
-
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as RandomRouteImport } from './routes/random'
@@ -20,15 +18,13 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as ImagesIdRouteImport } from './routes/images.$id'
+import { Route as CoverBytextRouteImport } from './routes/cover.bytext'
+import { Route as ApiLoginRouteImport } from './routes/api/login'
+import { Route as ApiHeartbeatRouteImport } from './routes/api/heartbeat'
 import { Route as AdminTestRouteImport } from './routes/admin/test'
 import { Route as AdminSimilarRouteImport } from './routes/admin/similar'
 import { Route as AdminLogoutRouteImport } from './routes/admin/logout'
 import { Route as AdminDatabase_infoRouteImport } from './routes/admin/database_info'
-import { ServerRoute as CoverBytextServerRouteImport } from './routes/cover.bytext'
-import { ServerRoute as ApiLoginServerRouteImport } from './routes/api/login'
-import { ServerRoute as ApiHeartbeatServerRouteImport } from './routes/api/heartbeat'
-
-const rootServerRouteImport = createServerRootRoute()
 
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
@@ -75,6 +71,21 @@ const ImagesIdRoute = ImagesIdRouteImport.update({
   path: '/images/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CoverBytextRoute = CoverBytextRouteImport.update({
+  id: '/cover/bytext',
+  path: '/cover/bytext',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLoginRoute = ApiLoginRouteImport.update({
+  id: '/api/login',
+  path: '/api/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHeartbeatRoute = ApiHeartbeatRouteImport.update({
+  id: '/api/heartbeat',
+  path: '/api/heartbeat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminTestRoute = AdminTestRouteImport.update({
   id: '/test',
   path: '/test',
@@ -95,21 +106,6 @@ const AdminDatabase_infoRoute = AdminDatabase_infoRouteImport.update({
   path: '/database_info',
   getParentRoute: () => AdminRoute,
 } as any)
-const CoverBytextServerRoute = CoverBytextServerRouteImport.update({
-  id: '/cover/bytext',
-  path: '/cover/bytext',
-  getParentRoute: () => rootServerRouteImport,
-} as any)
-const ApiLoginServerRoute = ApiLoginServerRouteImport.update({
-  id: '/api/login',
-  path: '/api/login',
-  getParentRoute: () => rootServerRouteImport,
-} as any)
-const ApiHeartbeatServerRoute = ApiHeartbeatServerRouteImport.update({
-  id: '/api/heartbeat',
-  path: '/api/heartbeat',
-  getParentRoute: () => rootServerRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -123,6 +119,9 @@ export interface FileRoutesByFullPath {
   '/admin/logout': typeof AdminLogoutRoute
   '/admin/similar': typeof AdminSimilarRoute
   '/admin/test': typeof AdminTestRoute
+  '/api/heartbeat': typeof ApiHeartbeatRoute
+  '/api/login': typeof ApiLoginRoute
+  '/cover/bytext': typeof CoverBytextRoute
   '/images/$id': typeof ImagesIdRoute
   '/admin/': typeof AdminIndexRoute
 }
@@ -137,6 +136,9 @@ export interface FileRoutesByTo {
   '/admin/logout': typeof AdminLogoutRoute
   '/admin/similar': typeof AdminSimilarRoute
   '/admin/test': typeof AdminTestRoute
+  '/api/heartbeat': typeof ApiHeartbeatRoute
+  '/api/login': typeof ApiLoginRoute
+  '/cover/bytext': typeof CoverBytextRoute
   '/images/$id': typeof ImagesIdRoute
   '/admin': typeof AdminIndexRoute
 }
@@ -153,6 +155,9 @@ export interface FileRoutesById {
   '/admin/logout': typeof AdminLogoutRoute
   '/admin/similar': typeof AdminSimilarRoute
   '/admin/test': typeof AdminTestRoute
+  '/api/heartbeat': typeof ApiHeartbeatRoute
+  '/api/login': typeof ApiLoginRoute
+  '/cover/bytext': typeof CoverBytextRoute
   '/images/$id': typeof ImagesIdRoute
   '/admin/': typeof AdminIndexRoute
 }
@@ -170,6 +175,9 @@ export interface FileRouteTypes {
     | '/admin/logout'
     | '/admin/similar'
     | '/admin/test'
+    | '/api/heartbeat'
+    | '/api/login'
+    | '/cover/bytext'
     | '/images/$id'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
@@ -184,6 +192,9 @@ export interface FileRouteTypes {
     | '/admin/logout'
     | '/admin/similar'
     | '/admin/test'
+    | '/api/heartbeat'
+    | '/api/login'
+    | '/cover/bytext'
     | '/images/$id'
     | '/admin'
   id:
@@ -199,6 +210,9 @@ export interface FileRouteTypes {
     | '/admin/logout'
     | '/admin/similar'
     | '/admin/test'
+    | '/api/heartbeat'
+    | '/api/login'
+    | '/cover/bytext'
     | '/images/$id'
     | '/admin/'
   fileRoutesById: FileRoutesById
@@ -211,36 +225,10 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   RandomRoute: typeof RandomRoute
   SearchRoute: typeof SearchRoute
+  ApiHeartbeatRoute: typeof ApiHeartbeatRoute
+  ApiLoginRoute: typeof ApiLoginRoute
+  CoverBytextRoute: typeof CoverBytextRoute
   ImagesIdRoute: typeof ImagesIdRoute
-}
-export interface FileServerRoutesByFullPath {
-  '/api/heartbeat': typeof ApiHeartbeatServerRoute
-  '/api/login': typeof ApiLoginServerRoute
-  '/cover/bytext': typeof CoverBytextServerRoute
-}
-export interface FileServerRoutesByTo {
-  '/api/heartbeat': typeof ApiHeartbeatServerRoute
-  '/api/login': typeof ApiLoginServerRoute
-  '/cover/bytext': typeof CoverBytextServerRoute
-}
-export interface FileServerRoutesById {
-  __root__: typeof rootServerRouteImport
-  '/api/heartbeat': typeof ApiHeartbeatServerRoute
-  '/api/login': typeof ApiLoginServerRoute
-  '/cover/bytext': typeof CoverBytextServerRoute
-}
-export interface FileServerRouteTypes {
-  fileServerRoutesByFullPath: FileServerRoutesByFullPath
-  fullPaths: '/api/heartbeat' | '/api/login' | '/cover/bytext'
-  fileServerRoutesByTo: FileServerRoutesByTo
-  to: '/api/heartbeat' | '/api/login' | '/cover/bytext'
-  id: '__root__' | '/api/heartbeat' | '/api/login' | '/cover/bytext'
-  fileServerRoutesById: FileServerRoutesById
-}
-export interface RootServerRouteChildren {
-  ApiHeartbeatServerRoute: typeof ApiHeartbeatServerRoute
-  ApiLoginServerRoute: typeof ApiLoginServerRoute
-  CoverBytextServerRoute: typeof CoverBytextServerRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -308,6 +296,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ImagesIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cover/bytext': {
+      id: '/cover/bytext'
+      path: '/cover/bytext'
+      fullPath: '/cover/bytext'
+      preLoaderRoute: typeof CoverBytextRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/login': {
+      id: '/api/login'
+      path: '/api/login'
+      fullPath: '/api/login'
+      preLoaderRoute: typeof ApiLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/heartbeat': {
+      id: '/api/heartbeat'
+      path: '/api/heartbeat'
+      fullPath: '/api/heartbeat'
+      preLoaderRoute: typeof ApiHeartbeatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/test': {
       id: '/admin/test'
       path: '/test'
@@ -338,31 +347,6 @@ declare module '@tanstack/react-router' {
     }
   }
 }
-declare module '@tanstack/react-start/server' {
-  interface ServerFileRoutesByPath {
-    '/cover/bytext': {
-      id: '/cover/bytext'
-      path: '/cover/bytext'
-      fullPath: '/cover/bytext'
-      preLoaderRoute: typeof CoverBytextServerRouteImport
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/api/login': {
-      id: '/api/login'
-      path: '/api/login'
-      fullPath: '/api/login'
-      preLoaderRoute: typeof ApiLoginServerRouteImport
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/api/heartbeat': {
-      id: '/api/heartbeat'
-      path: '/api/heartbeat'
-      fullPath: '/api/heartbeat'
-      preLoaderRoute: typeof ApiHeartbeatServerRouteImport
-      parentRoute: typeof rootServerRouteImport
-    }
-  }
-}
 
 interface AdminRouteChildren {
   AdminDatabase_infoRoute: typeof AdminDatabase_infoRoute
@@ -390,16 +374,20 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   RandomRoute: RandomRoute,
   SearchRoute: SearchRoute,
+  ApiHeartbeatRoute: ApiHeartbeatRoute,
+  ApiLoginRoute: ApiLoginRoute,
+  CoverBytextRoute: CoverBytextRoute,
   ImagesIdRoute: ImagesIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-const rootServerRouteChildren: RootServerRouteChildren = {
-  ApiHeartbeatServerRoute: ApiHeartbeatServerRoute,
-  ApiLoginServerRoute: ApiLoginServerRoute,
-  CoverBytextServerRoute: CoverBytextServerRoute,
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
 }
-export const serverRouteTree = rootServerRouteImport
-  ._addFileChildren(rootServerRouteChildren)
-  ._addFileTypes<FileServerRouteTypes>()

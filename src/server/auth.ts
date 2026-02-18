@@ -1,11 +1,28 @@
-import { getDbPool, sql } from "@/server/db";
+import { getDbConnection } from "@/server/db";
 import { z } from "zod/v4";
 import base64 from "base-64";
 import { createServerFn } from "@tanstack/react-start";
-import { getWebRequest } from "@tanstack/react-start/server";
+import { getRequest } from "@tanstack/react-start/server";
 import { redirect } from "@tanstack/react-router";
-import cookie from "cookie";
 import { logAnalyticsEvent } from "@/server/analytics";
+
+function parseCookie(str: string) {
+  if (!str || typeof str !== "string") return {} as Record<string, string>;
+  return str
+    .split(";")
+    .map((v) => v.split("="))
+    .filter(
+      (v): v is [string, string] =>
+        v.length >= 2 && v[0] != null && v[1] != null,
+    )
+    .reduce(
+      (acc, [key, val]) => {
+        acc[decodeURIComponent(key.trim())] = decodeURIComponent(val.trim());
+        return acc;
+      },
+      {} as Record<string, string>,
+    );
+}
 
 type AuthenticationResult =
   | {
@@ -20,8 +37,8 @@ type AuthenticationResult =
 export const getIsAuthenticated = createServerFn().handler(
   async (): Promise<AuthenticationResult> => {
     console.log("Checking auth");
-    const request = getWebRequest();
-    const cookies = cookie.parse(request.headers.get("cookie") ?? "");
+    const request = getRequest();
+    const cookies = parseCookie(request.headers.get("cookie") ?? "");
     if (!cookies) {
       return { isAuthenticated: false };
     }
@@ -42,22 +59,21 @@ export const getIsAuthenticated = createServerFn().handler(
       return { isAuthenticated: false };
     }
 
-    const pool = await getDbPool();
-    const result = await pool.maybeOne(
-      sql.type(
-        z.object({
-          username: z.string(),
-          session_id: z.string(),
-        })
-      )`
-        SELECT s.session_id AS session_id, u.username AS username
-        FROM session s
-        JOIN web_user u ON s.user_id = u.id
-        WHERE session_id = ${auth.data.sessionId}
-        AND expires_at > NOW()
-        AND u.username = ${auth.data.username}
-      `
-    );
+    const { sqlTools } = getDbConnection();
+    const result = await sqlTools.maybeOne(
+      z.object({
+        username: z.string(),
+        session_id: z.string(),
+      }),
+    )`
+      SELECT s.session_id AS session_id, u.username AS username
+      FROM session s
+      JOIN web_user u ON s.user_id = u.id
+      WHERE session_id = ${auth.data.sessionId}
+      AND expires_at > NOW()
+      AND u.username = ${auth.data.username}
+    `;
+
     if (!result) {
       return { isAuthenticated: false };
     }
@@ -82,7 +98,7 @@ export const getIsAuthenticated = createServerFn().handler(
     } else {
       return { isAuthenticated: false };
     }
-  }
+  },
 );
 
 export const forceAuthenticated = createServerFn().handler(async () => {

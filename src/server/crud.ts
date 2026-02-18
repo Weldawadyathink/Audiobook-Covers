@@ -1,21 +1,20 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
 import { getIsAuthenticated } from "./auth";
-import { getDbPool } from "./db";
-import { sql } from "slonik";
+import { getDbConnection } from "@/server/db";
 import { logAnalyticsEvent } from "@/server/analytics";
 
 export const setImageDeleted = createServerFn()
-  .validator(z.object({ id: z.uuid() }))
+  .inputValidator(z.object({ id: z.uuid() }))
   .handler(async ({ data: { id } }) => {
     const auth = await getIsAuthenticated();
     if (!auth.isAuthenticated) {
       throw new Error("Not authorized");
     }
-    const pool = await getDbPool();
-    await pool.query(
-      sql.unsafe`UPDATE image SET deleted = TRUE WHERE id = ${id}`
-    );
+    const { sqlTools } = getDbConnection();
+    await sqlTools.query`
+      UPDATE image SET deleted = TRUE WHERE id = ${id}
+    `;
     await logAnalyticsEvent({
       data: {
         eventType: "imageDeleted",
@@ -26,16 +25,16 @@ export const setImageDeleted = createServerFn()
   });
 
 export const setImageNotDeleted = createServerFn()
-  .validator(z.object({ id: z.uuid() }))
+  .inputValidator(z.object({ id: z.uuid() }))
   .handler(async ({ data: { id } }) => {
     const auth = await getIsAuthenticated();
     if (!auth.isAuthenticated) {
       throw new Error("Not authorized");
     }
-    const pool = await getDbPool();
-    await pool.query(
-      sql.unsafe`UPDATE image SET deleted = FALSE WHERE id = ${id}`
-    );
+    const { sqlTools } = getDbConnection();
+    await sqlTools.query`
+      UPDATE image SET deleted = FALSE WHERE id = ${id}
+    `;
     await logAnalyticsEvent({
       data: {
         eventType: "imageUndeleted",
@@ -46,17 +45,17 @@ export const setImageNotDeleted = createServerFn()
   });
 
 export const setImageSearchable = createServerFn()
-  .validator(z.object({ id: z.uuid() }))
+  .inputValidator(z.object({ id: z.uuid() }))
   .handler(async ({ data: { id } }) => {
     const auth = await getIsAuthenticated();
     if (!auth.isAuthenticated) {
       throw new Error("Not authorized");
     }
     console.log("Setting image as searchable", id);
-    const pool = await getDbPool();
-    await pool.query(
-      sql.unsafe`UPDATE image SET searchable = TRUE WHERE id = ${id}`
-    );
+    const { sqlTools } = getDbConnection();
+    await sqlTools.query`
+      UPDATE image SET searchable = TRUE WHERE id = ${id}
+    `;
     await logAnalyticsEvent({
       data: {
         eventType: "setImageSearchable",
@@ -67,17 +66,17 @@ export const setImageSearchable = createServerFn()
   });
 
 export const setImageNotSearchable = createServerFn()
-  .validator(z.object({ id: z.uuid() }))
+  .inputValidator(z.object({ id: z.uuid() }))
   .handler(async ({ data: { id } }) => {
     const auth = await getIsAuthenticated();
     if (!auth.isAuthenticated) {
       throw new Error("Not authorized");
     }
     console.log("Setting image as not searchable", id);
-    const pool = await getDbPool();
-    await pool.query(
-      sql.unsafe`UPDATE image SET searchable = FALSE WHERE id = ${id}`
-    );
+    const { sqlTools } = getDbConnection();
+    await sqlTools.query`
+      UPDATE image SET searchable = FALSE WHERE id = ${id}
+    `;
     await logAnalyticsEvent({
       data: {
         eventType: "setImageNotSearchable",

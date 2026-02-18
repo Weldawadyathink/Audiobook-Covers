@@ -21,7 +21,7 @@ function getLargeImageClass(index: number) {
   const isMd = isLargeImageMd(index);
   return cn(
     isMd && "md:max-lg:col-span-3 md:max-lg:row-span-3 md:max-lg:scale-95",
-    isLg && "lg:col-span-2 lg:row-span-2 lg:scale-95"
+    isLg && "lg:col-span-2 lg:row-span-2 lg:scale-95",
   );
 }
 

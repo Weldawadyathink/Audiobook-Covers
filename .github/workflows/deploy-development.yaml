@@ -1,6 +1,4 @@
-# See https://fly.io/docs/app-guides/continuous-deployment-with-github-actions/
-
-name: Fly Deploy
+name: Cloudflare Deploy
 on:
   push:
     branches:
@@ -9,32 +7,28 @@ jobs:
   deploy:
     name: Deploy development website
     runs-on: ubuntu-latest
-    concurrency: fly-deploy
+    concurrency: cloudflare-deploy
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
       - uses: 1password/install-cli-action@v1
       - uses: 1password/load-secrets-action@v3
         id: load_secrets
         env:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-          FLY_API_TOKEN: op://xdpqq36uuedlgindu4gaiwdify/3iaglpb6neh6ybhl54uvj5oioi/Github Deploy Token
+          CLOUDFLARE_API_TOKEN: op://xdpqq36uuedlgindu4gaiwdify/jxjrrnqlbka5p5i23bbktexyky/password
       - uses: taiki-e/install-action@v2
         with:
           tool: just
       - run: |
-          PGSchema_VERSION=$(curl -s https://api.github.com/repos/pgschema/pgschema/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-          VERSION=${PGSchema_VERSION#v}
-          curl -LO https://github.com/pgschema/pgschema/releases/download/${PGSchema_VERSION}/pgschema_${VERSION}_amd64.deb
-          sudo dpkg -i pgschema_${VERSION}_amd64.deb || sudo apt-get install -f -y
+          curl -sSfLO https://github.com/pgschema/pgschema/releases/download/v1.7.1/pgschema_1.7.1_amd64.deb
+          sudo dpkg -i pgschema_1.7.1_amd64.deb || sudo apt-get install -f -y
       - run: sudo apt-get update && sudo apt-get install -y postgresql-client
-      - run: just devdb_rebuild
+      - run: just deploy
         env:
-          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-      - run: just db_migrate_force
-        env:
-          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --remote-only
-        env:
-          FLY_API_TOKEN: ${{ steps.load_secrets.outputs.FLY_API_TOKEN }}
-          LOG_LEVEL: debug
+          CLOUDFLARE_API_TOKEN: ${{ steps.load_secrets.outputs.CLOUDFLARE_API_TOKEN }}

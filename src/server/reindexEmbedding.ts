@@ -4,7 +4,7 @@ import {
   shapeImageDataArray,
 } from "@/server/imageData";
 import { ModelDefinition, ModelOptions, models } from "@/server/models";
-import { getDbPool, sql } from "@/server/db";
+import { getDbPool, sql } from "@/server/slonik";
 
 async function reindexPicture(img: ImageData, model: ModelDefinition) {
   const replicate = await model.getImageEmbedding(img.url);
@@ -44,8 +44,8 @@ async function reindexAllImages(model: ModelDefinition) {
 }
 
 if (import.meta.main) {
-  const modelName = Deno.args[0];
-  const processes = Deno.args[1] || 2;
+  const modelName = "andreasjansson-clip";
+  const processes = 2;
   const model = models[modelName as ModelOptions];
   console.log(`Generating embeddings for ${modelName}`);
   await Promise.all(

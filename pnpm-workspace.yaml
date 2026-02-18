@@ -8,6 +8,11 @@ onlyBuiltDependencies:
   - aws-sdk
   - esbuild
   - protobufjs
+  - sharp
   - unix-dgram
+  - workerd
 
 packageImportMethod: clone-or-copy
+
+patchedDependencies:
+  '@slonik/driver@48.10.0': patches/@slonik__driver@48.10.0.patch
