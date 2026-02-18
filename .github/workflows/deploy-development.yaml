@@ -29,12 +29,6 @@ jobs:
           curl -sSfLO https://github.com/pgschema/pgschema/releases/download/v1.7.1/pgschema_1.7.1_amd64.deb
           sudo dpkg -i pgschema_1.7.1_amd64.deb || sudo apt-get install -f -y
       - run: sudo apt-get update && sudo apt-get install -y postgresql-client
-      - run: just devdb_rebuild
-        env:
-          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-      - run: just db_migrate_force
-        env:
-          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - run: just deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ steps.load_secrets.outputs.CLOUDFLARE_API_TOKEN }}
