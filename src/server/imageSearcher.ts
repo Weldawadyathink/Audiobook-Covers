@@ -92,7 +92,7 @@ export const getImageByIdAndSimilar = createServerFn({
     `;
     const time = performance.now() - start;
     console.log(
-      `getImageByIdAnsSimilar database lookup in ${time.toFixed(1)}ms`,
+      `getImageByIdAndSimilar database lookup in ${time.toFixed(1)}ms`,
     );
     await logAnalyticsEvent({
       data: {

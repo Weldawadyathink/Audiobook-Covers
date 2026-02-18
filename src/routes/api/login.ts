@@ -63,7 +63,7 @@ export const Route = createFileRoute("/api/login")({
           return new Response("Invalid username or password", { status: 401 });
         }
         const sessionId = randomBytes(32).toString("hex");
-        await sql.query`
+        await sqlTools.query`
           INSERT INTO session(session_id, user_id, expires_at)
           VALUES(${sessionId}, ${result.id}, NOW() + INTERVAL '1 day')
         `;

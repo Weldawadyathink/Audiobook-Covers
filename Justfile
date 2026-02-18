@@ -2,7 +2,7 @@ dev:
     APP_STAGE=local pnpm exec vite dev | roarr pretty-print
 
 build:
-    pnpm exec vite build
+    pnpm exec tsc --noEmit && pnpm exec vite build
 
 preview:
     pnpm exec vite preview
@@ -14,10 +14,10 @@ reindex-images:
     pnpm exec tsx reindex_images.ts
 
 deploy:
-    CLOUDFLARE_ENV=development pnpm exec vite build && pnpm exec wrangler deploy
+    CLOUDFLARE_ENV=development just build && pnpm exec wrangler deploy
 
 deploy-prod:
-    CLOUDFLARE_ENV=production pnpm exec vite build && pnpm exec wrangler deploy
+    CLOUDFLARE_ENV=production just build && pnpm exec wrangler deploy
 
 db_migrate:
     @PGPASSWORD=$(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/password') \
