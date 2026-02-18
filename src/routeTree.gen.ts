@@ -20,7 +20,6 @@ import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as ImagesIdRouteImport } from './routes/images.$id'
 import { Route as CoverBytextRouteImport } from './routes/cover.bytext'
 import { Route as ApiLoginRouteImport } from './routes/api/login'
-import { Route as ApiHeartbeatRouteImport } from './routes/api/heartbeat'
 import { Route as AdminTestRouteImport } from './routes/admin/test'
 import { Route as AdminSimilarRouteImport } from './routes/admin/similar'
 import { Route as AdminLogoutRouteImport } from './routes/admin/logout'
@@ -81,11 +80,6 @@ const ApiLoginRoute = ApiLoginRouteImport.update({
   path: '/api/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiHeartbeatRoute = ApiHeartbeatRouteImport.update({
-  id: '/api/heartbeat',
-  path: '/api/heartbeat',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AdminTestRoute = AdminTestRouteImport.update({
   id: '/test',
   path: '/test',
@@ -119,7 +113,6 @@ export interface FileRoutesByFullPath {
   '/admin/logout': typeof AdminLogoutRoute
   '/admin/similar': typeof AdminSimilarRoute
   '/admin/test': typeof AdminTestRoute
-  '/api/heartbeat': typeof ApiHeartbeatRoute
   '/api/login': typeof ApiLoginRoute
   '/cover/bytext': typeof CoverBytextRoute
   '/images/$id': typeof ImagesIdRoute
@@ -136,7 +129,6 @@ export interface FileRoutesByTo {
   '/admin/logout': typeof AdminLogoutRoute
   '/admin/similar': typeof AdminSimilarRoute
   '/admin/test': typeof AdminTestRoute
-  '/api/heartbeat': typeof ApiHeartbeatRoute
   '/api/login': typeof ApiLoginRoute
   '/cover/bytext': typeof CoverBytextRoute
   '/images/$id': typeof ImagesIdRoute
@@ -155,7 +147,6 @@ export interface FileRoutesById {
   '/admin/logout': typeof AdminLogoutRoute
   '/admin/similar': typeof AdminSimilarRoute
   '/admin/test': typeof AdminTestRoute
-  '/api/heartbeat': typeof ApiHeartbeatRoute
   '/api/login': typeof ApiLoginRoute
   '/cover/bytext': typeof CoverBytextRoute
   '/images/$id': typeof ImagesIdRoute
@@ -175,7 +166,6 @@ export interface FileRouteTypes {
     | '/admin/logout'
     | '/admin/similar'
     | '/admin/test'
-    | '/api/heartbeat'
     | '/api/login'
     | '/cover/bytext'
     | '/images/$id'
@@ -192,7 +182,6 @@ export interface FileRouteTypes {
     | '/admin/logout'
     | '/admin/similar'
     | '/admin/test'
-    | '/api/heartbeat'
     | '/api/login'
     | '/cover/bytext'
     | '/images/$id'
@@ -210,7 +199,6 @@ export interface FileRouteTypes {
     | '/admin/logout'
     | '/admin/similar'
     | '/admin/test'
-    | '/api/heartbeat'
     | '/api/login'
     | '/cover/bytext'
     | '/images/$id'
@@ -225,7 +213,6 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   RandomRoute: typeof RandomRoute
   SearchRoute: typeof SearchRoute
-  ApiHeartbeatRoute: typeof ApiHeartbeatRoute
   ApiLoginRoute: typeof ApiLoginRoute
   CoverBytextRoute: typeof CoverBytextRoute
   ImagesIdRoute: typeof ImagesIdRoute
@@ -310,13 +297,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/heartbeat': {
-      id: '/api/heartbeat'
-      path: '/api/heartbeat'
-      fullPath: '/api/heartbeat'
-      preLoaderRoute: typeof ApiHeartbeatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/admin/test': {
       id: '/admin/test'
       path: '/test'
@@ -374,7 +354,6 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   RandomRoute: RandomRoute,
   SearchRoute: SearchRoute,
-  ApiHeartbeatRoute: ApiHeartbeatRoute,
   ApiLoginRoute: ApiLoginRoute,
   CoverBytextRoute: CoverBytextRoute,
   ImagesIdRoute: ImagesIdRoute,

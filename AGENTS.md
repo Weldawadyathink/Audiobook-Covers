@@ -2,9 +2,13 @@
 
 Guidance for AI agents working in this repo.
 
+## Package management
+
+All packages are managed using pnpm.
+
 ## Commands
 
-**All commands are run through the Justfile.** Do not run `pnpm` or `package.json` scripts directly. Use `just <recipe>`.
+**All commands are run through the Justfile.** Do not run `pnpm` scripts or `package.json` scripts directly. Use `just <recipe>`.
 
 | Recipe                | Purpose                                                                   |
 | --------------------- | ------------------------------------------------------------------------- |
