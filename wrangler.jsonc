@@ -22,6 +22,7 @@
       "vars": {
         "APP_STAGE": "development",
         "GOOGLE_VERTEX_LOCATION": "us-east1",
+        "VITE_PUBLIC_POSTHOG_HOST": "https://us.i.posthog.com",
       },
       "routes": [
         {
@@ -42,6 +43,7 @@
       "vars": {
         "APP_STAGE": "production",
         "GOOGLE_VERTEX_LOCATION": "us-east1",
+        "VITE_PUBLIC_POSTHOG_HOST": "https://us.i.posthog.com",
       },
       "routes": [
         {

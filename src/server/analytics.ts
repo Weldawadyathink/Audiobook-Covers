@@ -2,6 +2,8 @@ import { getDbConnection } from "@/server/db";
 import { z } from "zod/v4";
 import { createServerFn } from "@tanstack/react-start";
 import { waitUntil } from "cloudflare:workers";
+import { PostHog } from "posthog-node";
+import { getEnv } from "./env";
 
 // In theory, z.json() should work, but typescript complains about recursion with a server function
 const json = z.lazy(() => {
@@ -23,10 +25,11 @@ export const logAnalyticsEvent = createServerFn()
     }),
   )
   .handler(async ({ data }) => {
-    const { sqlTools } = getDbConnection();
-    const promise = sqlTools.query`
-      INSERT INTO analytics_event (event_type, payload)
-      VALUES (${data.eventType}, ${JSON.stringify(data.payload)})
-    `;
-    waitUntil(promise);
+    const posthog = new PostHog(getEnv().VITE_PUBLIC_POSTHOG_KEY, {
+      host: getEnv().VITE_PUBLIC_POSTHOG_HOST,
+    });
+    posthog.capture({
+      event: data.eventType,
+      properties: data.payload,
+    });
   });
