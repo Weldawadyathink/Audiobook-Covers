@@ -19,13 +19,7 @@ import {
 } from "lucide-react";
 import { Separator } from "@radix-ui/react-separator";
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
-import { PostHogProvider } from "posthog-js/react";
-import { getEnv } from "@/server/env";
-
-const posthogOptions = {
-  api_host: getEnv().VITE_PUBLIC_POSTHOG_HOST,
-  defaults: "2026-01-30",
-} as const;
+import { PostHogProvider } from "@posthog/react";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -80,14 +74,18 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   const pathname = useLocation({ select: (l) => l.pathname });
   return (
     <html>
-      <PostHogProvider
-        apiKey={getEnv().VITE_PUBLIC_POSTHOG_KEY}
-        options={posthogOptions}
-      >
-        <head>
-          <HeadContent />
-        </head>
-        <body className="text-white">
+      <head>
+        <HeadContent />
+      </head>
+      <body className="text-white">
+        <PostHogProvider
+          apiKey="phc_vpuqBfVxumO7RMULNnJJk1d7mkVBUotX72PrsO64avP"
+          options={{
+            api_host: "https://us.i.posthog.com",
+            defaults: "2026-01-30",
+            capture_exceptions: true,
+          }}
+        >
           <div className="fixed inset-0 z-[-1] pointer-events-none">
             <div className="absolute inset-0 bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900" />
           </div>
@@ -156,9 +154,9 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
             </div>
           </nav>
           <div className="pt-16 m-2">{children}</div>
-          <Scripts />
-        </body>
-      </PostHogProvider>
+        </PostHogProvider>
+        <Scripts />
+      </body>
     </html>
   );
 }
