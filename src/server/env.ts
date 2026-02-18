@@ -9,6 +9,8 @@ const serverEnvSchema = z.object({
   GOOGLE_CLOUD_PROJECT: z.string().optional(),
   GOOGLE_VERTEX_LOCATION: z.string().optional(),
   GOOGLE_API_KEY: z.string().optional(),
+  VITE_PUBLIC_POSTHOG_HOST: z.string(),
+  VITE_PUBLIC_POSTHOG_KEY: z.string(),
 });
 
 export const getEnv = createIsomorphicFn()
