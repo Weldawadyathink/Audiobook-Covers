@@ -3,6 +3,7 @@
   "compatibility_date": "2026-01-31",
   "compatibility_flags": ["nodejs_compat"],
   "main": "@tanstack/react-start/server-entry",
+  "account_id": "57d01014eca6e2153041393f3114dc60",
   "observability": {
     "enabled": true,
   },
