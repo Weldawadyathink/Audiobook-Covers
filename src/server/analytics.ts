@@ -28,8 +28,11 @@ export const logAnalyticsEvent = createServerFn()
     const posthog = new PostHog(getEnv().VITE_PUBLIC_POSTHOG_KEY, {
       host: getEnv().VITE_PUBLIC_POSTHOG_HOST,
     });
-    posthog.capture({
-      event: data.eventType,
-      properties: data.payload,
-    });
+    waitUntil(
+      posthog.captureImmediate({
+        event: data.eventType,
+        properties: data.payload,
+      }),
+    );
+    console.log(`Logged analytics event: ${data.eventType}`);
   });

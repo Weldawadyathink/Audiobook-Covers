@@ -25,7 +25,7 @@ export const getRandom = createServerFn().handler(async () => {
   `;
   const time = performance.now() - start;
   console.log(`getRandom database lookup in ${time.toFixed(1)}ms`);
-  logAnalyticsEvent({
+  await logAnalyticsEvent({
     data: {
       eventType: "getRandom",
       payload: {
@@ -94,7 +94,7 @@ export const getImageByIdAndSimilar = createServerFn({
     console.log(
       `getImageByIdAnsSimilar database lookup in ${time.toFixed(1)}ms`,
     );
-    logAnalyticsEvent({
+    await logAnalyticsEvent({
       data: {
         eventType: "getImageByIdAndSimilar",
         payload: {
@@ -174,7 +174,7 @@ export const vectorSearchByString = createServerFn()
         dbStart - embedStart
       }ms, DB time: ${finish - dbStart}ms, Total time: ${finish - embedStart}ms`,
     );
-    logAnalyticsEvent({
+    await logAnalyticsEvent({
       data: {
         eventType: "vectorSearchByString",
         payload: {
