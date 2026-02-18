@@ -2,7 +2,7 @@ import { getDbConnection } from "@/server/db";
 import { z } from "zod/v4";
 import { createServerFn } from "@tanstack/react-start";
 import { waitUntil } from "cloudflare:workers";
-import { PostHog } from "posthog-js";
+import { PostHog } from "posthog-node";
 import { getEnv } from "./env";
 
 // In theory, z.json() should work, but typescript complains about recursion with a server function
