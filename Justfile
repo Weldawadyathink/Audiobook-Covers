@@ -77,6 +77,3 @@ devdb_rebuild:
     -U $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
     -d $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
     -f rebuild_dev_db.sql
-
-loadtest:
-    pnpm run loadtest

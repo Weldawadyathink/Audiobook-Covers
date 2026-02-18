@@ -6,6 +6,7 @@ onlyBuiltDependencies:
   - '@tailwindcss/oxide'
   - argon2
   - aws-sdk
+  - core-js
   - esbuild
   - protobufjs
   - sharp
@@ -13,6 +14,3 @@ onlyBuiltDependencies:
   - workerd
 
 packageImportMethod: clone-or-copy
-
-patchedDependencies:
-  '@slonik/driver@48.10.0': patches/@slonik__driver@48.10.0.patch
