@@ -12,7 +12,7 @@
   "workers_dev": true,
   "env": {
     "development": {
-      "name": "audiobook-covers-dev",
+      "name": "audiobookcovers-dev",
       "hyperdrive": [
         {
           "binding": "HYPERDRIVE",
@@ -32,7 +32,7 @@
       ],
     },
     "production": {
-      "name": "audiobook-covers",
+      "name": "audiobookcovers",
       "hyperdrive": [
         {
           "binding": "HYPERDRIVE",
