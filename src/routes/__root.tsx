@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Separator } from "@radix-ui/react-separator";
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
+import { PostHogProvider } from "@posthog/react";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -77,74 +78,83 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
         <HeadContent />
       </head>
       <body className="text-white">
-        <div className="fixed inset-0 z-[-1] pointer-events-none">
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900" />
-        </div>
-        <nav className="fixed top-0 left-0 right-0 z-30 w-full bg-slate-800/80 backdrop-blur border-b border-slate-700 shadow-md">
-          <div className="mx-auto max-w-4xl flex items-center justify-between px-4 py-2">
-            {/* Hamburger for mobile */}
-            <div className="flex items-center w-full">
-              <div className="flex-1 flex sm:hidden items-center relative">
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <button
-                      className="p-2 text-slate-200 focus:outline-none"
-                      aria-label="Open menu"
+        <PostHogProvider
+          apiKey="phc_vpuqBfVxumO7RMULNnJJk1d7mkVBUotX72PrsO64avP"
+          options={{
+            api_host: "https://us.i.posthog.com",
+            defaults: "2026-01-30",
+            capture_exceptions: true,
+          }}
+        >
+          <div className="fixed inset-0 z-[-1] pointer-events-none">
+            <div className="absolute inset-0 bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900" />
+          </div>
+          <nav className="fixed top-0 left-0 right-0 z-30 w-full bg-slate-800/80 backdrop-blur border-b border-slate-700 shadow-md">
+            <div className="mx-auto max-w-4xl flex items-center justify-between px-4 py-2">
+              {/* Hamburger for mobile */}
+              <div className="flex items-center w-full">
+                <div className="flex-1 flex sm:hidden items-center relative">
+                  <Sheet>
+                    <SheetTrigger asChild>
+                      <button
+                        className="p-2 text-slate-200 focus:outline-none"
+                        aria-label="Open menu"
+                      >
+                        <Menu className="w-6 h-6" />
+                      </button>
+                    </SheetTrigger>
+                    <SheetContent
+                      side="left"
+                      className="bg-slate-800/80 backdrop-blur px-4 py-6"
                     >
-                      <Menu className="w-6 h-6" />
-                    </button>
-                  </SheetTrigger>
-                  <SheetContent
-                    side="left"
-                    className="bg-slate-800/80 backdrop-blur px-4 py-6"
-                  >
-                    <nav className="flex flex-col gap-4 mt-8">
-                      <NavBarItem to="/">
-                        <span>Home</span>
-                        <House />
-                      </NavBarItem>
-                      <NavBarItem to="/search">
-                        <span>Search</span>
-                        <Search />
-                      </NavBarItem>
-                      <NavBarItem to="/about">
-                        <span>About</span>
-                        <Info />
-                      </NavBarItem>
-                      <NavBarItem to="/contribute">
-                        <span>Contribute</span>
-                        <HeartHandshake />
-                      </NavBarItem>
-                    </nav>
-                  </SheetContent>
-                </Sheet>
-                <span className="absolute left-1/2 -translate-x-1/2 text-xl font-bold text-slate-100">
-                  AudiobookCovers.com
-                </span>
-              </div>
-              {/* Inline nav for desktop */}
-              <div className="hidden sm:flex gap-8 w-full justify-center">
-                <NavBarItem to="/">
-                  <span>AudiobookCovers.com</span>
-                  <House />
-                </NavBarItem>
-                <NavBarItem to="/search">
-                  <span>Search</span>
-                  <Search />
-                </NavBarItem>
-                <NavBarItem to="/about">
-                  <span>About</span>
-                  <Info />
-                </NavBarItem>
-                <NavBarItem to="/contribute">
-                  <span>Contribute</span>
-                  <HeartHandshake />
-                </NavBarItem>
+                      <nav className="flex flex-col gap-4 mt-8">
+                        <NavBarItem to="/">
+                          <span>Home</span>
+                          <House />
+                        </NavBarItem>
+                        <NavBarItem to="/search">
+                          <span>Search</span>
+                          <Search />
+                        </NavBarItem>
+                        <NavBarItem to="/about">
+                          <span>About</span>
+                          <Info />
+                        </NavBarItem>
+                        <NavBarItem to="/contribute">
+                          <span>Contribute</span>
+                          <HeartHandshake />
+                        </NavBarItem>
+                      </nav>
+                    </SheetContent>
+                  </Sheet>
+                  <span className="absolute left-1/2 -translate-x-1/2 text-xl font-bold text-slate-100">
+                    AudiobookCovers.com
+                  </span>
+                </div>
+                {/* Inline nav for desktop */}
+                <div className="hidden sm:flex gap-8 w-full justify-center">
+                  <NavBarItem to="/">
+                    <span>AudiobookCovers.com</span>
+                    <House />
+                  </NavBarItem>
+                  <NavBarItem to="/search">
+                    <span>Search</span>
+                    <Search />
+                  </NavBarItem>
+                  <NavBarItem to="/about">
+                    <span>About</span>
+                    <Info />
+                  </NavBarItem>
+                  <NavBarItem to="/contribute">
+                    <span>Contribute</span>
+                    <HeartHandshake />
+                  </NavBarItem>
+                </div>
               </div>
             </div>
-          </div>
-        </nav>
-        <div className="pt-16 m-2">{children}</div>
+          </nav>
+          <div className="pt-16 m-2">{children}</div>
+        </PostHogProvider>
         <Scripts />
       </body>
     </html>

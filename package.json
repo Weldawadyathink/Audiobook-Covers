@@ -5,6 +5,7 @@
   "type": "module",
   "packageManager": "pnpm@10.29.3",
   "dependencies": {
+    "@posthog/react": "^1.8.0",
     "@radix-ui/react-dialog": "^1.1.14",
     "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",
