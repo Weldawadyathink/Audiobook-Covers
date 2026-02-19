@@ -39,9 +39,6 @@ export const getIsAuthenticated = createServerFn().handler(
     console.log("Checking auth");
     const request = getRequest();
     const cookies = parseCookie(request.headers.get("cookie") ?? "");
-    if (!cookies) {
-      return { isAuthenticated: false };
-    }
     const authCookie = cookies["auth"];
     if (!authCookie) {
       return { isAuthenticated: false };
@@ -95,9 +92,8 @@ export const getIsAuthenticated = createServerFn().handler(
         username: result.username,
         sessionId: result.session_id,
       };
-    } else {
-      return { isAuthenticated: false };
     }
+    return { isAuthenticated: false };
   },
 );
 
@@ -105,7 +101,6 @@ export const forceAuthenticated = createServerFn().handler(async () => {
   const auth = await getIsAuthenticated();
   if (!auth.isAuthenticated) {
     throw redirect({ to: "/login" });
-  } else {
-    return true;
   }
+  return true;
 });
