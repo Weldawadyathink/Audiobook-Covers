@@ -37,26 +37,9 @@ const getDatabaseStats = createServerFn().handler(async () => {
     LIMIT 10
   `;
 
-  const analyticsStats = await sqlTools.one(
-    z.object({
-      totalEvents: z.number(),
-      imageDeletedEvents: z.number(),
-      imageUndeletedEvents: z.number(),
-      recentEvents: z.number(),
-    }),
-  )`
-    SELECT
-      COUNT(*)::int AS totalEvents,
-      COUNT(*) FILTER (WHERE event_type = 'imageDeleted')::int AS imageDeletedEvents,
-      COUNT(*) FILTER (WHERE event_type = 'imageUndeleted')::int AS imageUndeletedEvents,
-      COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '7 days')::int AS recentEvents
-    FROM analytics_event
-  `;
-
   return {
     overall: overallStats,
     extensions: extensionStats,
-    analytics: analyticsStats,
   };
 });
 
@@ -118,35 +101,6 @@ function RouteComponent() {
               description={`${((ext.count / stats.overall.total) * 100).toFixed(1)}% of total`}
             />
           ))}
-        </div>
-      </section>
-
-      {/* Analytics Statistics */}
-      <section className="mb-6 sm:mb-8">
-        <h2 className="text-lg sm:text-xl font-semibold mb-4 text-slate-200">
-          Analytics Statistics
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            title="Total Events"
-            value={stats.analytics.totalEvents}
-            description="All analytics events"
-          />
-          <StatCard
-            title="Image Deleted Events"
-            value={stats.analytics.imageDeletedEvents}
-            description="Times images were deleted"
-          />
-          <StatCard
-            title="Image Undeleted Events"
-            value={stats.analytics.imageUndeletedEvents}
-            description="Times images were restored"
-          />
-          <StatCard
-            title="Recent Events (7 days)"
-            value={stats.analytics.recentEvents}
-            description="Events in the last week"
-          />
         </div>
       </section>
     </div>
