@@ -10,6 +10,9 @@ preview:
 types:
     pnpm exec wrangler types
 
+regen-route-tree:
+    pnpm exec tsx regen_route_tree.ts
+
 reindex-images:
     pnpm exec tsx reindex_images.ts
 
