@@ -19,11 +19,15 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as ImagesIdRouteImport } from './routes/images.$id'
 import { Route as CoverBytextRouteImport } from './routes/cover.bytext'
+import { Route as ApiPublicRouteImport } from './routes/api.public'
 import { Route as ApiLoginRouteImport } from './routes/api/login'
 import { Route as AdminTestRouteImport } from './routes/admin/test'
 import { Route as AdminSimilarRouteImport } from './routes/admin/similar'
 import { Route as AdminLogoutRouteImport } from './routes/admin/logout'
 import { Route as AdminDatabase_infoRouteImport } from './routes/admin/database_info'
+import { Route as ApiPublicSearchRouteImport } from './routes/api.public.search'
+import { Route as ApiPublicRandomRouteImport } from './routes/api.public.random'
+import { Route as ApiPublicImagesIdRouteImport } from './routes/api.public.images.$id'
 
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
@@ -75,6 +79,11 @@ const CoverBytextRoute = CoverBytextRouteImport.update({
   path: '/cover/bytext',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicRoute = ApiPublicRouteImport.update({
+  id: '/api/public',
+  path: '/api/public',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiLoginRoute = ApiLoginRouteImport.update({
   id: '/api/login',
   path: '/api/login',
@@ -100,6 +109,21 @@ const AdminDatabase_infoRoute = AdminDatabase_infoRouteImport.update({
   path: '/database_info',
   getParentRoute: () => AdminRoute,
 } as any)
+const ApiPublicSearchRoute = ApiPublicSearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => ApiPublicRoute,
+} as any)
+const ApiPublicRandomRoute = ApiPublicRandomRouteImport.update({
+  id: '/random',
+  path: '/random',
+  getParentRoute: () => ApiPublicRoute,
+} as any)
+const ApiPublicImagesIdRoute = ApiPublicImagesIdRouteImport.update({
+  id: '/images/$id',
+  path: '/images/$id',
+  getParentRoute: () => ApiPublicRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -114,9 +138,13 @@ export interface FileRoutesByFullPath {
   '/admin/similar': typeof AdminSimilarRoute
   '/admin/test': typeof AdminTestRoute
   '/api/login': typeof ApiLoginRoute
+  '/api/public': typeof ApiPublicRouteWithChildren
   '/cover/bytext': typeof CoverBytextRoute
   '/images/$id': typeof ImagesIdRoute
   '/admin/': typeof AdminIndexRoute
+  '/api/public/random': typeof ApiPublicRandomRoute
+  '/api/public/search': typeof ApiPublicSearchRoute
+  '/api/public/images/$id': typeof ApiPublicImagesIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -130,9 +158,13 @@ export interface FileRoutesByTo {
   '/admin/similar': typeof AdminSimilarRoute
   '/admin/test': typeof AdminTestRoute
   '/api/login': typeof ApiLoginRoute
+  '/api/public': typeof ApiPublicRouteWithChildren
   '/cover/bytext': typeof CoverBytextRoute
   '/images/$id': typeof ImagesIdRoute
   '/admin': typeof AdminIndexRoute
+  '/api/public/random': typeof ApiPublicRandomRoute
+  '/api/public/search': typeof ApiPublicSearchRoute
+  '/api/public/images/$id': typeof ApiPublicImagesIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -148,9 +180,13 @@ export interface FileRoutesById {
   '/admin/similar': typeof AdminSimilarRoute
   '/admin/test': typeof AdminTestRoute
   '/api/login': typeof ApiLoginRoute
+  '/api/public': typeof ApiPublicRouteWithChildren
   '/cover/bytext': typeof CoverBytextRoute
   '/images/$id': typeof ImagesIdRoute
   '/admin/': typeof AdminIndexRoute
+  '/api/public/random': typeof ApiPublicRandomRoute
+  '/api/public/search': typeof ApiPublicSearchRoute
+  '/api/public/images/$id': typeof ApiPublicImagesIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -167,9 +203,13 @@ export interface FileRouteTypes {
     | '/admin/similar'
     | '/admin/test'
     | '/api/login'
+    | '/api/public'
     | '/cover/bytext'
     | '/images/$id'
     | '/admin/'
+    | '/api/public/random'
+    | '/api/public/search'
+    | '/api/public/images/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -183,9 +223,13 @@ export interface FileRouteTypes {
     | '/admin/similar'
     | '/admin/test'
     | '/api/login'
+    | '/api/public'
     | '/cover/bytext'
     | '/images/$id'
     | '/admin'
+    | '/api/public/random'
+    | '/api/public/search'
+    | '/api/public/images/$id'
   id:
     | '__root__'
     | '/'
@@ -200,9 +244,13 @@ export interface FileRouteTypes {
     | '/admin/similar'
     | '/admin/test'
     | '/api/login'
+    | '/api/public'
     | '/cover/bytext'
     | '/images/$id'
     | '/admin/'
+    | '/api/public/random'
+    | '/api/public/search'
+    | '/api/public/images/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -214,6 +262,7 @@ export interface RootRouteChildren {
   RandomRoute: typeof RandomRoute
   SearchRoute: typeof SearchRoute
   ApiLoginRoute: typeof ApiLoginRoute
+  ApiPublicRoute: typeof ApiPublicRouteWithChildren
   CoverBytextRoute: typeof CoverBytextRoute
   ImagesIdRoute: typeof ImagesIdRoute
 }
@@ -290,6 +339,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CoverBytextRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public': {
+      id: '/api/public'
+      path: '/api/public'
+      fullPath: '/api/public'
+      preLoaderRoute: typeof ApiPublicRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/login': {
       id: '/api/login'
       path: '/api/login'
@@ -325,6 +381,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDatabase_infoRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/api/public/search': {
+      id: '/api/public/search'
+      path: '/search'
+      fullPath: '/api/public/search'
+      preLoaderRoute: typeof ApiPublicSearchRouteImport
+      parentRoute: typeof ApiPublicRoute
+    }
+    '/api/public/random': {
+      id: '/api/public/random'
+      path: '/random'
+      fullPath: '/api/public/random'
+      preLoaderRoute: typeof ApiPublicRandomRouteImport
+      parentRoute: typeof ApiPublicRoute
+    }
+    '/api/public/images/$id': {
+      id: '/api/public/images/$id'
+      path: '/images/$id'
+      fullPath: '/api/public/images/$id'
+      preLoaderRoute: typeof ApiPublicImagesIdRouteImport
+      parentRoute: typeof ApiPublicRoute
+    }
   }
 }
 
@@ -346,6 +423,22 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface ApiPublicRouteChildren {
+  ApiPublicRandomRoute: typeof ApiPublicRandomRoute
+  ApiPublicSearchRoute: typeof ApiPublicSearchRoute
+  ApiPublicImagesIdRoute: typeof ApiPublicImagesIdRoute
+}
+
+const ApiPublicRouteChildren: ApiPublicRouteChildren = {
+  ApiPublicRandomRoute: ApiPublicRandomRoute,
+  ApiPublicSearchRoute: ApiPublicSearchRoute,
+  ApiPublicImagesIdRoute: ApiPublicImagesIdRoute,
+}
+
+const ApiPublicRouteWithChildren = ApiPublicRoute._addFileChildren(
+  ApiPublicRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
@@ -355,6 +448,7 @@ const rootRouteChildren: RootRouteChildren = {
   RandomRoute: RandomRoute,
   SearchRoute: SearchRoute,
   ApiLoginRoute: ApiLoginRoute,
+  ApiPublicRoute: ApiPublicRouteWithChildren,
   CoverBytextRoute: CoverBytextRoute,
   ImagesIdRoute: ImagesIdRoute,
 }
