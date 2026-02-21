@@ -4,20 +4,11 @@ import {
   createRootRoute,
   HeadContent,
   Scripts,
-  useLocation,
 } from "@tanstack/react-router";
 // @ts-ignore For some reason it doesn't like this pattern
 import appCss from "@/styles/app.css?url";
 import { NavBarItem } from "@/components/NavBarItem";
-import {
-  HeartHandshake,
-  House,
-  Info,
-  Search,
-  ShieldUser,
-  Menu,
-} from "lucide-react";
-import { Separator } from "@radix-ui/react-separator";
+import { HeartHandshake, House, Info, Search, Menu } from "lucide-react";
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
 import { PostHogProvider } from "@posthog/react";
 
@@ -71,7 +62,6 @@ function RootComponent() {
 }
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
-  const pathname = useLocation({ select: (l) => l.pathname });
   return (
     <html>
       <head>

@@ -1,6 +1,6 @@
-import { shapeImageDataArray, shapeImageData } from "@/server/imageData";
+import { shapeImageDataArray } from "@/server/imageData";
 import { getDbConnection } from "@/server/db";
-import { defaultModel, models, zModelOptions } from "@/server/models";
+import { defaultModel, models } from "@/server/models";
 import { DBImageDataValidator } from "@/server/imageData";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
@@ -34,7 +34,7 @@ export const getRandom = createServerFn().handler(async () => {
       },
     },
   });
-  return await shapeImageDataArray(results);
+  return shapeImageDataArray(results);
 });
 
 export const getImageByIdAndSimilar = createServerFn({
@@ -104,35 +104,8 @@ export const getImageByIdAndSimilar = createServerFn({
         },
       },
     });
-    return await shapeImageDataArray([target, ...results]);
+    return shapeImageDataArray([target, ...results]);
   });
-
-// export async function getImageById(id: string) {
-//   console.log(`getImageById: ${id}`);
-//   const start = performance.now();
-//   const pool = await getDbPool();
-//   const results = await pool.maybeOne(
-//     sql.type(DBImageDataValidator)`
-//       SELECT
-//         id,
-//         source,
-//         extension,
-//         blurhash,
-//         from_old_database,
-//         searchable
-//       FROM image
-//       WHERE id = ${id}
-//         AND deleted IS FALSE
-//       LIMIT 1
-//     `,
-//   );
-//   const time = performance.now() - start;
-//   console.log(`getImageById database lookup in ${time.toFixed(1)}ms`);
-//   if (!results) {
-//     return;
-//   }
-//   return (await shapeImageDataArray([results]))[0];
-// }
 
 export const vectorSearchByString = createServerFn()
   .inputValidator(z.object({ q: z.string() }))
@@ -187,5 +160,5 @@ export const vectorSearchByString = createServerFn()
         },
       },
     });
-    return await shapeImageDataArray(results);
+    return shapeImageDataArray(results);
   });

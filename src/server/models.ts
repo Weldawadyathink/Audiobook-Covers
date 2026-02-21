@@ -27,7 +27,7 @@ const publicClipModelValidator = z
   )
   .min(1);
 
-async function genericFlyClipModel(modelId: string, input: string) {
+async function genericFlyClipModel(_modelId: string, input: string) {
   // TODO: temporary, all calls will return the s0 model results
   const json = await ky
     .post(`http://clip-features.fly.dev:8000/predictions`, {
