@@ -27,7 +27,7 @@ db_migrate:
     --user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
     --plan-user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
     --db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
-    --plan-db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
+    --plan-db pgschema \
     --schema audiobookcovers_dev \
     --file database.sql
 
@@ -39,7 +39,7 @@ db_migrate_force:
     --user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
     --plan-user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
     --db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
-    --plan-db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
+    --plan-db pgschema \
     --schema audiobookcovers_dev \
     --file database.sql \
     --auto-approve
@@ -53,7 +53,7 @@ prod_db_migrate:
     --user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
     --plan-user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
     --db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
-    --plan-db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
+    --plan-db pgschema \
     --schema audiobookcovers \
     --file database.sql
 
@@ -65,7 +65,7 @@ prod_db_migrate_force:
     --user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
     --plan-user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
     --db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
-    --plan-db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
+    --plan-db pgschema \
     --schema audiobookcovers \
     --file database.sql \
     --auto-approve
