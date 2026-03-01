@@ -14,9 +14,23 @@ type PostgresTag = (
   ...values: unknown[]
 ) => PromiseLike<Row[]>;
 
-export function getDbConnection() {
-  console.log("Creating new db connection");
-  const sql = postgres(getEnv().DATABASE_URL, {
+export function getDbWriteConnection() {
+  // Connect to the primary database for writes.
+  console.log("Creating new db write connection");
+  const sql = postgres(getEnv().DATABASE_WRITE_URL, {
+    max: 2,
+    fetch_types: false,
+    prepare: true,
+  });
+  const sqlTools = getSqlTools(sql);
+  return { sql, sqlTools };
+}
+
+export function getDbReadConnection() {
+  // Connect to the read only replica database.
+  // This is used for reads that don't need to be consistent.
+  console.log("Creating new db read connection");
+  const sql = postgres(getEnv().DATABASE_READ_URL, {
     max: 2,
     fetch_types: false,
     prepare: true,

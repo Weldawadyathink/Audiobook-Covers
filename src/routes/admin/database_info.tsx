@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { getDbConnection } from "@/server/db";
+import { getDbReadConnection } from "@/server/db";
 import { z } from "zod/v4";
 import StatCard from "@/components/StatCard";
 
 const getDatabaseStats = createServerFn().handler(async () => {
   console.log("ADMIN: Getting database statistics.");
-  const { sqlTools } = getDbConnection();
+  const { sqlTools } = getDbReadConnection();
   const overallStats = await sqlTools.one(
     z.object({
       total: z.number(),

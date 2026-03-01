@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
 import { getIsAuthenticated } from "./auth";
-import { getDbConnection } from "@/server/db";
+import { getDbWriteConnection } from "@/server/db";
 import { logAnalyticsEvent } from "@/server/analytics";
 
 export const setImageDeleted = createServerFn()
@@ -11,7 +11,7 @@ export const setImageDeleted = createServerFn()
     if (!auth.isAuthenticated) {
       throw new Error("Not authorized");
     }
-    const { sqlTools } = getDbConnection();
+    const { sqlTools } = getDbWriteConnection();
     await sqlTools.query`
       UPDATE image SET deleted = TRUE WHERE id = ${id}
     `;
@@ -31,7 +31,7 @@ export const setImageNotDeleted = createServerFn()
     if (!auth.isAuthenticated) {
       throw new Error("Not authorized");
     }
-    const { sqlTools } = getDbConnection();
+    const { sqlTools } = getDbWriteConnection();
     await sqlTools.query`
       UPDATE image SET deleted = FALSE WHERE id = ${id}
     `;
@@ -52,7 +52,7 @@ export const setImageSearchable = createServerFn()
       throw new Error("Not authorized");
     }
     console.log("Setting image as searchable", id);
-    const { sqlTools } = getDbConnection();
+    const { sqlTools } = getDbWriteConnection();
     await sqlTools.query`
       UPDATE image SET searchable = TRUE WHERE id = ${id}
     `;
@@ -73,7 +73,7 @@ export const setImageNotSearchable = createServerFn()
       throw new Error("Not authorized");
     }
     console.log("Setting image as not searchable", id);
-    const { sqlTools } = getDbConnection();
+    const { sqlTools } = getDbWriteConnection();
     await sqlTools.query`
       UPDATE image SET searchable = FALSE WHERE id = ${id}
     `;
