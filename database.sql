@@ -33,10 +33,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA audiobookcovers_dev GRANT USAGE, SELECT ON SE
 ALTER USER audiobookcovers_dev SET SEARCH_PATH TO audiobookcovers_dev, public;
 GRANT audiobookcovers_dev TO pscale_api_bjroyz1lcgxf; -- Allow hyperdrive to masquerade as this user
 
-
 -- TODO: Restrict permissions to only the necessary tables
-
-
 
 CREATE TABLE image (
     id                       UUID NOT NULL,
@@ -79,32 +76,3 @@ CREATE TABLE session (
 );
 
 CREATE INDEX idx_sessions_user_id ON session (user_id);
-
-CREATE TABLE analytics_event (
-    id BIGSERIAL PRIMARY KEY,
-    event_type TEXT NOT NULL,
-    payload JSONB NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX idx_analytics_event_type ON analytics_event(event_type);
-CREATE INDEX idx_analytics_event_created_at ON analytics_event(created_at);
-
-CREATE MATERIALIZED VIEW image_neighbor AS
-    WITH complete_image AS (
-        SELECT id, embedding_mobileclip_s0
-        FROM image
-    )
-    SELECT
-        i1.id                                                     AS id1,
-        i2.id                                                     AS id2,
-        i1.embedding_mobileclip_s0 <=> i2.embedding_mobileclip_s0 AS distance
-    FROM
-        complete_image i1
-        JOIN complete_image i2 ON i1.id < i2.id
-WITH NO DATA;
-
-CREATE INDEX ON image_neighbor(distance);
-CREATE INDEX ON image_neighbor(id1);
-CREATE INDEX ON image_neighbor(id2);
-CREATE UNIQUE INDEX ON image_neighbor(id1, id2);

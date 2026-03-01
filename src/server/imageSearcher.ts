@@ -1,5 +1,5 @@
 import { shapeImageDataArray, shapeImageData } from "@/server/imageData";
-import { getDbConnection } from "@/server/db";
+import { getDbReadConnection } from "@/server/db";
 import { defaultModel, models, zModelOptions } from "@/server/models";
 import { DBImageDataValidator } from "@/server/imageData";
 import { createServerFn } from "@tanstack/react-start";
@@ -9,7 +9,7 @@ import { logAnalyticsEvent } from "@/server/analytics";
 export const getRandom = createServerFn().handler(async () => {
   console.log("Getting random cover");
   const start = performance.now();
-  const { sqlTools } = getDbConnection();
+  const { sqlTools } = getDbReadConnection();
   const results = await sqlTools.many(DBImageDataValidator)`
     SELECT
       id,
@@ -44,7 +44,7 @@ export const getImageByIdAndSimilar = createServerFn({
   .handler(async ({ data: id }) => {
     console.log(`getImageByIdAndSimilar: ${id}`);
     const start = performance.now();
-    const { sqlTools, sql } = getDbConnection();
+    const { sqlTools, sql } = getDbReadConnection();
     const target = await sqlTools.maybeOne(DBImageDataValidator)`
       SELECT
         id,
@@ -92,7 +92,7 @@ export const getImageByIdAndSimilar = createServerFn({
     `;
     const time = performance.now() - start;
     console.log(
-      `getImageByIdAnsSimilar database lookup in ${time.toFixed(1)}ms`,
+      `getImageByIdAndSimilar database lookup in ${time.toFixed(1)}ms`,
     );
     await logAnalyticsEvent({
       data: {
@@ -147,7 +147,7 @@ export const vectorSearchByString = createServerFn()
     const vector = await model.getTextEmbedding(data.q);
     const dbStart = performance.now();
 
-    const { sql, sqlTools } = getDbConnection();
+    const { sql, sqlTools } = getDbReadConnection();
     const results = await sqlTools.many(DBImageDataValidator)`
       WITH searchable_images AS (
         SELECT

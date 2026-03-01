@@ -24,7 +24,8 @@ Database migration recipes (`db_migrate`, `db_migrate_force`, `prod_db_migrate`,
 
 ## Do not run the dev server
 
-**Agents must not start or keep a dev server running.** Do not run `just dev`. Work against the codebase and verify with build/type checks only.
+**In general Agents must not start or keep a dev server running.**
+You never need to start a dev server when interacting with a human. The human will have a dev server running, and if they do not, you can remind them to start one. When building a pull request without the help of a human, it can be helpful to run a dev server in certain circumstances. A dev server for tanstack start will automatically rebuild the generated routeTree.gen.ts file. You may need to run a dev server temporarily to rebuild this file.
 
 ## After making changes
 

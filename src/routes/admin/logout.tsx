@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import cookie from "cookie";
-import { getDbConnection } from "@/server/db";
+import { getDbWriteConnection } from "@/server/db";
 import { useEffect } from "react";
 import { logAnalyticsEvent } from "@/server/analytics";
 
@@ -17,7 +17,7 @@ export const logout = createServerFn({ method: "POST" }).handler(async () => {
         const sessionId = JSON.parse(
           Buffer.from(auth, "base64").toString(),
         ).sessionId;
-        const { sqlTools } = getDbConnection();
+        const { sqlTools } = getDbWriteConnection();
         await sqlTools.query`
           DELETE FROM session WHERE session_id = ${sessionId}
         `;

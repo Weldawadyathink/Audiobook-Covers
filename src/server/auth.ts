@@ -1,4 +1,4 @@
-import { getDbConnection } from "@/server/db";
+import { getDbWriteConnection } from "@/server/db";
 import { z } from "zod/v4";
 import base64 from "base-64";
 import { createServerFn } from "@tanstack/react-start";
@@ -59,7 +59,7 @@ export const getIsAuthenticated = createServerFn().handler(
       return { isAuthenticated: false };
     }
 
-    const { sqlTools } = getDbConnection();
+    const { sqlTools } = getDbWriteConnection();
     const result = await sqlTools.maybeOne(
       z.object({
         username: z.string(),

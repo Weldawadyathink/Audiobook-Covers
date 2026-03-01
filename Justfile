@@ -2,7 +2,7 @@ dev:
     APP_STAGE=local pnpm exec vite dev | roarr pretty-print
 
 build:
-    pnpm exec vite build
+    pnpm exec tsc --noEmit && pnpm exec vite build
 
 preview:
     pnpm exec vite preview
@@ -14,10 +14,10 @@ reindex-images:
     pnpm exec tsx reindex_images.ts
 
 deploy:
-    CLOUDFLARE_ENV=development pnpm exec vite build && pnpm exec wrangler deploy
+    CLOUDFLARE_ENV=development just build && pnpm exec wrangler deploy
 
 deploy-prod:
-    CLOUDFLARE_ENV=production pnpm exec vite build && pnpm exec wrangler deploy
+    CLOUDFLARE_ENV=production just build && pnpm exec wrangler deploy
 
 db_migrate:
     @PGPASSWORD=$(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/password') \
@@ -27,7 +27,7 @@ db_migrate:
     --user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
     --plan-user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
     --db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
-    --plan-db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
+    --plan-db pgschema \
     --schema audiobookcovers_dev \
     --file database.sql
 
@@ -39,7 +39,7 @@ db_migrate_force:
     --user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
     --plan-user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
     --db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
-    --plan-db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
+    --plan-db pgschema \
     --schema audiobookcovers_dev \
     --file database.sql \
     --auto-approve
@@ -53,7 +53,7 @@ prod_db_migrate:
     --user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
     --plan-user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
     --db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
-    --plan-db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
+    --plan-db pgschema \
     --schema audiobookcovers \
     --file database.sql
 
@@ -65,7 +65,7 @@ prod_db_migrate_force:
     --user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
     --plan-user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
     --db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
-    --plan-db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
+    --plan-db pgschema \
     --schema audiobookcovers \
     --file database.sql \
     --auto-approve

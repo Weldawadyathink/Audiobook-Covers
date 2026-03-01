@@ -1,5 +1,5 @@
 import { z } from "zod/v4";
-import { getDbConnection } from "@/server/db";
+import { getDbWriteConnection } from "@/server/db";
 import base64 from "base-64";
 import { createFileRoute } from "@tanstack/react-router";
 import cookie from "cookie";
@@ -25,7 +25,7 @@ export const Route = createFileRoute("/api/login")({
             status: 400,
           });
         }
-        const { sqlTools } = getDbConnection();
+        const { sqlTools } = getDbWriteConnection();
         const result = await sqlTools.maybeOne(
           z.object({
             id: z.number(),
@@ -63,7 +63,7 @@ export const Route = createFileRoute("/api/login")({
           return new Response("Invalid username or password", { status: 401 });
         }
         const sessionId = randomBytes(32).toString("hex");
-        await sql.query`
+        await sqlTools.query`
           INSERT INTO session(session_id, user_id, expires_at)
           VALUES(${sessionId}, ${result.id}, NOW() + INTERVAL '1 day')
         `;
