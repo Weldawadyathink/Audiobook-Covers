@@ -1,5 +1,5 @@
 dev:
-    APP_STAGE=local pnpm exec vite dev | roarr pretty-print
+    APP_STAGE=local pnpm exec vite dev
 
 build:
     pnpm exec tsc --noEmit && pnpm exec vite build
