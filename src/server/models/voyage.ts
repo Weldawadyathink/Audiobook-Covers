@@ -1,5 +1,6 @@
-import { createVoyage, ImageEmbeddingInput } from "voyage-ai-provider";
+import { createVoyage } from "voyage-ai-provider";
 import { ModelDefinition, EmbeddingOutput } from "./models";
+import { ModelName } from "@/shared/modelConstants";
 import { getEnv } from "@/server/env";
 import { embed, embedMany } from "ai";
 
@@ -7,9 +8,8 @@ const voyage = createVoyage({
   apiKey: getEnv().VOYAGE_API_KEY,
 });
 
-export const models: ModelDefinition[] = [
-  {
-    name: "voyage-multimodal-3",
+export const models = {
+  "voyage-multimodal-3": {
     dimensions: 1024,
     dbColumn: "embedding_voyage_multimodal_3",
     getTextEmbedding: async (input) => {
@@ -37,8 +37,7 @@ export const models: ModelDefinition[] = [
       return { input, embedding: embeddings[0] };
     },
   },
-  {
-    name: "voyage-multimodal-3.5",
+  "voyage-multimodal-3.5": {
     dimensions: 1024,
     dbColumn: "embedding_voyage_multimodal_3_5",
     getTextEmbedding: async (input) => {
@@ -66,4 +65,4 @@ export const models: ModelDefinition[] = [
       return { input, embedding: embeddings[0] };
     },
   },
-];
+} satisfies Partial<Record<ModelName, ModelDefinition>>;

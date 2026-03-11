@@ -1,4 +1,4 @@
-import { models } from "@/server/models/models";
+import { modelMap, ModelDefinition } from "@/server/models/models";
 import { Command } from "commander";
 import { getDbWriteConnection } from "@/server/db";
 import { DBImageDataValidator, shapeImageDataArray } from "@/server/imageData";
@@ -14,8 +14,8 @@ program
 
 program.parse(process.argv);
 
-const model = program.opts().model;
-const modelDefinition = models.find((m) => m.name === model);
+const model: string = program.opts().model;
+const modelDefinition = (modelMap as Record<string, ModelDefinition | undefined>)[model];
 const tablesample = program.opts().tablesample;
 const threads = program.opts().threads;
 const limit = pLimit(parseInt(threads));

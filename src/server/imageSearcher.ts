@@ -1,6 +1,7 @@
 import { shapeImageDataArray, shapeImageData } from "@/server/imageData";
 import { getDbReadConnection } from "@/server/db";
-import { defaultModel, models, zModelOptions } from "@/server/models";
+import { getModel } from "@/server/models/models";
+import { defaultModelName } from "@/shared/modelConstants";
 import { DBImageDataValidator } from "@/server/imageData";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
@@ -60,7 +61,7 @@ export const getImageByIdAndSimilar = createServerFn({
       return [];
     }
 
-    const model = models[defaultModel];
+    const model = getModel(defaultModelName);
 
     const results = await sqlTools.many(DBImageDataValidator)`
       WITH searchable_images AS (
@@ -135,13 +136,13 @@ export const getImageByIdAndSimilar = createServerFn({
 // }
 
 export const vectorSearchByString = createServerFn()
-  .inputValidator(z.object({ q: z.string() }))
+  .inputValidator(z.object({ q: z.string(), model: z.string().optional() }))
   .handler(async ({ data }) => {
     if (data.q === "") {
       return [];
     }
-    const modelName = defaultModel;
-    const model = models[modelName];
+    const modelName = data.model ?? defaultModelName;
+    const model = getModel(modelName);
     const similarityThreshold = 0.765;
     const embedStart = performance.now();
     const vector = await model.getTextEmbedding(data.q);

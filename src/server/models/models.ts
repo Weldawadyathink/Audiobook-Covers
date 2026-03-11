@@ -4,7 +4,6 @@ export interface EmbeddingOutput {
 }
 
 export interface ModelDefinition {
-  name: string;
   dimensions: number;
   dbColumn: string;
   getTextEmbedding: (input: string) => Promise<EmbeddingOutput>;
@@ -12,7 +11,18 @@ export interface ModelDefinition {
 }
 
 import { models as replicateModels } from "./replicate";
-import { models as googleModels } from "./google";
 import { models as voyageModels } from "./voyage";
+import { ModelName, defaultModelName } from "@/shared/modelConstants";
 
-export const models = [...replicateModels, ...voyageModels];
+export { defaultModelName } from "@/shared/modelConstants";
+
+// satisfies ensures every ModelName has an implementation at compile time.
+// Add a model here and TypeScript will error until an implementation exists.
+export const modelMap = {
+  ...replicateModels,
+  ...voyageModels,
+} satisfies Record<ModelName, ModelDefinition>;
+
+export function getModel(name: string): ModelDefinition {
+  return (modelMap as Record<string, ModelDefinition>)[name] ?? modelMap[defaultModelName];
+}

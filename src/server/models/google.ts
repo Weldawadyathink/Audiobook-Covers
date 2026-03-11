@@ -49,7 +49,6 @@ async function imageUrlToBase64(imageUrl: string): Promise<string> {
 
 export const models: ModelDefinition[] = [
   {
-    name: "google-multimodal",
     dimensions: 1408,
     dbColumn: "embedding_google_multimodal",
     getTextEmbedding: async (input) => {

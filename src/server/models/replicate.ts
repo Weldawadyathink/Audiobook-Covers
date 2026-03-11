@@ -1,5 +1,6 @@
 import Replicate from "replicate";
 import { ModelDefinition } from "./models";
+import { ModelName } from "@/shared/modelConstants";
 import { z } from "zod/v4";
 
 const replicate = new Replicate();
@@ -13,9 +14,8 @@ const replicateClipOutputValidator = z
   )
   .min(1);
 
-export const models: ModelDefinition[] = [
-  {
-    name: "andreasjansson-clip",
+export const models = {
+  "andreasjansson-clip": {
     dimensions: 768,
     dbColumn: "embedding_andreasjansson_clip",
     getTextEmbedding: async (input) => {
@@ -43,4 +43,4 @@ export const models: ModelDefinition[] = [
       return validatedResult[0];
     },
   },
-];
+} satisfies Partial<Record<ModelName, ModelDefinition>>;
