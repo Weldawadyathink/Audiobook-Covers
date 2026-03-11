@@ -24,11 +24,11 @@ jobs:
           CLOUDFLARE_API_TOKEN: op://xdpqq36uuedlgindu4gaiwdify/jxjrrnqlbka5p5i23bbktexyky/password
       - uses: taiki-e/install-action@v2
         with:
-          tool: just
+          tool: task
       - run: |
           curl -sSfLO https://github.com/pgschema/pgschema/releases/download/v1.7.1/pgschema_1.7.1_amd64.deb
           sudo dpkg -i pgschema_1.7.1_amd64.deb || sudo apt-get install -f -y
       - run: sudo apt-get update && sudo apt-get install -y postgresql-client
-      - run: just deploy
+      - run: task deploy:dev
         env:
           CLOUDFLARE_API_TOKEN: ${{ steps.load_secrets.outputs.CLOUDFLARE_API_TOKEN }}

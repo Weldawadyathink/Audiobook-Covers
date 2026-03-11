@@ -8,19 +8,19 @@ All packages are managed using pnpm.
 
 ## Commands
 
-**All commands are run through the Justfile.** Do not run `pnpm` scripts or `package.json` scripts directly. Use `just <recipe>`.
+**All commands are run through the Taskfile.** Do not run `pnpm` scripts or `package.json` scripts directly. Use `task <name>`.
 
-| Recipe                | Purpose                                                                   |
+| Task                  | Purpose                                                                   |
 | --------------------- | ------------------------------------------------------------------------- |
-| `just build`          | Build the app and check for type errors (use this after making changes)   |
-| `just types`          | Regenerate Wrangler/Cloudflare Worker types (`worker-configuration.d.ts`) |
-| `just dev`            | Start the dev server (see below)                                          |
-| `just preview`        | Preview the production build locally                                      |
-| `just deploy`         | Build and deploy to Cloudflare (development env)                          |
-| `just deploy-prod`    | Build and deploy to production                                            |
-| `just reindex-images` | Run the image reindex script                                              |
+| `task build`          | Build the app and check for type errors (use this after making changes)   |
+| `task types`          | Regenerate Wrangler/Cloudflare Worker types (`worker-configuration.d.ts`) |
+| `task dev`            | Start the dev server (see below)                                          |
+| `task preview`        | Preview the production build locally                                      |
+| `task deploy:dev`     | Build and deploy to Cloudflare (development env)                          |
+| `task deploy:prod`    | Build and deploy to production                                            |
+| `task reindex:images` | Run the image reindex script (pass flags after `--`)                      |
 
-Database migration recipes (`db_migrate`, `db_migrate_force`, `prod_db_migrate`, etc.) use 1Password and are for human use; agents should not run them.
+Database migration tasks (`db:migrate`, `db:migrate:force`, `db:prod:migrate`, etc.) use 1Password and are for human use; agents should not run them.
 
 ## Do not run the dev server
 
@@ -29,8 +29,8 @@ You never need to start a dev server when interacting with a human. The human wi
 
 ## After making changes
 
-1. **Always** run `just build` when you are done with a task. This builds the project and surfaces type errors.
-2. **If you changed `wrangler.jsonc`**, also run `just types` after your changes. This updates `worker-configuration.d.ts` so Worker bindings and env types stay in sync.
+1. **Always** run `task build` when you are done with a task. This builds the project and surfaces type errors.
+2. **If you changed `wrangler.jsonc`**, also run `task types` after your changes. This updates `worker-configuration.d.ts` so Worker bindings and env types stay in sync.
 
 ## Tech stack (reference)
 

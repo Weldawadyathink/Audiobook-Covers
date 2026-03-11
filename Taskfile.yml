@@ -1,0 +1,115 @@
+version: "3"
+
+tasks:
+  dev:
+    desc: Start the dev server
+    cmds:
+      - APP_STAGE=local pnpm exec vite dev
+
+  build:
+    desc: Build the app and check for type errors
+    deps: [types]
+    cmds:
+      - pnpm exec vite build
+
+  types:
+    desc: Regenerate Wrangler/Cloudflare Worker types
+    cmds:
+      - pnpm exec wrangler types
+      - pnpm exec tsc --noEmit
+
+  reindex_images:
+    desc: Run the image reindex script (pass args after --, e.g. -- --tablesample 1 --threads 10 --model voyage-multimodal-3.5)
+    env:
+      NODE_OPTIONS: "--import=./src/maintenance/cloudflare-loader.mjs"
+    cmds:
+      - pnpm tsx src/maintenance/reembedImages.ts {{.CLI_ARGS}}
+
+  deploy:dev:
+    desc: Build and deploy to Cloudflare (development env)
+    deps: [build]
+    env:
+      CLOUDFLARE_ENV: development
+    cmds:
+      - pnpm exec wrangler deploy
+
+  deploy:prod:
+    desc: Build and deploy to Cloudflare (production)
+    deps: [build]
+    env:
+      CLOUDFLARE_ENV: production
+    cmds:
+      - pnpm exec wrangler deploy
+
+  db:migrate:
+    desc: Apply database migrations (dev schema)
+    cmds:
+      - >
+        PGPASSWORD=$(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/password')
+        pgschema apply
+        --host $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/host')
+        --plan-host $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/host')
+        --user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user')
+        --plan-user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user')
+        --db audiobookcovers
+        --plan-db pgschema
+        --schema audiobookcovers_dev
+        --file database.sql
+
+  db:migrate:force:
+    desc: Apply database migrations without confirmation (dev schema)
+    cmds:
+      - >
+        PGPASSWORD=$(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/password')
+        pgschema apply
+        --host $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/host')
+        --plan-host $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/host')
+        --user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user')
+        --plan-user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user')
+        --db audiobookcovers
+        --plan-db pgschema
+        --schema audiobookcovers_dev
+        --file database.sql
+        --auto-approve
+
+  db:prod:migrate:
+    desc: Apply database migrations (production schema)
+    cmds:
+      - >
+        PGPASSWORD=$(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/password')
+        pgschema apply
+        --host $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/host')
+        --plan-host $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/host')
+        --user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user')
+        --plan-user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user')
+        --db audiobookcovers
+        --plan-db pgschema
+        --schema audiobookcovers
+        --file database.sql
+
+  db:prod:migrate:force:
+    desc: Apply database migrations without confirmation (production schema)
+    cmds:
+      - >
+        PGPASSWORD=$(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/password')
+        pgschema apply
+        --host $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/host')
+        --plan-host $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/host')
+        --user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user')
+        --plan-user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user')
+        --db audiobookcovers
+        --plan-db pgschema
+        --schema audiobookcovers
+        --file database.sql
+        --auto-approve
+
+  db:rebuild:
+    desc: Rebuild the dev database from rebuild_dev_db.sql
+    cmds:
+      - >
+        PGPASSWORD=$(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/password')
+        psql
+        -h $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/host')
+        -U $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user')
+        -d $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database')
+        -f rebuild_dev_db.sql
