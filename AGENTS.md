@@ -14,6 +14,7 @@ All packages are managed using pnpm.
 | --------------------- | ------------------------------------------------------------------------- |
 | `just build`          | Build the app and check for type errors (use this after making changes)   |
 | `just types`          | Regenerate Wrangler/Cloudflare Worker types (`worker-configuration.d.ts`) |
+| `just regen-route-tree` | Regenerate TanStack route tree (`src/routeTree.gen.ts`) once           |
 | `just dev`            | Start the dev server (see below)                                          |
 | `just preview`        | Preview the production build locally                                      |
 | `just deploy`         | Build and deploy to Cloudflare (development env)                          |
@@ -25,7 +26,7 @@ Database migration recipes (`db_migrate`, `db_migrate_force`, `prod_db_migrate`,
 ## Do not run the dev server
 
 **In general Agents must not start or keep a dev server running.**
-You never need to start a dev server when interacting with a human. The human will have a dev server running, and if they do not, you can remind them to start one. When building a pull request without the help of a human, it can be helpful to run a dev server in certain circumstances. A dev server for tanstack start will automatically rebuild the generated routeTree.gen.ts file. You may need to run a dev server temporarily to rebuild this file.
+You never need to start a dev server when interacting with a human. The human will have a dev server running, and if they do not, you can remind them to start one. If you need to regenerate the TanStack route tree, run `just regen-route-tree` instead of starting a dev server.
 
 ## After making changes
 
