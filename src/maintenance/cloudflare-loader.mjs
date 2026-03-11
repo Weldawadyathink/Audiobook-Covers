@@ -1,10 +1,12 @@
-const source = `
-  export const env = { ...process.env };
+import { register } from "node:module";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+register(import.meta.url);
 
-  export function waitUntil(promise) {
-    void promise;
-  }
-`.trim();
+const source = readFileSync(
+  fileURLToPath(new URL("./cloudflare-stub.mjs", import.meta.url)),
+  "utf8",
+);
 
 function decodeDataUrl(url) {
   const comma = url.indexOf(",");

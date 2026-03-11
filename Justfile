@@ -11,7 +11,7 @@ types:
     pnpm exec wrangler types
 
 reindex-images:
-    NODE_OPTIONS="--loader=./src/maintenance/cloudflare-loader.mjs" \
+    NODE_OPTIONS="--import=./src/maintenance/cloudflare-loader.mjs" \
     pnpm tsx src/maintenance/reembedImages.ts \
     --tablesample 1 --threads 10 \
     --model voyage-multimodal-3.5
