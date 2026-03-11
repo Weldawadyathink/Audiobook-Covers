@@ -13,5 +13,6 @@ export interface ModelDefinition {
 
 import { models as replicateModels } from "./replicate";
 import { models as googleModels } from "./google";
+import { models as voyageModels } from "./voyage";
 
-export const models = [...replicateModels, ...googleModels];
+export const models = [...replicateModels, ...voyageModels];

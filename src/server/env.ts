@@ -1,6 +1,7 @@
 import { z } from "zod/v4";
 import { createIsomorphicFn } from "@tanstack/react-start";
 import { env as workerEnv } from "cloudflare:workers";
+import "dotenv/config";
 
 const serverEnvSchema = z.object({
   DATABASE_READ_URL: z.url(),
@@ -12,33 +13,43 @@ const serverEnvSchema = z.object({
   GOOGLE_API_KEY: z.string().optional(),
   VITE_PUBLIC_POSTHOG_HOST: z.string(),
   VITE_PUBLIC_POSTHOG_KEY: z.string(),
+  VOYAGE_API_KEY: z.string(),
 });
 
-export const getEnv = createIsomorphicFn()
-  .server(() => {
-    // Uses hyperdrive in production. Otherwise uses DATABASE_URL for local development.
-    const hyperdrive_read = workerEnv.HYPERDRIVE?.connectionString ?? null;
-    // When read only replicas are added, a new hyperdrive binding can be added.
-    const hyperdrive_write = workerEnv.HYPERDRIVE?.connectionString ?? null;
+function parseEnv() {
+  // Uses hyperdrive in production. Otherwise uses DATABASE_URL for local development.
+  const hyperdrive_read = workerEnv.HYPERDRIVE?.connectionString ?? null;
+  // When read only replicas are added, a new hyperdrive binding can be added.
+  const hyperdrive_write = workerEnv.HYPERDRIVE?.connectionString ?? null;
 
-    const appStage =
-      workerEnv.APP_STAGE ?? process.env.APP_STAGE ?? "production";
-    const isLocalDev = process.env.LOCAL_DATABASE_URL ? true : false;
-    console.log(
-      isLocalDev ? `Using local database url` : `Using hyperdrive database url`,
-    );
-    return serverEnvSchema.parse({
-      ...process.env,
-      ...workerEnv,
-      DATABASE_READ_URL: isLocalDev
-        ? process.env.LOCAL_DATABASE_URL
-        : hyperdrive_read,
-      DATABASE_WRITE_URL: isLocalDev
-        ? process.env.LOCAL_DATABASE_URL
-        : hyperdrive_write,
-      APP_STAGE: appStage,
-    });
+  const appStage = workerEnv.APP_STAGE ?? process.env.APP_STAGE ?? "production";
+  const isLocalDev = process.env.LOCAL_DATABASE_URL ? true : false;
+  console.log(
+    isLocalDev ? `Using local database url` : `Using hyperdrive database url`,
+  );
+  return serverEnvSchema.parse({
+    ...process.env,
+    ...workerEnv,
+    DATABASE_READ_URL: isLocalDev
+      ? process.env.LOCAL_DATABASE_URL
+      : hyperdrive_read,
+    DATABASE_WRITE_URL: isLocalDev
+      ? process.env.LOCAL_DATABASE_URL
+      : hyperdrive_write,
+    APP_STAGE: appStage,
+  });
+}
+
+const getEnvIsomorphic = createIsomorphicFn()
+  .server(() => {
+    return parseEnv();
   })
   .client(() => {
     throw new Error("This should never be called on the client");
   });
+
+export function getEnv() {
+  // If running a file without tanstack, bypass the isomorphic function and parse the env directly.
+  if (getEnvIsomorphic() !== undefined) return getEnvIsomorphic();
+  return parseEnv();
+}

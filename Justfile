@@ -11,7 +11,10 @@ types:
     pnpm exec wrangler types
 
 reindex-images:
-    pnpm exec tsx reindex_images.ts
+    NODE_OPTIONS="--loader=./src/maintenance/cloudflare-loader.mjs" \
+    pnpm tsx src/maintenance/reembedImages.ts \
+    --tablesample 1 --threads 10 \
+    --model voyage-multimodal-3.5
 
 deploy:
     CLOUDFLARE_ENV=development just build && pnpm exec wrangler deploy
@@ -26,7 +29,7 @@ db_migrate:
     --plan-host $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/host') \
     --user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
     --plan-user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
-    --db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
+    --db audiobookcovers \
     --plan-db pgschema \
     --schema audiobookcovers_dev \
     --file database.sql
@@ -38,7 +41,7 @@ db_migrate_force:
     --plan-host $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/host') \
     --user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
     --plan-user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
-    --db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
+    --db audiobookcovers \
     --plan-db pgschema \
     --schema audiobookcovers_dev \
     --file database.sql \
@@ -52,7 +55,7 @@ prod_db_migrate:
     --plan-host $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/host') \
     --user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
     --plan-user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
-    --db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
+    --db audiobookcovers \
     --plan-db pgschema \
     --schema audiobookcovers \
     --file database.sql
@@ -64,7 +67,7 @@ prod_db_migrate_force:
     --plan-host $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/host') \
     --user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
     --plan-user $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user') \
-    --db $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database') \
+    --db audiobookcovers \
     --plan-db pgschema \
     --schema audiobookcovers \
     --file database.sql \

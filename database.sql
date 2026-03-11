@@ -36,22 +36,24 @@ GRANT audiobookcovers_dev TO pscale_api_bjroyz1lcgxf; -- Allow hyperdrive to mas
 -- TODO: Restrict permissions to only the necessary tables
 
 CREATE TABLE image (
-    id                       UUID NOT NULL,
-    source                   TEXT,
-    extension                TEXT,
-    old_hash                 TEXT,
-    embedding                VECTOR(768),
-    searchable               BOOLEAN DEFAULT TRUE,
-    blurhash                 TEXT,
-    embedding_mobileclip_s1  VECTOR(512),
-    embedding_mobileclip_s0  VECTOR(512),
-    embedding_mobileclip_s2  VECTOR(512),
-    embedding_mobileclip_b   VECTOR(512),
-    embedding_mobileclip_blt VECTOR(512),
-    embedding_andreasjansson_clip VECTOR(768),
-    hash                     TEXT,
-    from_old_database        BOOLEAN DEFAULT FALSE,
-    deleted                  BOOLEAN NOT NULL DEFAULT FALSE
+    id                                UUID NOT NULL,
+    source                            TEXT,
+    extension                         TEXT,
+    old_hash                          TEXT,
+    embedding                         VECTOR(768),
+    searchable                        BOOLEAN DEFAULT TRUE,
+    blurhash                          TEXT,
+    embedding_mobileclip_s1           VECTOR(512),
+    embedding_mobileclip_s0           VECTOR(512),
+    embedding_mobileclip_s2           VECTOR(512),
+    embedding_mobileclip_b            VECTOR(512),
+    embedding_mobileclip_blt          VECTOR(512),
+    embedding_andreasjansson_clip     VECTOR(768),
+    embedding_voyage_multimodal_3_5   VECTOR(1024),
+    embedding_voyage_multimodal_3     VECTOR(1024),
+    hash                              TEXT,
+    from_old_database                 BOOLEAN DEFAULT FALSE,
+    deleted                           BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 ALTER TABLE image

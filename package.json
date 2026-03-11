@@ -5,6 +5,7 @@
   "type": "module",
   "packageManager": "pnpm@10.29.3",
   "dependencies": {
+    "@ai-sdk/cohere": "^3.0.23",
     "@posthog/react": "^1.8.0",
     "@radix-ui/react-dialog": "^1.1.14",
     "@radix-ui/react-separator": "^1.1.7",
@@ -20,6 +21,7 @@
     "blurhash": "^2.0.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "commander": "^14.0.3",
     "cookie": "^1.0.2",
     "extract-colors": "^4.2.0",
     "fast-png": "^8.0.0",
@@ -27,6 +29,7 @@
     "lucide-react": "^0.516.0",
     "next-themes": "^0.4.6",
     "node-gyp": "^12.2.0",
+    "p-limit": "^7.3.0",
     "postgres": "^3.4.8",
     "posthog-js": "^1.350.0",
     "posthog-node": "^5.24.16",
@@ -38,6 +41,7 @@
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.10",
     "vite": "^7.0.0",
+    "voyage-ai-provider": "^3.0.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
