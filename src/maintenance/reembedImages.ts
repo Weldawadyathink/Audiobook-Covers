@@ -49,3 +49,5 @@ await Promise.allSettled(
     }),
   ),
 );
+
+await sql.end();
