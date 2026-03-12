@@ -36,6 +36,21 @@ export const models = {
       });
       return { input, embedding: embeddings[0] };
     },
+    getImageEmbeddings: async (inputs) => {
+      const { embeddings } = await embedMany({
+        model: voyage.multimodalEmbeddingModel("voyage-multimodal-3"),
+        values: inputs,
+        providerOptions: {
+          voyage: {
+            inputType: "document",
+          },
+        },
+      });
+      return embeddings.map((embedding, i) => ({
+        input: inputs[i],
+        embedding,
+      }));
+    },
   },
   "voyage-multimodal-3.5": {
     dimensions: 1024,
@@ -63,6 +78,21 @@ export const models = {
         },
       });
       return { input, embedding: embeddings[0] };
+    },
+    getImageEmbeddings: async (inputs) => {
+      const { embeddings } = await embedMany({
+        model: voyage.multimodalEmbeddingModel("voyage-multimodal-3.5"),
+        values: inputs,
+        providerOptions: {
+          voyage: {
+            inputType: "document",
+          },
+        },
+      });
+      return embeddings.map((embedding, i) => ({
+        input: inputs[i],
+        embedding,
+      }));
     },
   },
 } satisfies Partial<Record<ModelName, ModelDefinition>>;

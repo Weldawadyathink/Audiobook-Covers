@@ -42,5 +42,23 @@ export const models = {
       const validatedResult = replicateClipOutputValidator.parse(result);
       return validatedResult[0];
     },
+    getImageEmbeddings: async (inputs) => {
+      const results = await Promise.all(
+        inputs.map((input) =>
+          replicate.run(
+            "andreasjansson/clip-features:75b33f253f7714a281ad3e9b28f63e3232d583716ef6718f2e46641077ea040a",
+            {
+              input: {
+                inputs: input,
+              },
+            },
+          ),
+        ),
+      );
+      const validatedResults = results.map((r) =>
+        replicateClipOutputValidator.parse(r),
+      );
+      return validatedResults.map((r) => r[0]);
+    },
   },
 } satisfies Partial<Record<ModelName, ModelDefinition>>;

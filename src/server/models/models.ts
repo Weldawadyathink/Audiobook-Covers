@@ -8,6 +8,7 @@ export interface ModelDefinition {
   dbColumn: string;
   getTextEmbedding: (input: string) => Promise<EmbeddingOutput>;
   getImageEmbedding: (input: string) => Promise<EmbeddingOutput>;
+  getImageEmbeddings: (inputs: string[]) => Promise<EmbeddingOutput[]>;
 }
 
 import { models as replicateModels } from "./replicate";
@@ -26,5 +27,8 @@ export const modelMap = {
 } satisfies Record<ModelName, ModelDefinition>;
 
 export function getModel(name: string): ModelDefinition {
-  return (modelMap as Record<string, ModelDefinition>)[name] ?? modelMap[defaultModelName];
+  return (
+    (modelMap as Record<string, ModelDefinition>)[name] ??
+    modelMap[defaultModelName]
+  );
 }

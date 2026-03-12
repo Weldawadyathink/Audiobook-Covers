@@ -47,7 +47,7 @@ async function imageUrlToBase64(imageUrl: string): Promise<string> {
   return btoa(binary);
 }
 
-export const models: ModelDefinition[] = [
+export const models = [
   {
     dimensions: 1408,
     dbColumn: "embedding_google_multimodal",
