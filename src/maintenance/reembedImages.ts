@@ -15,7 +15,9 @@ program
 program.parse(process.argv);
 
 const model: string = program.opts().model;
-const modelDefinition = (modelMap as Record<string, ModelDefinition | undefined>)[model];
+const modelDefinition = (
+  modelMap as Record<string, ModelDefinition | undefined>
+)[model];
 const tablesample = program.opts().tablesample;
 const threads = program.opts().threads;
 const limit = pLimit(parseInt(threads));
@@ -34,12 +36,16 @@ const images = await sqlTools.many(DBImageDataValidator)`
 `;
 
 const formattedImages = await shapeImageDataArray(images);
-console.log(`Found ${formattedImages.length} images to reembed with ${threads} threads`);
+console.log(
+  `Found ${formattedImages.length} images to reembed with ${threads} threads`,
+);
 
 await Promise.allSettled(
   formattedImages.map((image) =>
     limit(async () => {
-      const { embedding } = await modelDefinition.getImageEmbedding(image.url);
+      const { embedding } = await modelDefinition.getImageEmbedding(
+        image.jpeg[640],
+      );
       await sqlTools.query`
         UPDATE image
         SET ${sql(modelDefinition.dbColumn)} = ${JSON.stringify(embedding)}

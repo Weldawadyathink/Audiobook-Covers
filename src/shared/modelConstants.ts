@@ -5,9 +5,10 @@ export const modelNames = [
   "andreasjansson-clip",
   "voyage-multimodal-3",
   "voyage-multimodal-3.5",
-  "jina-clip-v1",
   "jina-clip-v2",
   "jina-clip-v2-d32",
+  "jina-embeddings-v4",
+  "jina-embeddings-v4-d128",
 ] as const;
 
 export type ModelName = (typeof modelNames)[number];

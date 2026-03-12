@@ -54,6 +54,8 @@ CREATE TABLE image (
     embedding_jina_clip_v1            VECTOR(768),
     embedding_jina_clip_v2            VECTOR(1024),
     embedding_jina_clip_v2_d32        VECTOR(32),
+    embedding_jina_embeddings_v4      VECTOR(2048),
+    embedding_jina_embeddings_v4_d128 VECTOR(128),
     hash                              TEXT,
     from_old_database                 BOOLEAN DEFAULT FALSE,
     deleted                           BOOLEAN NOT NULL DEFAULT FALSE

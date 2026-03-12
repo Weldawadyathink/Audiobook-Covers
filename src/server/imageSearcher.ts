@@ -151,11 +151,10 @@ export const vectorSearchByString = createServerFn()
     }
     const modelName = data.model ?? defaultModelName;
     const model = getModel(modelName);
-    const similarityThreshold = 0.2;
+    const similarityThreshold = 0;
     const embedStart = performance.now();
     const vector = await model.getTextEmbedding(data.q);
     const dbStart = performance.now();
-
     const { sql, sqlTools } = getDbReadConnection();
     const results = await sqlTools.many(DBImageDataValidator)`
       WITH searchable_images AS (
@@ -175,6 +174,7 @@ export const vectorSearchByString = createServerFn()
       FROM searchable_images
       WHERE score >= ${similarityThreshold}
       ORDER BY score DESC
+      LIMIT 100
     `;
 
     const finish = performance.now();

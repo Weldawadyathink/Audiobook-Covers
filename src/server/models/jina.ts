@@ -8,7 +8,7 @@ interface JinaEmbeddingResponse {
 }
 
 async function embed(
-  modelId: "jina-clip-v1" | "jina-clip-v2",
+  modelId: "jina-clip-v1" | "jina-clip-v2" | "jina-embeddings-v4",
   input: Array<{ text: string } | { image: string }>,
   inputType: "retrieval.query" | "retrieval.passage",
   outputDimension?: number,
@@ -34,7 +34,10 @@ async function embed(
       hooks: {
         beforeRetry: [
           async ({ error, retryCount }) => {
-            console.error(`Jina API error (retry ${retryCount}):`, error.message);
+            console.error(
+              `Jina API error (retry ${retryCount}):`,
+              error.message,
+            );
           },
         ],
       },
@@ -44,30 +47,34 @@ async function embed(
 }
 
 async function getTextEmbedding(
-  modelId: "jina-clip-v1" | "jina-clip-v2",
+  modelId: "jina-clip-v1" | "jina-clip-v2" | "jina-embeddings-v4",
   input: string,
   outputDimension?: number,
 ): Promise<EmbeddingOutput> {
-  const embedding = await embed(modelId, [{ text: input }], "retrieval.query", outputDimension);
+  const embedding = await embed(
+    modelId,
+    [{ text: input }],
+    "retrieval.query",
+    outputDimension,
+  );
   return { input, embedding };
 }
 
 async function getImageEmbedding(
-  modelId: "jina-clip-v1" | "jina-clip-v2",
+  modelId: "jina-clip-v1" | "jina-clip-v2" | "jina-embeddings-v4",
   input: string,
   outputDimension?: number,
 ): Promise<EmbeddingOutput> {
-  const embedding = await embed(modelId, [{ image: input }], "retrieval.passage", outputDimension);
+  const embedding = await embed(
+    modelId,
+    [{ image: input }],
+    "retrieval.passage",
+    outputDimension,
+  );
   return { input, embedding };
 }
 
 export const models = {
-  "jina-clip-v1": {
-    dimensions: 768,
-    dbColumn: "embedding_jina_clip_v1",
-    getTextEmbedding: (input) => getTextEmbedding("jina-clip-v1", input),
-    getImageEmbedding: (input) => getImageEmbedding("jina-clip-v1", input),
-  },
   "jina-clip-v2": {
     dimensions: 1024,
     dbColumn: "embedding_jina_clip_v2",
@@ -82,5 +89,21 @@ export const models = {
     dbColumn: "embedding_jina_clip_v2_d32",
     getTextEmbedding: (input) => getTextEmbedding("jina-clip-v2", input, 32),
     getImageEmbedding: (input) => getImageEmbedding("jina-clip-v2", input, 32),
+  },
+  "jina-embeddings-v4": {
+    dimensions: 2048,
+    dbColumn: "embedding_jina_embeddings_v4",
+    getTextEmbedding: (input) =>
+      getTextEmbedding("jina-embeddings-v4", input, 2048),
+    getImageEmbedding: (input) =>
+      getImageEmbedding("jina-embeddings-v4", input, 2048),
+  },
+  "jina-embeddings-v4-d128": {
+    dimensions: 128,
+    dbColumn: "embedding_jina_embeddings_v4_d128",
+    getTextEmbedding: (input) =>
+      getTextEmbedding("jina-embeddings-v4", input, 128),
+    getImageEmbedding: (input) =>
+      getImageEmbedding("jina-embeddings-v4", input, 128),
   },
 } satisfies Partial<Record<ModelName, ModelDefinition>>;
