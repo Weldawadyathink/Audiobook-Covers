@@ -1,11 +1,16 @@
 import type { ReactNode } from "react";
+import { useEffect } from "react";
 import {
   Outlet,
   createRootRoute,
   HeadContent,
   Scripts,
   useLocation,
+  useRouterState,
 } from "@tanstack/react-router";
+import NProgress from "nprogress";
+// @ts-ignore
+import nProgressCss from "nprogress/nprogress.css?url";
 // @ts-ignore For some reason it doesn't like this pattern
 import appCss from "@/styles/app.css?url";
 import { NavBarItem } from "@/components/NavBarItem";
@@ -37,6 +42,7 @@ export const Route = createRootRoute({
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "stylesheet", href: nProgressCss },
       {
         rel: "apple-touch-icon",
         sizes: "180x180",
@@ -62,9 +68,22 @@ export const Route = createRootRoute({
   notFoundComponent: () => <span>404 Not Found</span>,
 });
 
+function RouterProgressBar() {
+  const isLoading = useRouterState({ select: (s) => s.isLoading });
+  useEffect(() => {
+    if (isLoading) {
+      NProgress.start();
+    } else {
+      NProgress.done();
+    }
+  }, [isLoading]);
+  return null;
+}
+
 function RootComponent() {
   return (
     <RootDocument>
+      <RouterProgressBar />
       <Outlet />
     </RootDocument>
   );
