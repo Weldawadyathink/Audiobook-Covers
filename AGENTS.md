@@ -32,6 +32,15 @@ You never need to start a dev server when interacting with a human. The human wi
 1. **Always** run `task build` when you are done with a task. This builds the project and surfaces type errors.
 2. **If you changed `wrangler.jsonc`**, also run `task types` after your changes. This updates `worker-configuration.d.ts` so Worker bindings and env types stay in sync.
 
+## Project structure
+
+- **Server**: `src/server.ts` (Worker entry), `src/router.tsx` (app router)
+- **Routes**: `src/routes/` (file-based routing)
+- **Database**: Postgresql, hosted on PlanetScale
+- **Database Schema**: database.sql file, changes are applied by the human with pgschema
+- **Embedding Models**: src/server/models/
+- **Rerankers**: src/server/rerankers/
+
 ## Tech stack (reference)
 
 - **Framework**: TanStack Start (React) with Vite

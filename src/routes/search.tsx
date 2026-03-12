@@ -8,38 +8,45 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { getIsAuthenticated } from "@/server/auth";
 import { modelNames, defaultModelName } from "@/shared/modelConstants";
+import { rerankerNames } from "@/shared/rerankerConstants";
 
 const searchParameters = z.object({
   q: z.string().default(""),
   model: z.string().optional(),
+  reranker: z.string().optional(),
 });
 
 export const Route = createFileRoute("/search")({
   component: RouteComponent,
   validateSearch: zodValidator(searchParameters),
-  loaderDeps: ({ search: { q, model } }) => ({ q, model }),
+  loaderDeps: ({ search: { q, model, reranker } }) => ({ q, model, reranker }),
   loader: async ({ deps: data }) => {
     const auth = await getIsAuthenticated();
     return {
       q: data.q,
       model: data.model ?? defaultModelName,
-      availableModels: modelNames,
-      images: await vectorSearchByString({ data: { q: data.q, model: data.model } }),
+      reranker: data.reranker,
+      images: await vectorSearchByString({
+        data: { q: data.q, model: data.model, reranker: data.reranker },
+      }),
       isAuthenticated: auth.isAuthenticated,
     };
   },
 });
 
 function RouteComponent() {
-  const { images, isAuthenticated, q, model, availableModels } = Route.useLoaderData();
+  const { images, isAuthenticated, q, model, reranker } = Route.useLoaderData();
   const [searchQuery, setSearchQuery] = useState(q);
+  const [selectedModel, setSelectedModel] = useState(model);
+  const [selectedReranker, setSelectedReranker] = useState(reranker ?? "");
   const navigate = useNavigate();
-  const submitForm = (overrides?: { model?: string }) => {
+  const submitForm = () => {
     navigate({
       to: "/search",
       search: {
         q: searchQuery,
-        model: overrides?.model ?? model,
+        model: selectedModel,
+        reranker: selectedReranker || undefined,
       },
     });
   };
@@ -59,12 +66,24 @@ function RouteComponent() {
         />
         <select
           className="border rounded-lg px-2 py-1 text-sm"
-          value={model}
-          onChange={(e) => submitForm({ model: e.target.value })}
+          value={selectedModel}
+          onChange={(e) => setSelectedModel(e.target.value)}
         >
-          {availableModels.map((m) => (
+          {modelNames.map((m) => (
             <option key={m} value={m}>
               {m}
+            </option>
+          ))}
+        </select>
+        <select
+          className="border rounded-lg px-2 py-1 text-sm"
+          value={selectedReranker}
+          onChange={(e) => setSelectedReranker(e.target.value)}
+        >
+          <option value="">No reranker</option>
+          {rerankerNames.map((r) => (
+            <option key={r} value={r}>
+              {r}
             </option>
           ))}
         </select>

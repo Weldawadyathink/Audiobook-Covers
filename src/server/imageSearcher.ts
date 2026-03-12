@@ -6,6 +6,7 @@ import { DBImageDataValidator } from "@/server/imageData";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
 import { logAnalyticsEvent } from "@/server/analytics";
+import { getReranker } from "@/server/rerankers/rerankers";
 
 export const getRandom = createServerFn().handler(async () => {
   console.log("Getting random cover");
@@ -136,7 +137,7 @@ export const getImageByIdAndSimilar = createServerFn({
 // }
 
 export const vectorSearchByString = createServerFn()
-  .inputValidator(z.object({ q: z.string(), model: z.string().optional() }))
+  .inputValidator(z.object({ q: z.string(), model: z.string().optional(), reranker: z.string().optional() }))
   .handler(async ({ data }) => {
     if (data.q === "") {
       return [];
@@ -175,18 +176,38 @@ export const vectorSearchByString = createServerFn()
         dbStart - embedStart
       }ms, DB time: ${finish - dbStart}ms, Total time: ${finish - embedStart}ms`,
     );
+    const shaped = await shapeImageDataArray(results);
+
+    const reranker = data.reranker ? getReranker(data.reranker) : undefined;
+    let rerankerTime: number | undefined;
+    let finalResults = shaped;
+
+    if (reranker) {
+      const rerankerStart = performance.now();
+      const documents = shaped.map((img) => ({ id: img.id, imageUrl: img.jpeg[640] }));
+      const reranked = await reranker.rerank(data.q, documents);
+
+      const scoreMap = new Map(reranked.map((r) => [r.id, r.relevanceScore]));
+      rerankerTime = performance.now() - rerankerStart;
+      finalResults = shaped.slice().sort((a, b) => (scoreMap.get(b.id) ?? 0) - (scoreMap.get(a.id) ?? 0));
+
+      console.log(`Reranker (${data.reranker}) time: ${rerankerTime.toFixed(1)}ms`);
+    }
+
     await logAnalyticsEvent({
       data: {
         eventType: "vectorSearchByString",
         payload: {
           model: modelName,
+          reranker: data.reranker ?? null,
           q: data.q,
           results: results.length,
           embedTime: dbStart - embedStart,
           dbTime: finish - dbStart,
           totalTime: finish - embedStart,
+          rerankerTime: rerankerTime ?? null,
         },
       },
     });
-    return await shapeImageDataArray(results);
+    return finalResults;
   });
