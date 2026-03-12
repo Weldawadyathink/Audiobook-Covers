@@ -85,7 +85,7 @@ if (batchSize === 1) {
         for (const [image, embedding] of zip(batch, embeddings)) {
           await sqlTools.query`
             UPDATE image
-            SET ${sql(modelDefinition.dbColumn)} = ${JSON.stringify(embedding)}
+            SET ${sql(modelDefinition.dbColumn)} = ${JSON.stringify(embedding.embedding)}
             WHERE id = ${image.id}
           `;
         }

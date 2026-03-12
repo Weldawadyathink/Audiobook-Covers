@@ -34,6 +34,7 @@ async function embed(
         input_type: inputType,
         ...(outputDimension !== undefined && { dimensions: outputDimension }),
       },
+      timeout: 120_000,
       retry: {
         limit: 5,
         methods: ["post"],
