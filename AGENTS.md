@@ -40,3 +40,5 @@ You never need to start a dev server when interacting with a human. The human wi
 - **Entry**: `src/server.ts` (Worker entry), `src/router.tsx` (app router)
 - **Server logic**: `src/server/` (DB, auth, image search, etc.)
 - **Routes**: `src/routes/` (file-based routing)
+- **Database**: Postgresql, hosted on PlanetScale
+- **Database Schema**: database.sql file, changes are applied by the human with pgschema

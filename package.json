@@ -25,6 +25,7 @@
     "cookie": "^1.0.2",
     "extract-colors": "^4.2.0",
     "fast-png": "^8.0.0",
+    "jina-ai-provider": "^1.0.0",
     "ky": "^1.8.1",
     "lucide-react": "^0.516.0",
     "next-themes": "^0.4.6",

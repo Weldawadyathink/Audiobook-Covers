@@ -14,6 +14,7 @@ const serverEnvSchema = z.object({
   VITE_PUBLIC_POSTHOG_HOST: z.string(),
   VITE_PUBLIC_POSTHOG_KEY: z.string(),
   VOYAGE_API_KEY: z.string(),
+  JINA_API_KEY: z.string(),
 });
 
 function parseEnv() {
@@ -24,9 +25,6 @@ function parseEnv() {
 
   const appStage = workerEnv.APP_STAGE ?? process.env.APP_STAGE ?? "production";
   const isLocalDev = process.env.LOCAL_DATABASE_URL ? true : false;
-  console.log(
-    isLocalDev ? `Using local database url` : `Using hyperdrive database url`,
-  );
   return serverEnvSchema.parse({
     ...process.env,
     ...workerEnv,

@@ -12,6 +12,7 @@ export interface ModelDefinition {
 
 import { models as replicateModels } from "./replicate";
 import { models as voyageModels } from "./voyage";
+import { models as jinaModels } from "./jina";
 import { ModelName, defaultModelName } from "@/shared/modelConstants";
 
 export { defaultModelName } from "@/shared/modelConstants";
@@ -21,6 +22,7 @@ export { defaultModelName } from "@/shared/modelConstants";
 export const modelMap = {
   ...replicateModels,
   ...voyageModels,
+  ...jinaModels,
 } satisfies Record<ModelName, ModelDefinition>;
 
 export function getModel(name: string): ModelDefinition {

@@ -51,6 +51,9 @@ CREATE TABLE image (
     embedding_andreasjansson_clip     VECTOR(768),
     embedding_voyage_multimodal_3_5   VECTOR(1024),
     embedding_voyage_multimodal_3     VECTOR(1024),
+    embedding_jina_clip_v1            VECTOR(768),
+    embedding_jina_clip_v2            VECTOR(1024),
+    embedding_jina_clip_v2_d32        VECTOR(32),
     hash                              TEXT,
     from_old_database                 BOOLEAN DEFAULT FALSE,
     deleted                           BOOLEAN NOT NULL DEFAULT FALSE
