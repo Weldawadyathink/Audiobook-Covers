@@ -6,7 +6,7 @@ export default function ImageCard(props: {
   imageData: ImageData;
   className?: string;
   class?: string;
-  showDistance?: boolean;
+  showScore?: boolean;
   showDataset?: boolean;
 }) {
   const image = props.imageData;
@@ -36,9 +36,9 @@ export default function ImageCard(props: {
         "relative aspect-square cursor-pointer rounded-3xl overflow-hidden duration-500 ease-in-out hover:z-10",
       )}
     >
-      {"distance" in image && props.showDistance && (
+      {"score" in image && props.showScore && (
         <span className="absolute top-2 right-2 z-10 bg-black bg-opacity-50 text-white text-xs font-semibold px-2 py-1 rounded-full">
-          {image.distance!.toFixed(3)}
+          {image.score!.toFixed(3)}
         </span>
       )}
       {"from_old_database" in image && props.showDataset && (

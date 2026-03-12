@@ -84,12 +84,12 @@ export const getImageByIdAndSimilar = createServerFn({
         i.blurhash,
         i.from_old_database,
         i.searchable,
-        i.${sql(model.dbColumn)} <=> target.e as distance
+        1 - (i.${sql(model.dbColumn)} <=> target.e) as score
       FROM
         searchable_images as i
         CROSS JOIN target
       WHERE i.id != ${id}
-      ORDER BY distance
+      ORDER BY score DESC
       LIMIT 96
     `;
     const time = performance.now() - start;
@@ -137,14 +137,20 @@ export const getImageByIdAndSimilar = createServerFn({
 // }
 
 export const vectorSearchByString = createServerFn()
-  .inputValidator(z.object({ q: z.string(), model: z.string().optional(), reranker: z.string().optional() }))
+  .inputValidator(
+    z.object({
+      q: z.string(),
+      model: z.string().optional(),
+      reranker: z.string().optional(),
+    }),
+  )
   .handler(async ({ data }) => {
     if (data.q === "") {
       return [];
     }
     const modelName = data.model ?? defaultModelName;
     const model = getModel(modelName);
-    const similarityThreshold = 0.765;
+    const similarityThreshold = 0.2;
     const embedStart = performance.now();
     const vector = await model.getTextEmbedding(data.q);
     const dbStart = performance.now();
@@ -159,15 +165,15 @@ export const vectorSearchByString = createServerFn()
           blurhash,
           from_old_database,
           searchable,
-          ${sql(model.dbColumn)} <=> ${JSON.stringify(vector.embedding)} as distance
+          1 - (${sql(model.dbColumn)} <=> ${JSON.stringify(vector.embedding)}) as score
         FROM image
         WHERE searchable IS TRUE
           AND deleted IS FALSE
       )
       SELECT *
       FROM searchable_images
-      WHERE distance <= ${similarityThreshold}
-      ORDER BY distance
+      WHERE score >= ${similarityThreshold}
+      ORDER BY score DESC
     `;
 
     const finish = performance.now();
@@ -176,7 +182,7 @@ export const vectorSearchByString = createServerFn()
         dbStart - embedStart
       }ms, DB time: ${finish - dbStart}ms, Total time: ${finish - embedStart}ms`,
     );
-    const shaped = await shapeImageDataArray(results);
+    let shaped = await shapeImageDataArray(results);
 
     const reranker = data.reranker ? getReranker(data.reranker) : undefined;
     let rerankerTime: number | undefined;
@@ -184,14 +190,26 @@ export const vectorSearchByString = createServerFn()
 
     if (reranker) {
       const rerankerStart = performance.now();
-      const documents = shaped.map((img) => ({ id: img.id, imageUrl: img.jpeg[640] }));
+      const documents = shaped.map((img) => ({
+        id: img.id,
+        imageUrl: img.jpeg[640],
+      }));
       const reranked = await reranker.rerank(data.q, documents);
+      console.log(reranked);
 
-      const scoreMap = new Map(reranked.map((r) => [r.id, r.relevanceScore]));
+      finalResults = reranked
+        .sort((a, b) => b.relevanceScore - a.relevanceScore)
+        .map((r) => {
+          return {
+            ...shaped.find((img) => img.id === r.id)!,
+            score: r.relevanceScore,
+          };
+        });
       rerankerTime = performance.now() - rerankerStart;
-      finalResults = shaped.slice().sort((a, b) => (scoreMap.get(b.id) ?? 0) - (scoreMap.get(a.id) ?? 0));
 
-      console.log(`Reranker (${data.reranker}) time: ${rerankerTime.toFixed(1)}ms`);
+      console.log(
+        `Reranker (${data.reranker}) time: ${rerankerTime.toFixed(1)}ms`,
+      );
     }
 
     await logAnalyticsEvent({

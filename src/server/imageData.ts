@@ -9,7 +9,7 @@ export const DBImageDataValidator = z.object({
   extension: z.string(),
   blurhash: z.string(),
   searchable: z.boolean().optional(),
-  distance: z.number().optional(),
+  score: z.number().optional(),
   from_old_database: z.boolean().optional(),
 });
 
@@ -29,7 +29,7 @@ export interface ImageData {
     640: string;
     1280: string;
   };
-  distance?: number;
+  score?: number;
   from_old_database?: boolean;
   primaryColor: Awaited<ReturnType<typeof extractColors>>[number];
 }
@@ -102,7 +102,7 @@ export async function shapeImageData(
     },
     primaryColor,
     ...(image.searchable !== undefined ? { searchable: image.searchable } : {}),
-    ...(image.distance !== undefined ? { distance: image.distance } : {}),
+    ...(image.score !== undefined ? { score: image.score } : {}),
     ...(image.from_old_database !== undefined
       ? { from_old_database: image.from_old_database }
       : {}),
