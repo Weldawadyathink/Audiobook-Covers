@@ -182,31 +182,16 @@ export const vectorSearchByString = createServerFn()
         dbStart - embedStart
       }ms, DB time: ${finish - dbStart}ms, Total time: ${finish - embedStart}ms`,
     );
-    let shaped = await shapeImageDataArray(results);
+    const shapedResults = await shapeImageDataArray(results);
+    let finalResults = shapedResults;
 
-    const reranker = data.reranker ? getReranker(data.reranker) : undefined;
+    const reranker = getReranker(data.reranker);
     let rerankerTime: number | undefined;
-    let finalResults = shaped;
 
     if (reranker) {
       const rerankerStart = performance.now();
-      const documents = shaped.map((img) => ({
-        id: img.id,
-        imageUrl: img.jpeg[640],
-      }));
-      const reranked = await reranker.rerank(data.q, documents);
-      console.log(reranked);
-
-      finalResults = reranked
-        .sort((a, b) => b.relevanceScore - a.relevanceScore)
-        .map((r) => {
-          return {
-            ...shaped.find((img) => img.id === r.id)!,
-            score: r.relevanceScore,
-          };
-        });
+      finalResults = await reranker.rerank(data.q, shapedResults);
       rerankerTime = performance.now() - rerankerStart;
-
       console.log(
         `Reranker (${data.reranker}) time: ${rerankerTime.toFixed(1)}ms`,
       );
@@ -222,8 +207,8 @@ export const vectorSearchByString = createServerFn()
           results: results.length,
           embedTime: dbStart - embedStart,
           dbTime: finish - dbStart,
-          totalTime: finish - embedStart,
           rerankerTime: rerankerTime ?? null,
+          totalTime: finish - embedStart + (rerankerTime || 0),
         },
       },
     });
