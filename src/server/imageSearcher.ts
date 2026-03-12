@@ -7,6 +7,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
 import { logAnalyticsEvent } from "@/server/analytics";
 import { getReranker } from "@/server/rerankers/rerankers";
+import { getEnv } from "@/server/env";
 
 export const getRandom = createServerFn().handler(async () => {
   console.log("Getting random cover");
@@ -201,6 +202,7 @@ export const vectorSearchByString = createServerFn()
       data: {
         eventType: "vectorSearchByString",
         payload: {
+          appStage: getEnv().APP_STAGE,
           model: modelName,
           reranker: data.reranker ?? null,
           q: data.q,

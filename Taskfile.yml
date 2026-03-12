@@ -3,8 +3,10 @@ version: "3"
 tasks:
   dev:
     desc: Start the dev server
+    env:
+      APP_STAGE: local
     cmds:
-      - APP_STAGE=local pnpm exec vite dev
+      - pnpm exec vite dev
 
   build:
     desc: Build the app and check for type errors
