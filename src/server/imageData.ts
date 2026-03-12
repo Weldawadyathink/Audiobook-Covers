@@ -9,7 +9,7 @@ export const DBImageDataValidator = z.object({
   extension: z.string(),
   blurhash: z.string(),
   searchable: z.boolean().optional(),
-  score: z.number().optional(),
+  score: z.number().nullish(),
   from_old_database: z.boolean().optional(),
 });
 
@@ -102,7 +102,7 @@ export async function shapeImageData(
     },
     primaryColor,
     ...(image.searchable !== undefined ? { searchable: image.searchable } : {}),
-    ...(image.score !== undefined ? { score: image.score } : {}),
+    ...(image.score != null ? { score: image.score } : {}),
     ...(image.from_old_database !== undefined
       ? { from_old_database: image.from_old_database }
       : {}),
