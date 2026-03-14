@@ -241,7 +241,7 @@ async function multiModelSearch(
 
   const query = sql`
     WITH ranked_union AS (
-      ${unionParts.join("\nUNION ALL\n")}
+      ${unionParts.reduce((acc, part) => sql`${acc} UNION ALL ${part}`)}
     ),
     rrf AS (
       SELECT id, SUM(weight / (k + rank)) AS rrf_score
