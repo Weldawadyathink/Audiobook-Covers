@@ -14,7 +14,6 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA audiobookcovers TO audiobookcover
 ALTER DEFAULT PRIVILEGES IN SCHEMA audiobookcovers GRANT USAGE, SELECT ON SEQUENCES TO audiobookcovers;
 
 ALTER USER audiobookcovers SET SEARCH_PATH TO audiobookcovers, public;
-GRANT audiobookcovers TO pscale_api_bjroyz1lcgxf; -- Allow hyperdrive to masquerade as this user
 
 -- Audiobookcovers_dev user
 
@@ -31,33 +30,29 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA audiobookcovers_dev TO audiobookc
 ALTER DEFAULT PRIVILEGES IN SCHEMA audiobookcovers_dev GRANT USAGE, SELECT ON SEQUENCES TO audiobookcovers_dev;
 
 ALTER USER audiobookcovers_dev SET SEARCH_PATH TO audiobookcovers_dev, public;
-GRANT audiobookcovers_dev TO pscale_api_bjroyz1lcgxf; -- Allow hyperdrive to masquerade as this user
-
--- TODO: Restrict permissions to only the necessary tables
 
 CREATE TABLE image (
-    id                                UUID NOT NULL,
-    source                            TEXT,
-    extension                         TEXT,
-    old_hash                          TEXT,
-    embedding                         VECTOR(768),
-    searchable                        BOOLEAN DEFAULT TRUE,
-    blurhash                          TEXT,
-    embedding_andreasjansson_clip     VECTOR(768),
-    embedding_voyage_multimodal_3_5   VECTOR(1024),
-    embedding_voyage_multimodal_3     VECTOR(1024),
-    embedding_jina_clip_v1            VECTOR(768),
-    embedding_jina_clip_v2            VECTOR(1024),
-    embedding_jina_clip_v2_d32        VECTOR(32),
-    embedding_jina_embeddings_v4      VECTOR(2048),
-    embedding_jina_embeddings_v4_d128 VECTOR(128),
-    hash                              TEXT,
-    from_old_database                 BOOLEAN DEFAULT FALSE,
-    deleted                           BOOLEAN NOT NULL DEFAULT FALSE
+    id                 UUID NOT NULL,
+    source             TEXT,
+    extension          TEXT,
+    old_hash           TEXT,
+    searchable         BOOLEAN DEFAULT TRUE,
+    blurhash           TEXT,
+    hash               TEXT,
+    from_old_database  BOOLEAN DEFAULT FALSE,
+    deleted            BOOLEAN NOT NULL DEFAULT FALSE,
+    embedding_andreasjansson_clip              VECTOR(768),
+    embedding_voyage_multimodal_3_5            VECTOR(1024),
+    embedding_voyage_multimodal_3              VECTOR(1024),
+    embedding_jina_clip_v1                     VECTOR(768),
+    embedding_jina_clip_v2                     VECTOR(1024),
+    embedding_jina_clip_v2_d32                 VECTOR(32),
+    embedding_jina_embeddings_v4               VECTOR(2048),
+    embedding_jina_embeddings_v4_d128          VECTOR(128),
+    embedding_cohere_embed_v4_0_d256           VECTOR(256),
+    embedding_cohere_embed_v4_0_d1536          VECTOR(1536),
+    embedding_google_multimodalembedding_001   VECTOR(768)
 );
-
-ALTER TABLE image
-    OWNER TO postgres;
 
 ALTER TABLE ONLY image
     ADD CONSTRAINT idx_image_pkey PRIMARY KEY (id);

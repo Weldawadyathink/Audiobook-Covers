@@ -7,7 +7,7 @@ const serverEnvSchema = z.object({
   DATABASE_READ_URL: z.url(),
   DATABASE_WRITE_URL: z.url(),
   REPLICATE_API_TOKEN: z.string(),
-  APP_STAGE: z.enum(["local", "development", "production"]),
+  APP_STAGE: z.enum(["local", "development", "production", "unknown"]),
   GOOGLE_CLOUD_PROJECT: z.string().optional(),
   GOOGLE_VERTEX_LOCATION: z.string().optional(),
   GOOGLE_API_KEY: z.string().optional(),
@@ -23,7 +23,8 @@ function parseEnv() {
   // When read only replicas are added, a new hyperdrive binding can be added.
   const hyperdrive_write = workerEnv.HYPERDRIVE?.connectionString ?? null;
 
-  const appStage = workerEnv.APP_STAGE ?? process.env.APP_STAGE ?? "production";
+  let appStage = process.env.APP_STAGE ?? workerEnv.APP_STAGE ?? "unknown";
+  appStage = process.env.IS_LOCAL_DEV_SERVER ? "local" : appStage;
   const isLocalDev = process.env.LOCAL_DATABASE_URL ? true : false;
   return serverEnvSchema.parse({
     ...process.env,

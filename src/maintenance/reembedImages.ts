@@ -59,7 +59,7 @@ console.log(
 );
 
 if (batchSize === 1) {
-  await Promise.allSettled(
+  await Promise.all(
     formattedImages.map((image) =>
       limit(async () => {
         const { embedding } = await modelDefinition.getImageEmbedding(
@@ -76,7 +76,7 @@ if (batchSize === 1) {
   );
 } else {
   const batches = chunk(formattedImages, batchSize);
-  await Promise.allSettled(
+  await Promise.all(
     batches.map((batch) =>
       limit(async () => {
         const embeddings = await modelDefinition.getImageEmbeddings(
