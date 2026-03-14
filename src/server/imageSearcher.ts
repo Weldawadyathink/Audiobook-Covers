@@ -1,4 +1,8 @@
-import { shapeImageDataArray, shapeImageData } from "@/server/imageData";
+import {
+  shapeImageDataArray,
+  shapeImageData,
+  ImageData,
+} from "@/server/imageData";
 import { getDbReadConnection } from "@/server/db";
 import { getModel } from "@/server/models/models";
 import { defaultModelName } from "@/shared/modelConstants";
@@ -8,6 +12,14 @@ import { z } from "zod/v4";
 import { logAnalyticsEvent } from "@/server/analytics";
 import { getReranker } from "@/server/rerankers/rerankers";
 import { getEnv } from "@/server/env";
+
+const rrfModelConfig = z.object({
+  model: z.string(),
+  k: z.number().default(60),
+  weight: z.number().default(1),
+});
+
+type RRFModelConfig = z.infer<typeof rrfModelConfig>;
 
 export const getRandom = createServerFn().handler(async () => {
   console.log("Getting random cover");
@@ -137,82 +149,161 @@ export const getImageByIdAndSimilar = createServerFn({
 //   return (await shapeImageDataArray([results]))[0];
 // }
 
+async function singleModelSearch(
+  q: string,
+  modelName: string,
+): Promise<ImageData[]> {
+  const model = getModel(modelName);
+  const similarityThreshold = 0;
+
+  const timeA = performance.now();
+  const vector = await model.getTextEmbedding(q);
+  const timeB = performance.now();
+
+  const { sql, sqlTools } = getDbReadConnection();
+  const results = await sqlTools.many(DBImageDataValidator)`
+    WITH searchable_images AS (
+      SELECT
+        id,
+        source,
+        extension,
+        blurhash,
+        from_old_database,
+        searchable,
+        1 - (${sql(model.dbColumn)} <=> ${JSON.stringify(vector.embedding)}) as score
+      FROM image
+      WHERE searchable IS TRUE
+        AND deleted IS FALSE
+    )
+    SELECT *
+    FROM searchable_images
+    WHERE score >= ${similarityThreshold}
+    ORDER BY score DESC
+    LIMIT 100
+  `;
+  const timeC = performance.now();
+  const final = await shapeImageDataArray(results);
+
+  await logAnalyticsEvent({
+    data: {
+      eventType: "singleModelSearch",
+      payload: {
+        appStage: getEnv().APP_STAGE,
+        model: modelName,
+        q,
+        results: final.length,
+        modelTime: timeB - timeA,
+        databaseTime: timeC - timeB,
+        totalTime: timeC - timeA,
+      },
+    },
+  });
+
+  return final;
+}
+
+async function multiModelSearch(
+  q: string,
+  configs: RRFModelConfig[],
+): Promise<ImageData[]> {
+  // Compute all embeddings in parallel
+  const timeA = performance.now();
+  const embeddings = await Promise.allSettled(
+    configs.map(async (config) => {
+      const model = getModel(config.model);
+      const output = await model.getTextEmbedding(q);
+      return { config, model, embedding: output.embedding };
+    }),
+  );
+  const timeB = performance.now();
+
+  // Build a dynamic RRF SQL query using UNION ALL + GROUP BY in Postgres.
+  // Each model contributes a ranked list; RRF scores are summed per image id.
+  const { sql, sqlTools } = getDbReadConnection();
+
+  const unionParts: ReturnType<typeof sql>[] = [];
+
+  for (const result of embeddings) {
+    if (result.status === "fulfilled") {
+      const { config, model, embedding } = result.value;
+      unionParts.push(sql`(
+        SELECT
+          id,
+          ROW_NUMBER() OVER (ORDER BY (${sql(model.dbColumn)} <=> ${JSON.stringify(embedding)})) AS rank,
+          ${config.k}::float AS k,
+          ${config.weight}::float AS weight
+        FROM image
+        WHERE searchable IS TRUE AND deleted IS FALSE
+        LIMIT 100
+      )`);
+    }
+  }
+
+  const query = sql`
+    WITH ranked_union AS (
+      ${unionParts.join("\nUNION ALL\n")}
+    ),
+    rrf AS (
+      SELECT id, SUM(weight / (k + rank)) AS rrf_score
+      FROM ranked_union
+      GROUP BY id
+    )
+    SELECT
+      i.id,
+      i.source,
+      i.extension,
+      i.blurhash,
+      i.from_old_database,
+      i.searchable,
+      rrf.rrf_score AS score
+    FROM rrf
+    JOIN image i ON i.id = rrf.id
+    ORDER BY rrf_score DESC
+    LIMIT 100
+  `;
+
+  const results = await sqlTools.many(DBImageDataValidator)`${query}`;
+  const timeC = performance.now();
+  const final = await shapeImageDataArray(results);
+
+  await logAnalyticsEvent({
+    data: {
+      eventType: "multiModelSearch",
+      payload: {
+        appStage: getEnv().APP_STAGE,
+        models: configs.map((c) => c.model),
+        q,
+        results: final.length,
+        modelTime: timeB - timeA,
+        databaseTime: timeC - timeB,
+        totalTime: timeC - timeA,
+      },
+    },
+  });
+
+  return final;
+}
+
 export const vectorSearchByString = createServerFn()
   .inputValidator(
     z.object({
       q: z.string(),
-      model: z.string().optional(),
-      reranker: z.string().optional(),
+      model: z
+        .union([z.string(), z.array(z.string()), z.array(rrfModelConfig)])
+        .optional(),
     }),
   )
   .handler(async ({ data }) => {
     if (data.q === "") {
       return [];
     }
-    const modelName = data.model ?? defaultModelName;
-    const model = getModel(modelName);
-    const similarityThreshold = 0;
-    const embedStart = performance.now();
-    const vector = await model.getTextEmbedding(data.q);
-    const dbStart = performance.now();
-    const { sql, sqlTools } = getDbReadConnection();
-    const results = await sqlTools.many(DBImageDataValidator)`
-      WITH searchable_images AS (
-        SELECT
-          id,
-          source,
-          extension,
-          blurhash,
-          from_old_database,
-          searchable,
-          1 - (${sql(model.dbColumn)} <=> ${JSON.stringify(vector.embedding)}) as score
-        FROM image
-        WHERE searchable IS TRUE
-          AND deleted IS FALSE
-      )
-      SELECT *
-      FROM searchable_images
-      WHERE score >= ${similarityThreshold}
-      ORDER BY score DESC
-      LIMIT 100
-    `;
 
-    const finish = performance.now();
-    console.log(
-      `Completed search with replicate embedding. Embed time: ${
-        dbStart - embedStart
-      }ms, DB time: ${finish - dbStart}ms, Total time: ${finish - embedStart}ms`,
-    );
-    const shapedResults = await shapeImageDataArray(results);
-    let finalResults = shapedResults;
-
-    const reranker = getReranker(data.reranker);
-    let rerankerTime: number | undefined;
-
-    if (reranker) {
-      const rerankerStart = performance.now();
-      finalResults = await reranker.rerank(data.q, shapedResults);
-      rerankerTime = performance.now() - rerankerStart;
-      console.log(
-        `Reranker (${data.reranker}) time: ${rerankerTime.toFixed(1)}ms`,
-      );
+    if (data.model === undefined) {
+      return singleModelSearch(data.q, defaultModelName);
     }
-
-    await logAnalyticsEvent({
-      data: {
-        eventType: "vectorSearchByString",
-        payload: {
-          appStage: getEnv().APP_STAGE,
-          model: modelName,
-          reranker: data.reranker ?? null,
-          q: data.q,
-          results: results.length,
-          embedTime: dbStart - embedStart,
-          dbTime: finish - dbStart,
-          rerankerTime: rerankerTime ?? null,
-          totalTime: finish - embedStart + (rerankerTime || 0),
-        },
-      },
-    });
-    return finalResults;
+    if (typeof data.model === "string") {
+      return singleModelSearch(data.q, data.model);
+    }
+    const modelConfig = z.array(rrfModelConfig).parse(data.model);
+    return multiModelSearch(data.q, modelConfig);
   });
