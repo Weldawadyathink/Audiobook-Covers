@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Audiobook Covers",
   "type": "module",
-  "packageManager": "pnpm@10.29.3",
+  "packageManager": "pnpm@10.32.1",
   "dependencies": {
     "@ai-sdk/cohere": "^3.0.23",
     "@posthog/react": "^1.8.0",
