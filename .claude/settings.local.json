@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(task build:*)"
+      "Bash(task build:*)",
+      "Bash(grep:*)"
     ]
   }
 }

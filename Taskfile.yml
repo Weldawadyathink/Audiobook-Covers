@@ -27,6 +27,13 @@ tasks:
     cmds:
       - pnpm tsx src/maintenance/reembedImages.ts {{.CLI_ARGS}}
 
+  test:search:
+    desc: Run the search model test runner (pass args after --, e.g. -- --config test-runner.json --output results.csv)
+    env:
+      NODE_OPTIONS: "--import=./src/maintenance/cloudflare-loader.mjs --import=./src/maintenance/tanstack-start-loader.mjs"
+    cmds:
+      - pnpm tsx src/maintenance/testRunner.ts {{.CLI_ARGS}}
+
   deploy:dev:
     desc: Build and deploy to Cloudflare (development env)
     deps: [build]

@@ -1,0 +1,23 @@
+{
+  "models": [
+    "voyage-multimodal-3",
+    "voyage-multimodal-3.5",
+    "jina-clip-v2",
+    "jina-embeddings-v4"
+  ],
+  "rrfConfigs": [
+    {
+      "name": "voyage3.5+jina-clip",
+      "models": [
+        { "model": "voyage-multimodal-3.5", "k": 60, "weight": 1 },
+        { "model": "jina-clip-v2", "k": 60, "weight": 1 }
+      ]
+    }
+  ],
+  "searches": [
+    {
+      "query": "example query",
+      "expectedUuids": ["xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"]
+    }
+  ]
+}
