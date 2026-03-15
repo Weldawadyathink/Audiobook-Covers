@@ -19,6 +19,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as ImagesIdRouteImport } from './routes/images.$id'
 import { Route as CoverBytextRouteImport } from './routes/cover.bytext'
+import { Route as ApiSearchRouteImport } from './routes/api/search'
 import { Route as ApiLoginRouteImport } from './routes/api/login'
 import { Route as AdminTestRouteImport } from './routes/admin/test'
 import { Route as AdminSimilarRouteImport } from './routes/admin/similar'
@@ -75,6 +76,11 @@ const CoverBytextRoute = CoverBytextRouteImport.update({
   path: '/cover/bytext',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSearchRoute = ApiSearchRouteImport.update({
+  id: '/api/search',
+  path: '/api/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiLoginRoute = ApiLoginRouteImport.update({
   id: '/api/login',
   path: '/api/login',
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/admin/similar': typeof AdminSimilarRoute
   '/admin/test': typeof AdminTestRoute
   '/api/login': typeof ApiLoginRoute
+  '/api/search': typeof ApiSearchRoute
   '/cover/bytext': typeof CoverBytextRoute
   '/images/$id': typeof ImagesIdRoute
   '/admin/': typeof AdminIndexRoute
@@ -130,6 +137,7 @@ export interface FileRoutesByTo {
   '/admin/similar': typeof AdminSimilarRoute
   '/admin/test': typeof AdminTestRoute
   '/api/login': typeof ApiLoginRoute
+  '/api/search': typeof ApiSearchRoute
   '/cover/bytext': typeof CoverBytextRoute
   '/images/$id': typeof ImagesIdRoute
   '/admin': typeof AdminIndexRoute
@@ -148,6 +156,7 @@ export interface FileRoutesById {
   '/admin/similar': typeof AdminSimilarRoute
   '/admin/test': typeof AdminTestRoute
   '/api/login': typeof ApiLoginRoute
+  '/api/search': typeof ApiSearchRoute
   '/cover/bytext': typeof CoverBytextRoute
   '/images/$id': typeof ImagesIdRoute
   '/admin/': typeof AdminIndexRoute
@@ -167,6 +176,7 @@ export interface FileRouteTypes {
     | '/admin/similar'
     | '/admin/test'
     | '/api/login'
+    | '/api/search'
     | '/cover/bytext'
     | '/images/$id'
     | '/admin/'
@@ -183,6 +193,7 @@ export interface FileRouteTypes {
     | '/admin/similar'
     | '/admin/test'
     | '/api/login'
+    | '/api/search'
     | '/cover/bytext'
     | '/images/$id'
     | '/admin'
@@ -200,6 +211,7 @@ export interface FileRouteTypes {
     | '/admin/similar'
     | '/admin/test'
     | '/api/login'
+    | '/api/search'
     | '/cover/bytext'
     | '/images/$id'
     | '/admin/'
@@ -214,6 +226,7 @@ export interface RootRouteChildren {
   RandomRoute: typeof RandomRoute
   SearchRoute: typeof SearchRoute
   ApiLoginRoute: typeof ApiLoginRoute
+  ApiSearchRoute: typeof ApiSearchRoute
   CoverBytextRoute: typeof CoverBytextRoute
   ImagesIdRoute: typeof ImagesIdRoute
 }
@@ -290,6 +303,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CoverBytextRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/search': {
+      id: '/api/search'
+      path: '/api/search'
+      fullPath: '/api/search'
+      preLoaderRoute: typeof ApiSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/login': {
       id: '/api/login'
       path: '/api/login'
@@ -355,6 +375,7 @@ const rootRouteChildren: RootRouteChildren = {
   RandomRoute: RandomRoute,
   SearchRoute: SearchRoute,
   ApiLoginRoute: ApiLoginRoute,
+  ApiSearchRoute: ApiSearchRoute,
   CoverBytextRoute: CoverBytextRoute,
   ImagesIdRoute: ImagesIdRoute,
 }
