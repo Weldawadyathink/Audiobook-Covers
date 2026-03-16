@@ -3,7 +3,9 @@
     "voyage-multimodal-3",
     "voyage-multimodal-3.5",
     "jina-clip-v2",
-    "jina-embeddings-v4"
+    "jina-embeddings-v4",
+    "jina-embeddings-v4-d128",
+    "andreasjansson-clip"
   ],
   "rrfConfigs": [
     {
@@ -16,8 +18,15 @@
   ],
   "searches": [
     {
-      "query": "example query",
-      "expectedUuids": ["xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"]
+      "query": "brisingr",
+      "expectedUuids": [
+        "f4b97b4f-0e39-4efd-8f27-e88e5a40f62b",
+        "e6a2f146-4dc8-4f09-9b95-28fe353a3fe5",
+        "13d49d2e-f495-43e9-b957-3bd92da9fee9",
+        "d19c87ed-8558-41fe-97f8-c2cdb13922f8",
+        "75989204-9ffd-43d4-ab94-bd4b73f96743",
+        "6d37991b-9848-4b21-a939-8340f66c2f39"
+      ]
     }
   ]
 }
