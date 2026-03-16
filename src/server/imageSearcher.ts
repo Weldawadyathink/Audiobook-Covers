@@ -12,6 +12,7 @@ import { z } from "zod/v4";
 import { logAnalyticsEvent } from "@/server/analytics";
 import { getReranker } from "@/server/rerankers/rerankers";
 import { getEnv } from "@/server/env";
+import { waitUntil } from "cloudflare:workers";
 
 const rrfModelConfig = z.object({
   model: z.string(),
@@ -199,6 +200,8 @@ async function singleModelSearch(
     },
   });
 
+  // Not strictly necessary, but closes all promises so local test runners exit cleanly
+  waitUntil(sql.end());
   return final;
 }
 
@@ -281,6 +284,8 @@ async function multiModelSearch(
     },
   });
 
+  // Not strictly necessary, but closes all promises so local test runners exit cleanly
+  waitUntil(sql.end());
   return final;
 }
 

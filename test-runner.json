@@ -18,6 +18,28 @@
   ],
   "searches": [
     {
+      "query": "eragon",
+      "expectedUuids": [
+        "5c9a29d9-3ad0-4baa-9243-f08840e35770",
+        "4b5edaa9-b3b8-45d8-afb7-962dcfae2bfe",
+        "acab2a43-6427-41a5-bb30-154557a9f575",
+        "210070b7-9cd3-4eb9-a776-13c784bcbf01",
+        "ce3d30fc-8830-4d1e-9a61-23710e808d49",
+        "8d864e31-705b-467d-b2c8-b89cdcfdfd8a"
+      ]
+    },
+    {
+      "query": "eldest",
+      "expectedUuids": [
+        "1ce3ad90-bde4-4a3b-9528-6daac455467e",
+        "f651a8e4-23f1-45a9-9cc7-ecae8231b2c6",
+        "72e68291-071a-4755-b72f-e12e405a3b7d",
+        "10b83a6a-5db6-4d4a-abd2-13339095e318",
+        "949b7c0c-e693-461f-9d94-e4c397beba87",
+        "0f594634-9aa9-47ac-b2f1-6f1dc1ce031e"
+      ]
+    },
+    {
       "query": "brisingr",
       "expectedUuids": [
         "f4b97b4f-0e39-4efd-8f27-e88e5a40f62b",
@@ -26,6 +48,17 @@
         "d19c87ed-8558-41fe-97f8-c2cdb13922f8",
         "75989204-9ffd-43d4-ab94-bd4b73f96743",
         "6d37991b-9848-4b21-a939-8340f66c2f39"
+      ]
+    },
+    {
+      "query": "inheritance",
+      "expectedUuids": [
+        "0be8d7e4-af7b-4643-a820-0f0d7b7ac187",
+        "6388969c-dab7-4a7b-aef2-65ad12cd7892",
+        "9d8cf993-68cf-4ef6-9ceb-74ac78b62469",
+        "9883455c-5773-471f-a2ed-38364fef5610",
+        "22e7a0be-65c2-4713-9119-302140a303c4",
+        "1001a7a3-c555-4bd7-bc73-9148ae40adaa"
       ]
     }
   ]
