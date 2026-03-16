@@ -84,43 +84,40 @@ type QueryRow = {
 
 const rows: QueryRow[] = [];
 
-for (const modelName of config.models) {
-  for (const search of config.searches) {
-    console.log(`[single] model=${modelName} query="${search.query}"`);
-    const results = await vectorSearchByString({
-      data: { q: search.query, model: modelName },
-    });
-    const ids = results.map((r) => r.id);
-    const metrics = computeMetrics(ids, search.expectedUuids);
-    rows.push({
-      configName: modelName,
-      configType: "single",
-      query: search.query,
-      ...metrics,
-    });
-  }
-}
-
-for (const rrfConfig of config.rrfConfigs) {
-  const resolvedModels = rrfConfig.models.map((m) => ({
-    model: m.model,
-    k: m.k,
-    weight: m.weight,
-  }));
-  for (const search of config.searches) {
-    console.log(`[rrf] name=${rrfConfig.name} query="${search.query}"`);
-    const results = await vectorSearchByString({
-      data: { q: search.query, model: resolvedModels },
-    });
-    const ids = results.map((r) => r.id);
-    const metrics = computeMetrics(ids, search.expectedUuids);
-    rows.push({
-      configName: rrfConfig.name,
-      configType: "rrf",
-      query: search.query,
-      ...metrics,
-    });
-  }
+for (const search of config.searches) {
+  console.log(`Running ${config.models.length + config.rrfConfigs.length} configs for query="${search.query}"`);
+  const batchResults = await Promise.all([
+    ...config.models.map(async (modelName) => {
+      console.log(`  [single] model=${modelName}`);
+      const results = await vectorSearchByString({
+        data: { q: search.query, model: modelName },
+      });
+      return {
+        configName: modelName,
+        configType: "single",
+        query: search.query,
+        ...computeMetrics(results.map((r) => r.id), search.expectedUuids),
+      } satisfies QueryRow;
+    }),
+    ...config.rrfConfigs.map(async (rrfConfig) => {
+      console.log(`  [rrf] name=${rrfConfig.name}`);
+      const resolvedModels = rrfConfig.models.map((m) => ({
+        model: m.model,
+        k: m.k,
+        weight: m.weight,
+      }));
+      const results = await vectorSearchByString({
+        data: { q: search.query, model: resolvedModels },
+      });
+      return {
+        configName: rrfConfig.name,
+        configType: "rrf",
+        query: search.query,
+        ...computeMetrics(results.map((r) => r.id), search.expectedUuids),
+      } satisfies QueryRow;
+    }),
+  ]);
+  rows.push(...batchResults);
 }
 
 const configNames = [...new Set(rows.map((r) => r.configName))];
@@ -135,6 +132,7 @@ const aggregates: QueryRow[] = configNames.map((name) => {
     ap: mean("ap"),
     meanRank: mean("meanRank"),
     maxRank: mean("maxRank"),
+    missing: group.reduce((s, r) => s + r.missing, 0),
   };
 });
 
@@ -151,8 +149,8 @@ const formatRow = (r: QueryRow) =>
   ]);
 const csvLines = [
   header,
-  ...rows.map(formatRow),
   ...aggregates.map(formatRow),
+  ...rows.map(formatRow),
 ];
 
 writeFileSync(opts.output, csvLines.join("\n") + "\n");
