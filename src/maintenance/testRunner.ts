@@ -3,6 +3,9 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { z } from "zod/v4";
 import { vectorSearchByString } from "@/server/imageSearcher";
 import "dotenv/config";
+import { logger } from "@/shared/logger";
+
+logger.setLogLevel("disabled");
 
 const rrfModelEntrySchema = z.object({
   model: z.string(),
@@ -85,7 +88,9 @@ type QueryRow = {
 const rows: QueryRow[] = [];
 
 for (const search of config.searches) {
-  console.log(`Running ${config.models.length + config.rrfConfigs.length} configs for query="${search.query}"`);
+  console.log(
+    `Running ${config.models.length + config.rrfConfigs.length} configs for query="${search.query}"`,
+  );
   const batchResults = await Promise.all([
     ...config.models.map(async (modelName) => {
       console.log(`  [single] model=${modelName}`);
@@ -96,7 +101,10 @@ for (const search of config.searches) {
         configName: modelName,
         configType: "single",
         query: search.query,
-        ...computeMetrics(results.map((r) => r.id), search.expectedUuids),
+        ...computeMetrics(
+          results.map((r) => r.id),
+          search.expectedUuids,
+        ),
       } satisfies QueryRow;
     }),
     ...config.rrfConfigs.map(async (rrfConfig) => {
@@ -113,7 +121,10 @@ for (const search of config.searches) {
         configName: rrfConfig.name,
         configType: "rrf",
         query: search.query,
-        ...computeMetrics(results.map((r) => r.id), search.expectedUuids),
+        ...computeMetrics(
+          results.map((r) => r.id),
+          search.expectedUuids,
+        ),
       } satisfies QueryRow;
     }),
   ]);
@@ -147,11 +158,7 @@ const formatRow = (r: QueryRow) =>
     r.maxRank.toFixed(0),
     r.missing.toFixed(0),
   ]);
-const csvLines = [
-  header,
-  ...aggregates.map(formatRow),
-  ...rows.map(formatRow),
-];
+const csvLines = [header, ...aggregates.map(formatRow), ...rows.map(formatRow)];
 
 writeFileSync(opts.output, csvLines.join("\n") + "\n");
 console.log(`\nResults written to ${opts.output}`);

@@ -1,6 +1,7 @@
 import postgres from "postgres";
 import { z } from "zod/v4";
 import { getEnv } from "@/server/env";
+import { logger } from "@/shared/logger";
 
 type TaggedQuery<T> = (
   strings: TemplateStringsArray,
@@ -16,7 +17,7 @@ type PostgresTag = (
 
 export function getDbWriteConnection() {
   // Connect to the primary database for writes.
-  console.log("Creating new db write connection");
+  logger.info("Creating new db write connection");
   const sql = postgres(getEnv().DATABASE_WRITE_URL, {
     max: 2,
     fetch_types: false,
@@ -29,7 +30,7 @@ export function getDbWriteConnection() {
 export function getDbReadConnection() {
   // Connect to the read only replica database.
   // This is used for reads that don't need to be consistent.
-  console.log("Creating new db read connection");
+  logger.info("Creating new db read connection");
   const sql = postgres(getEnv().DATABASE_READ_URL, {
     max: 2,
     fetch_types: false,

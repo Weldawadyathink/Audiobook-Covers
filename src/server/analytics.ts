@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { waitUntil } from "cloudflare:workers";
 import { PostHog } from "posthog-node";
 import { getEnv } from "./env";
+import { logger } from "../shared/logger";
 
 // In theory, z.json() should work, but typescript complains about recursion with a server function
 const json = z.lazy(() => {
@@ -33,5 +34,5 @@ export const logAnalyticsEvent = createServerFn()
         properties: data.payload,
       }),
     );
-    console.log(`Logged analytics event: ${data.eventType}`);
+    logger.info(`Logged analytics event: ${data.eventType}`);
   });
