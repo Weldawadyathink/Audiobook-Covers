@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { z } from "zod/v4";
 import { vectorSearchByString } from "@/server/imageSearcher";
 import "dotenv/config";
-import { logger } from "@/shared/logger";
+import { logger } from "@/server/logger";
 
 logger.setLogLevel("disabled");
 

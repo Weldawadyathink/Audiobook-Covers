@@ -1,7 +1,7 @@
 import postgres from "postgres";
 import { z } from "zod/v4";
 import { getEnv } from "@/server/env";
-import { logger } from "@/shared/logger";
+import { logger } from "@/server/logger";
 
 type TaggedQuery<T> = (
   strings: TemplateStringsArray,

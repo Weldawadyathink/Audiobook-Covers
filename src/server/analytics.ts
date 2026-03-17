@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { waitUntil } from "cloudflare:workers";
 import { PostHog } from "posthog-node";
 import { getEnv } from "./env";
-import { logger } from "../shared/logger";
+import { logger } from "./logger";
 
 // In theory, z.json() should work, but typescript complains about recursion with a server function
 const json = z.lazy(() => {
