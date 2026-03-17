@@ -14,21 +14,15 @@ export interface ModelDefinition {
 import { models as replicateModels } from "./replicate";
 import { models as voyageModels } from "./voyage";
 import { models as jinaModels } from "./jina";
-import { ModelName, defaultModelName } from "@/shared/modelConstants";
 
-export { defaultModelName } from "@/shared/modelConstants";
+export const defaultModelName = "voyage-multimodal-3";
 
-// satisfies ensures every ModelName has an implementation at compile time.
-// Add a model here and TypeScript will error until an implementation exists.
-export const modelMap = {
+export const modelMap: Record<string, ModelDefinition> = {
   ...replicateModels,
   ...voyageModels,
   ...jinaModels,
-} satisfies Record<ModelName, ModelDefinition>;
+};
 
 export function getModel(name: string): ModelDefinition {
-  return (
-    (modelMap as Record<string, ModelDefinition>)[name] ??
-    modelMap[defaultModelName]
-  );
+  return modelMap[name] ?? modelMap[defaultModelName];
 }

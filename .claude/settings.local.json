@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(task build:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(git stash:*)",
+      "WebSearch",
+      "WebFetch(domain:tanstack.com)"
     ]
   }
 }

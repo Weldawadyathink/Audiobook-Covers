@@ -7,13 +7,13 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { getIsAuthenticated } from "@/server/auth";
-import { modelNames, defaultModelName } from "@/shared/modelConstants";
-import { rerankerNames } from "@/shared/rerankerConstants";
+import { getModels } from "@/server/search/getModels";
+import { getRerankers } from "@/server/rerankers/getRerankers";
 
 type RRFSlot = { model: string; k: number; weight: number } | null;
 
 const DEFAULT_RRF_SLOTS: RRFSlot[] = [
-  { model: defaultModelName, k: 60, weight: 1 },
+  { model: "voyage-multimodal-3", k: 60, weight: 1 },
   { model: "voyage-multimodal-3.5", k: 60, weight: 1 },
   null,
   null,
@@ -48,7 +48,12 @@ export const Route = createFileRoute("/search")({
   validateSearch: zodValidator(searchParameters),
   loaderDeps: ({ search: { q, model, reranker, showScore, rrfConfig } }) => ({ q, model, reranker, showScore, rrfConfig }),
   loader: async ({ deps: data }) => {
-    const auth = await getIsAuthenticated();
+    const [auth, models, rerankerNames] = await Promise.all([
+      getIsAuthenticated(),
+      getModels(),
+      getRerankers(),
+    ]);
+    const { names: modelNames, default: defaultModelName } = models;
     let searchModel: string | { model: string; k: number; weight: number }[] | undefined = data.model;
     if (data.model === "rrf" && data.rrfConfig) {
       try {
@@ -64,9 +69,12 @@ export const Route = createFileRoute("/search")({
     return {
       q: data.q,
       model: data.model ?? defaultModelName,
+      defaultModelName,
       reranker: data.reranker,
       showScore: data.showScore ?? false,
       rrfConfig: data.rrfConfig,
+      modelNames,
+      rerankerNames,
       images: await vectorSearchByString({
         data: { q: data.q, model: searchModel },
       }),
@@ -76,7 +84,7 @@ export const Route = createFileRoute("/search")({
 });
 
 function RouteComponent() {
-  const { images, isAuthenticated, q, model, reranker, showScore: initialShowScore, rrfConfig } = Route.useLoaderData();
+  const { images, isAuthenticated, q, model, reranker, showScore: initialShowScore, rrfConfig, modelNames, rerankerNames, defaultModelName } = Route.useLoaderData();
   const [searchQuery, setSearchQuery] = useState(q);
   const [selectedModel, setSelectedModel] = useState<string>(model);
   const [selectedReranker, setSelectedReranker] = useState(reranker ?? "");

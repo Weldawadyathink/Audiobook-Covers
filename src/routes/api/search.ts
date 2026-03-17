@@ -2,27 +2,26 @@ import { z } from "zod/v4";
 import { createFileRoute } from "@tanstack/react-router";
 import { vectorSearchByString } from "@/server/imageSearcher";
 import { getReranker } from "@/server/rerankers/rerankers";
-import { modelNames, defaultModelName } from "@/shared/modelConstants";
-import { rerankerNames } from "@/shared/rerankerConstants";
+import { defaultModelName } from "@/server/search/search";
 import type { ImageData } from "@/server/imageData";
 
 const rrfSlotSchema = z.object({
-  model: z.enum(modelNames),
+  model: z.string(),
   k: z.coerce.number().default(60),
   weight: z.coerce.number().default(1),
 });
 
 const searchSchema = z.object({
   q: z.string().min(1),
-  model: z.enum([...modelNames, "rrf"]).optional(),
-  reranker: z.enum(rerankerNames).optional(),
+  model: z.string().optional(),
+  reranker: z.string().optional(),
   rrf_config: z.array(rrfSlotSchema).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 
 const DEFAULT_RRF = [
-  { model: "voyage-multimodal-3" as const, k: 60, weight: 1 },
-  { model: "voyage-multimodal-3.5" as const, k: 60, weight: 1 },
+  { model: "voyage-multimodal-3", k: 60, weight: 1 },
+  { model: "voyage-multimodal-3.5", k: 60, weight: 1 },
 ];
 
 function jsonError(message: string, status: number): Response {

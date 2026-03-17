@@ -1,6 +1,5 @@
 import Replicate from "replicate";
 import { ModelDefinition } from "./search";
-import { ModelName } from "@/shared/modelConstants";
 import { z } from "zod/v4";
 
 const replicate = new Replicate();
@@ -61,4 +60,4 @@ export const models = {
       return validatedResults.map((r) => r[0]);
     },
   },
-} satisfies Partial<Record<ModelName, ModelDefinition>>;
+} satisfies Record<string, ModelDefinition>;

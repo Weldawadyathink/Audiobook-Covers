@@ -41,6 +41,10 @@ You never need to start a dev server when interacting with a human. The human wi
 - **Embedding Models**: src/server/models/
 - **Rerankers**: src/server/rerankers/
 
+## Tanstack Start Important Information
+
+If tanstack start has a code file with createServerFn exports and standard exports, it breaks tree shaking and proper server function running. If you create a file with both standard exports and createServerFn exports, you must refactor it so the server function exports are in a separate file. If you find a file you did not create with both types of exports, notify the user immediately and ask them to refactor it.
+
 ## Tech stack (reference)
 
 - **Framework**: TanStack Start (React) with Vite

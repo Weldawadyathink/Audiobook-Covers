@@ -1,7 +1,6 @@
 import ky from "ky";
 import { z } from "zod";
 import { ModelDefinition, EmbeddingOutput } from "./search";
-import { ModelName } from "@/shared/modelConstants";
 import { getEnv } from "@/server/env";
 
 const JinaEmbeddingResponse = z.object({
@@ -140,4 +139,4 @@ export const models = {
     getImageEmbeddings: (inputs) =>
       getImageEmbeddings("jina-embeddings-v4", inputs, 128),
   },
-} satisfies Partial<Record<ModelName, ModelDefinition>>;
+} satisfies Record<string, ModelDefinition>;

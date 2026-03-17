@@ -4,8 +4,7 @@ import {
   ImageData,
 } from "@/server/imageData";
 import { getDbReadConnection } from "@/server/db";
-import { getModel } from "@/server/search/search";
-import { defaultModelName } from "@/shared/modelConstants";
+import { getModel, defaultModelName } from "@/server/search/search";
 import { DBImageDataValidator } from "@/server/imageData";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";

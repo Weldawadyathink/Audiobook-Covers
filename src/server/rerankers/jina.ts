@@ -1,6 +1,5 @@
 import ky from "ky";
 import { RerankerDefinition } from "./rerankers";
-import { RerankerName } from "@/shared/rerankerConstants";
 import { getEnv } from "@/server/env";
 import { embedAndSortRelevanceScoreIntoImageData } from "./rerankerHelpers";
 import { type ImageData } from "@/server/imageData";
@@ -82,4 +81,4 @@ export const models = {
       return fetchJinaRerank(query, documents, documentUrls);
     },
   },
-} satisfies Partial<Record<RerankerName, RerankerDefinition>>;
+} satisfies Record<string, RerankerDefinition>;

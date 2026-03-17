@@ -8,19 +8,14 @@ export interface RerankerDefinition {
 }
 
 import { models as jinaRerankers } from "./jina";
-import { RerankerName } from "@/shared/rerankerConstants";
 
-// satisfies ensures every RerankerName has an implementation at compile time.
-// Add a reranker here and TypeScript will error until an implementation exists.
-export const rerankerMap = {
+export const rerankerMap: Record<string, RerankerDefinition> = {
   ...jinaRerankers,
-} satisfies Record<RerankerName, RerankerDefinition>;
+};
 
 export function getReranker(
-  name: string | RerankerName | undefined,
+  name: string | undefined,
 ): RerankerDefinition | undefined {
   if (!name) return undefined;
-  return (rerankerMap as Record<string | RerankerName, RerankerDefinition>)[
-    name
-  ];
+  return rerankerMap[name];
 }

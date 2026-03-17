@@ -1,6 +1,5 @@
 import { createVoyage } from "voyage-ai-provider";
 import { ModelDefinition, EmbeddingOutput } from "./search";
-import { ModelName } from "@/shared/modelConstants";
 import { getEnv } from "@/server/env";
 import { embed, embedMany } from "ai";
 
@@ -95,4 +94,4 @@ export const models = {
       }));
     },
   },
-} satisfies Partial<Record<ModelName, ModelDefinition>>;
+} satisfies Record<string, ModelDefinition>;
