@@ -1,6 +1,6 @@
 import ky from "ky";
 import { z } from "zod";
-import { ModelDefinition, EmbeddingOutput } from "./models";
+import { ModelDefinition, EmbeddingOutput } from "./search";
 import { ModelName } from "@/shared/modelConstants";
 import { getEnv } from "@/server/env";
 

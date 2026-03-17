@@ -1,4 +1,4 @@
-import { modelMap, ModelDefinition } from "@/server/models/models";
+import { modelMap, ModelDefinition } from "@/server/search/search";
 import { Command } from "commander";
 import { getDbWriteConnection } from "@/server/db";
 import { DBImageDataValidator, shapeImageDataArray } from "@/server/imageData";

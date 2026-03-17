@@ -1,4 +1,4 @@
-import { ModelDefinition } from "./models";
+import { ModelDefinition } from "./search";
 import { z } from "zod/v4";
 import ky from "ky";
 import { getEnv } from "@/server/env";

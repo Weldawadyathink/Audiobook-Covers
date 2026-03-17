@@ -4,7 +4,7 @@ import {
   ImageData,
 } from "@/server/imageData";
 import { getDbReadConnection } from "@/server/db";
-import { getModel } from "@/server/models/models";
+import { getModel } from "@/server/search/search";
 import { defaultModelName } from "@/shared/modelConstants";
 import { DBImageDataValidator } from "@/server/imageData";
 import { createServerFn } from "@tanstack/react-start";

@@ -1,5 +1,5 @@
 import Replicate from "replicate";
-import { ModelDefinition } from "./models";
+import { ModelDefinition } from "./search";
 import { ModelName } from "@/shared/modelConstants";
 import { z } from "zod/v4";
 
