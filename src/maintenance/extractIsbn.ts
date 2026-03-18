@@ -4,6 +4,9 @@ import { DBImageDataValidator, shapeImageData } from "@/server/imageData";
 import { getEnv } from "@/server/env";
 import ky from "ky";
 import "dotenv/config";
+import { logger } from "@/server/logger";
+
+logger.setLogLevel("disabled");
 
 const program = new Command();
 
@@ -148,15 +151,10 @@ async function searchGoogleBooks(query: string): Promise<string> {
   const googleKey = env.GOOGLE_BOOKS_API_KEY;
   const isApiKey = googleKey?.startsWith("AIza");
 
-  async function fetchBooks(
-    withKey: boolean,
-    retryDelayMs = 0,
-  ): Promise<GoogleBooksResponse> {
-    if (retryDelayMs > 0)
-      await new Promise((r) => setTimeout(r, retryDelayMs));
+  async function fetchBooks(): Promise<GoogleBooksResponse> {
     const params = new URLSearchParams({ q: query, maxResults: "5" });
     const headers: Record<string, string> = {};
-    if (withKey && googleKey) {
+    if (googleKey) {
       if (isApiKey) {
         params.set("key", googleKey);
       } else {
@@ -169,41 +167,37 @@ async function searchGoogleBooks(query: string): Promise<string> {
         headers,
         timeout: 30_000,
         throwHttpErrors: true,
-        retry: {
-          limit: 4,
-          statusCodes: [429, 500, 502, 503, 504],
-          delay: (attempt) => Math.min(5_000 * 2 ** (attempt - 1), 60_000),
-        },
+        retry: { limit: 0 }, // We handle retries ourselves below
       })
       .json<GoogleBooksResponse>();
   }
 
+  // Retry loop: on 429 keep backing off and retrying so the LLM never sees
+  // a rate-limit error. Base delay starts at 10s, doubles each attempt, caps at 5min.
+  let attempt = 0;
   let data: GoogleBooksResponse;
-  try {
-    // Try without key first — the Books API works unauthenticated and avoids
-    // auth errors when the configured key is for a different Google service.
-    data = await fetchBooks(false);
-  } catch (err: unknown) {
-    const isRateLimited =
-      err instanceof Error && err.message.includes("429");
-    if (isRateLimited) {
-      console.warn("  [tool] Rate limited by Google Books API, skipping");
-      return JSON.stringify({ error: "rate_limited", results: [] });
-    }
-    // If unauthenticated request failed for another reason, try with the key
-    if (env.GOOGLE_BOOKS_API_KEY) {
-      try {
-        data = await fetchBooks(true);
-      } catch (retryErr: unknown) {
-        const retryRateLimited =
-          retryErr instanceof Error && retryErr.message.includes("429");
-        if (retryRateLimited) {
-          console.warn("  [tool] Rate limited by Google Books API, skipping");
-          return JSON.stringify({ error: "rate_limited", results: [] });
-        }
-        throw retryErr;
+  while (true) {
+    try {
+      data = await fetchBooks();
+      break;
+    } catch (err: unknown) {
+      const status =
+        err instanceof Error &&
+        "response" in err &&
+        (err as { response?: { status?: number } }).response?.status;
+      const isRateLimited = status === 429;
+      const isTransient =
+        status === 500 || status === 502 || status === 503 || status === 504;
+
+      if (isRateLimited || isTransient) {
+        const delaySec = Math.min(10 * 2 ** attempt, 300);
+        console.warn(
+          `  [tool] Google Books API ${status} — waiting ${delaySec}s before retry (attempt ${attempt + 1})...`,
+        );
+        await new Promise((r) => setTimeout(r, delaySec * 1_000));
+        attempt++;
+        continue;
       }
-    } else {
       throw err;
     }
   }
@@ -213,17 +207,10 @@ async function searchGoogleBooks(query: string): Promise<string> {
   }
 
   const results = data.items.map((vol) => ({
-    id: vol.id,
     title: vol.volumeInfo.title,
     authors: vol.volumeInfo.authors,
     publishedDate: vol.volumeInfo.publishedDate,
-    description: vol.volumeInfo.description?.slice(0, 300),
     isbns: vol.volumeInfo.industryIdentifiers,
-    pageCount: vol.volumeInfo.pageCount,
-    categories: vol.volumeInfo.categories,
-    thumbnail:
-      vol.volumeInfo.imageLinks?.thumbnail ??
-      vol.volumeInfo.imageLinks?.smallThumbnail,
   }));
 
   return JSON.stringify({ totalItems: data.totalItems, results });
@@ -264,7 +251,7 @@ const searchGoogleBooksTool = {
   },
 };
 
-const phase2SystemPrompt = `You are a book identification assistant. Your goal is to find the correct book entry in the Google Books database for an audiobook cover image.
+const phase2SystemPrompt = `You are a book identification assistant. Your goal is to look for book entries in the Google Books database that may match the audiobook cover image.
 
 You will be given:
 1. The audiobook cover image
@@ -274,8 +261,10 @@ Your task:
 1. Analyze the cover image and OCR text to identify the book title, author, series, and any other identifying information
 2. Brainstorm multiple possible search queries to find the correct book
 3. Use the search_google_books tool multiple times to gather metadata for candidate matches
-4. For each search, you will receive book metadata and cover art thumbnails — use these visually to compare against the original cover
-5. Collect all relevant metadata found across your searches
+4. For each search, you will receive book metadata and cover art thumbnails — use the visual information for your analysis, but consider that the audiobook artwork may be custom, and may be significantly different than the official publisher artwork.
+5. Collect all relevant metadata found across your searches, including ISBNs
+
+Your goal is to find candidate books. The initial image is for an audiobook, but that is irrelevant to your task. You do not need to find an audiobook edition, a standard edition will do.
 
 Be thorough: try variations of the title, author name, and series. Explore multiple candidates before concluding.`;
 
@@ -300,11 +289,9 @@ let phase2FinalContent = "";
 
 // Agentic tool-use loop
 while (true) {
-  const response = await callOpenRouter(
-    phase2Messages,
-    getModel(1),
-    [searchGoogleBooksTool],
-  );
+  const response = await callOpenRouter(phase2Messages, getModel(1), [
+    searchGoogleBooksTool,
+  ]);
 
   const message = response.choices[0]?.message;
   if (!message) break;
@@ -313,7 +300,9 @@ while (true) {
 
   if (!toolCalls || toolCalls.length === 0) {
     // No more tool calls — final response
-    phase2FinalContent = message.content ?? "";
+    // Some models (e.g. Gemini) return content: null on their last tool-use
+    // turn instead of a concluding text message. Treat that as done.
+    phase2FinalContent = message.content ?? "(no final summary from model)";
     break;
   }
 
@@ -338,7 +327,10 @@ while (true) {
     const searchResultJson = await searchGoogleBooks(query);
 
     // Parse results to extract thumbnail URLs for multimodal inclusion
-    let thumbnailParts: Array<{ type: "image_url"; image_url: { url: string } }> = [];
+    let thumbnailParts: Array<{
+      type: "image_url";
+      image_url: { url: string };
+    }> = [];
     try {
       const parsed = JSON.parse(searchResultJson) as {
         results?: Array<{ thumbnail?: string; title?: string }>;
@@ -373,11 +365,9 @@ while (true) {
 
     // Build tool result message content
     const toolResultContent: Array<
-      { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }
-    > = [
-      { type: "text", text: searchResultJson },
-      ...thumbnailParts,
-    ];
+      | { type: "text"; text: string }
+      | { type: "image_url"; image_url: { url: string } }
+    > = [{ type: "text", text: searchResultJson }, ...thumbnailParts];
 
     phase2Messages.push({
       role: "tool",
@@ -387,7 +377,20 @@ while (true) {
   }
 }
 
-console.log("Phase 2 - Gathered Metadata:");
+console.log("Phase 2 - Full conversation context:");
+for (const msg of phase2Messages) {
+  if (msg.role !== "assistant") continue;
+  if (typeof msg.content === "string" && msg.content)
+    console.log(`  [ASSISTANT] ${msg.content}`);
+  if (msg.tool_calls) {
+    for (const tc of msg.tool_calls) {
+      console.log(
+        `  [ASSISTANT → TOOL] ${tc.function.name}(${tc.function.arguments})`,
+      );
+    }
+  }
+}
+console.log("Phase 2 - Final model output:");
 console.log(phase2FinalContent);
 console.log("---");
 
