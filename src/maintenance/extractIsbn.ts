@@ -14,7 +14,7 @@ program
   .requiredOption("-i, --image-id <uuid>", "The image ID to process")
   .option(
     "-m, --model <text>",
-    "The OpenRouter model(s) to use. Use | to specify different models per phase (e.g. 'phase1model|phase2model')",
+    "The OpenRouter model(s) to use. Use : to specify different models per phase (e.g. 'phase1model:phase2model')",
     "google/gemini-2.5-flash-lite",
   );
 
@@ -23,7 +23,7 @@ program.parse(process.argv);
 const imageId: string = program.opts().imageId;
 const model: string = program.opts().model;
 
-const modelParts = model.split("|").map((s: string) => s.trim());
+const modelParts = model.split(":").map((s: string) => s.trim());
 const getModel = (phase: number) =>
   modelParts[phase] ?? modelParts[modelParts.length - 1];
 
