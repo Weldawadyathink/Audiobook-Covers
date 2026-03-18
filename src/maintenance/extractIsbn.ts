@@ -81,6 +81,7 @@ type OpenRouterResponse = {
     prompt_tokens: number;
     completion_tokens: number;
     total_tokens: number;
+    cost?: number;
   };
 };
 
@@ -122,18 +123,8 @@ function parseIsbnResult(raw: string): IsbnExtractionResult | null {
 
 // ---
 
-async function fetchGenerationCost(id: string): Promise<number> {
-  try {
-    const data = await ky
-      .get(`https://openrouter.ai/api/v1/generation?id=${id}`, {
-        headers: { Authorization: `Bearer ${env.OPENROUTER_API_KEY}` },
-        timeout: 10_000,
-      })
-      .json<{ data: { total_cost: number } }>();
-    return data.data.total_cost ?? 0;
-  } catch {
-    return 0;
-  }
+function extractCost(response: OpenRouterResponse): number {
+  return response.usage?.cost ?? 0;
 }
 
 type PhaseUsage = {
@@ -203,7 +194,7 @@ console.log(ocrText);
 const phase1Usage: PhaseUsage = {
   promptTokens: phase1Response.usage?.prompt_tokens ?? 0,
   completionTokens: phase1Response.usage?.completion_tokens ?? 0,
-  cost: await fetchGenerationCost(phase1Response.id),
+  cost: extractCost(phase1Response),
 };
 totalCost += phase1Usage.cost;
 printPhaseUsage(1, phase1Usage);
@@ -413,7 +404,7 @@ while (true) {
   ]);
   phase2Usage.promptTokens += response.usage?.prompt_tokens ?? 0;
   phase2Usage.completionTokens += response.usage?.completion_tokens ?? 0;
-  phase2Usage.cost += await fetchGenerationCost(response.id);
+  phase2Usage.cost += extractCost(response);
 
   const message = response.choices[0]?.message;
   if (!message) break;
@@ -590,7 +581,7 @@ while (true) {
   ]);
   phase3Usage.promptTokens += response.usage?.prompt_tokens ?? 0;
   phase3Usage.completionTokens += response.usage?.completion_tokens ?? 0;
-  phase3Usage.cost += await fetchGenerationCost(response.id);
+  phase3Usage.cost += extractCost(response);
 
   const message = response.choices[0]?.message;
   if (!message) break;
@@ -718,14 +709,14 @@ if (phase4Result) {
 const phase4Usage: PhaseUsage = {
   promptTokens: phase4Response.usage?.prompt_tokens ?? 0,
   completionTokens: phase4Response.usage?.completion_tokens ?? 0,
-  cost: await fetchGenerationCost(phase4Response.id),
+  cost: extractCost(phase4Response),
 };
 totalCost += phase4Usage.cost;
 printPhaseUsage(4, phase4Usage);
 console.log("---");
 
 console.log(
-  `Total cost: $${totalCost.toFixed(8)} | est. per 1k runs: $${(totalCost * 1000).toFixed(2)}`,
+  `Total cost: $${totalCost.toFixed(8)} | estimated cost per 1k runs: $${(totalCost * 1000).toFixed(2)}`,
 );
 
 await sql.end();
