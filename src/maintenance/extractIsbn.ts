@@ -66,6 +66,7 @@ type OpenRouterMessage = {
 };
 
 type OpenRouterResponse = {
+  id: string;
   choices: Array<{
     message: {
       content: string | null;
@@ -76,6 +77,11 @@ type OpenRouterResponse = {
       }>;
     };
   }>;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
 };
 
 // --- Phase 4 schema ---
@@ -112,6 +118,30 @@ function parseIsbnResult(raw: string): IsbnExtractionResult | null {
 }
 
 // ---
+
+async function fetchGenerationCost(id: string): Promise<number> {
+  try {
+    const data = await ky
+      .get(`https://openrouter.ai/api/v1/generation?id=${id}`, {
+        headers: { Authorization: `Bearer ${env.OPENROUTER_API_KEY}` },
+        timeout: 10_000,
+      })
+      .json<{ data: { total_cost: number } }>();
+    return data.data.total_cost ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+type PhaseUsage = { promptTokens: number; completionTokens: number; cost: number };
+
+function printPhaseUsage(phase: number, u: PhaseUsage): void {
+  console.log(
+    `Phase ${phase} cost: $${u.cost.toFixed(8)} | tokens in: ${u.promptTokens.toLocaleString()} out: ${u.completionTokens.toLocaleString()}`,
+  );
+}
+
+let totalCost = 0;
 
 async function callOpenRouter(
   messages: OpenRouterMessage[],
@@ -158,6 +188,13 @@ const phase1Response = await callOpenRouter(
 const ocrText = phase1Response.choices[0]?.message?.content ?? "";
 console.log("Phase 1 - OCR Result:");
 console.log(ocrText);
+const phase1Usage: PhaseUsage = {
+  promptTokens: phase1Response.usage?.prompt_tokens ?? 0,
+  completionTokens: phase1Response.usage?.completion_tokens ?? 0,
+  cost: await fetchGenerationCost(phase1Response.id),
+};
+totalCost += phase1Usage.cost;
+printPhaseUsage(1, phase1Usage);
 console.log("---");
 
 // --- Phase 2: Google Books metadata collection via tool calling ---
@@ -351,12 +388,16 @@ const phase2Messages: OpenRouterMessage[] = [
 ];
 
 let phase2FinalContent = "";
+const phase2Usage: PhaseUsage = { promptTokens: 0, completionTokens: 0, cost: 0 };
 
 // Agentic tool-use loop
 while (true) {
   const response = await callOpenRouter(phase2Messages, getModel(1), [
     searchGoogleBooksTool,
   ]);
+  phase2Usage.promptTokens += response.usage?.prompt_tokens ?? 0;
+  phase2Usage.completionTokens += response.usage?.completion_tokens ?? 0;
+  phase2Usage.cost += await fetchGenerationCost(response.id);
 
   const message = response.choices[0]?.message;
   if (!message) break;
@@ -457,6 +498,8 @@ for (const msg of phase2Messages) {
 }
 console.log("Phase 2 - Final model output:");
 console.log(phase2FinalContent);
+totalCost += phase2Usage.cost;
+printPhaseUsage(2, phase2Usage);
 console.log("---");
 
 // --- Phase 3: Candidate analysis & validation ---
@@ -518,12 +561,16 @@ const phase3Messages: OpenRouterMessage[] = [
 ];
 
 let phase3FinalContent = "";
+const phase3Usage: PhaseUsage = { promptTokens: 0, completionTokens: 0, cost: 0 };
 
 // Agentic tool-use loop (validation only)
 while (true) {
   const response = await callOpenRouter(phase3Messages, getModel(2), [
     validateGoogleBooksTool,
   ]);
+  phase3Usage.promptTokens += response.usage?.prompt_tokens ?? 0;
+  phase3Usage.completionTokens += response.usage?.completion_tokens ?? 0;
+  phase3Usage.cost += await fetchGenerationCost(response.id);
 
   const message = response.choices[0]?.message;
   if (!message) break;
@@ -606,6 +653,8 @@ while (true) {
 
 console.log("Phase 3 - Analysis:");
 console.log(phase3FinalContent);
+totalCost += phase3Usage.cost;
+printPhaseUsage(3, phase3Usage);
 console.log("---");
 
 // --- Phase 4: Structured extraction ---
@@ -644,6 +693,15 @@ if (phase4Result) {
   console.warn("Phase 4 failed to produce valid structured output. Raw response:");
   console.warn(phase4Raw);
 }
+const phase4Usage: PhaseUsage = {
+  promptTokens: phase4Response.usage?.prompt_tokens ?? 0,
+  completionTokens: phase4Response.usage?.completion_tokens ?? 0,
+  cost: await fetchGenerationCost(phase4Response.id),
+};
+totalCost += phase4Usage.cost;
+printPhaseUsage(4, phase4Usage);
 console.log("---");
+
+console.log(`Total cost: $${totalCost.toFixed(8)} | est. per 1k runs: $${(totalCost * 1000).toFixed(2)}`);
 
 await sql.end();
