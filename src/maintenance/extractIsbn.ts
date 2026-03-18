@@ -95,7 +95,10 @@ const IsbnExtractionResultSchema = z.object({
     .enum(["CONFIRMED", "LIKELY", "UNCERTAIN", "NO_MATCH"])
     .describe("CONFIRMED | LIKELY | UNCERTAIN | NO_MATCH"),
   title: z.string().nullable().describe("Title of the matched book"),
-  authors: z.array(z.string()).nullable().describe("Authors of the matched book"),
+  authors: z
+    .array(z.string())
+    .nullable()
+    .describe("Authors of the matched book"),
 });
 
 type IsbnExtractionResult = z.infer<typeof IsbnExtractionResultSchema>;
@@ -133,7 +136,11 @@ async function fetchGenerationCost(id: string): Promise<number> {
   }
 }
 
-type PhaseUsage = { promptTokens: number; completionTokens: number; cost: number };
+type PhaseUsage = {
+  promptTokens: number;
+  completionTokens: number;
+  cost: number;
+};
 
 function printPhaseUsage(phase: number, u: PhaseUsage): void {
   console.log(
@@ -168,6 +175,11 @@ async function callOpenRouter(
 
 const phase1Response = await callOpenRouter(
   [
+    {
+      role: "system",
+      content:
+        "You are an OCR engine. Extract all visible text from images verbatim. Output raw text only — no markdown, no formatting, no commentary.",
+    },
     {
       role: "user",
       content: [
@@ -353,7 +365,7 @@ const searchGoogleBooksTool = {
   },
 };
 
-const phase2SystemPrompt = `You are a book identification assistant. Your goal is to look for book entries in the Google Books database that may match the audiobook cover image.
+const phase2SystemPrompt = `You are a book identification assistant. Your goal is to look for book entries in the Google Books database that may match the audiobook cover image. Do not state or imply a conclusion before completing your searches. Begin tool calls immediately. Respond in plain text without emoji or markdown.
 
 You will be given:
 1. The audiobook cover image
@@ -363,7 +375,7 @@ Your task:
 1. Analyze the cover image and OCR text to identify the book title, author, series, and any other identifying information
 2. Brainstorm multiple possible search queries to find the correct book
 3. Use the search_google_books tool multiple times to gather metadata for candidate matches
-4. For each search, you will receive book metadata and cover art thumbnails — use the visual information for your analysis, but consider that the audiobook artwork may be custom, and may be significantly different than the official publisher artwork.
+4. For each search, you will receive book metadata and cover thumbnails for each result. Use the metadata primarily for identification — do not rely on visual similarity between the audiobook cover and publisher thumbnails, as audiobook art is often custom.
 5. Collect all relevant metadata found across your searches, including ISBNs
 
 Your goal is to find candidate books. The initial image is for an audiobook, but that is irrelevant to your task. You do not need to find an audiobook edition, a standard edition will do.
@@ -388,7 +400,11 @@ const phase2Messages: OpenRouterMessage[] = [
 ];
 
 let phase2FinalContent = "";
-const phase2Usage: PhaseUsage = { promptTokens: 0, completionTokens: 0, cost: 0 };
+const phase2Usage: PhaseUsage = {
+  promptTokens: 0,
+  completionTokens: 0,
+  cost: 0,
+};
 
 // Agentic tool-use loop
 while (true) {
@@ -520,10 +536,10 @@ const phase3SystemPrompt = `You are a book identification expert performing fina
 You will receive:
 1. The original audiobook cover image
 2. OCR text extracted from the cover (Phase 1)
-3. The full research session from Phase 2: all Google Books searches performed and their results
+3. The full research session from an agentic search for candidates: all Google Books searches performed and their results
 
 Your task:
-1. Review the candidates found in Phase 2 and determine the single best match for this audiobook cover
+1. Review the candidates found in Phase 2 and determine the single best match for this audiobook cover. Prefer the primary edition or earliest printing.
 2. If you need to confirm metadata for a specific candidate (e.g. verify an ISBN or publication date), you may use the search_google_books tool — but only to validate an existing candidate, NOT to explore new ones
 3. Write a thorough analysis that includes:
    - Why this candidate is the best match (evidence from the cover image, OCR text, and search results)
@@ -561,7 +577,11 @@ const phase3Messages: OpenRouterMessage[] = [
 ];
 
 let phase3FinalContent = "";
-const phase3Usage: PhaseUsage = { promptTokens: 0, completionTokens: 0, cost: 0 };
+const phase3Usage: PhaseUsage = {
+  promptTokens: 0,
+  completionTokens: 0,
+  cost: 0,
+};
 
 // Agentic tool-use loop (validation only)
 while (true) {
@@ -690,7 +710,9 @@ console.log("Phase 4 - Structured Result:");
 if (phase4Result) {
   console.log(JSON.stringify(phase4Result, null, 2));
 } else {
-  console.warn("Phase 4 failed to produce valid structured output. Raw response:");
+  console.warn(
+    "Phase 4 failed to produce valid structured output. Raw response:",
+  );
   console.warn(phase4Raw);
 }
 const phase4Usage: PhaseUsage = {
@@ -702,6 +724,8 @@ totalCost += phase4Usage.cost;
 printPhaseUsage(4, phase4Usage);
 console.log("---");
 
-console.log(`Total cost: $${totalCost.toFixed(8)} | est. per 1k runs: $${(totalCost * 1000).toFixed(2)}`);
+console.log(
+  `Total cost: $${totalCost.toFixed(8)} | est. per 1k runs: $${(totalCost * 1000).toFixed(2)}`,
+);
 
 await sql.end();
