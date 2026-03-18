@@ -206,11 +206,33 @@ async function searchGoogleBooks(query: string): Promise<string> {
     return JSON.stringify({ totalItems: 0, results: [] });
   }
 
+  function isbn10ToIsbn13(isbn10: string): string {
+    const digits = "978" + isbn10.slice(0, 9);
+    const sum = digits
+      .split("")
+      .reduce((acc, d, i) => acc + parseInt(d) * (i % 2 === 0 ? 1 : 3), 0);
+    const check = (10 - (sum % 10)) % 10;
+    return digits + check;
+  }
+
+  function normalizeIsbns(
+    identifiers: Array<{ type: string; identifier: string }> | undefined,
+  ): Array<{ type: string; identifier: string }> | undefined {
+    if (!identifiers) return undefined;
+    const has13 = identifiers.some((id) => id.type === "ISBN_13");
+    if (has13) {
+      return identifiers.filter((id) => id.type !== "ISBN_10");
+    }
+    return identifiers
+      .filter((id) => id.type === "ISBN_10")
+      .map((id) => ({ type: "ISBN_13", identifier: isbn10ToIsbn13(id.identifier) }));
+  }
+
   const results = data.items.map((vol) => ({
     title: vol.volumeInfo.title,
     authors: vol.volumeInfo.authors,
     publishedDate: vol.volumeInfo.publishedDate,
-    isbns: vol.volumeInfo.industryIdentifiers,
+    isbns: normalizeIsbns(vol.volumeInfo.industryIdentifiers),
   }));
 
   return JSON.stringify({ totalItems: data.totalItems, results });
