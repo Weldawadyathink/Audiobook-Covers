@@ -5,6 +5,9 @@ import { getEnv } from "@/server/env";
 import ky from "ky";
 import "dotenv/config";
 import { logger } from "@/server/logger";
+import { z } from "zod";
+import zodToJsonSchema from "zod-to-json-schema";
+import { jsonrepair } from "jsonrepair";
 
 logger.setLogLevel("disabled");
 
@@ -75,10 +78,46 @@ type OpenRouterResponse = {
   }>;
 };
 
+// --- Phase 4 schema ---
+
+const IsbnExtractionResultSchema = z.object({
+  isbn13: z
+    .string()
+    .nullable()
+    .describe("ISBN-13 of the best matching book, null if no match"),
+  evidence: z
+    .enum(["CONFIRMED", "LIKELY", "UNCERTAIN", "NO_MATCH"])
+    .describe("CONFIRMED | LIKELY | UNCERTAIN | NO_MATCH"),
+  title: z.string().nullable().describe("Title of the matched book"),
+  authors: z.array(z.string()).nullable().describe("Authors of the matched book"),
+});
+
+type IsbnExtractionResult = z.infer<typeof IsbnExtractionResultSchema>;
+
+const isbnResultJsonSchema = zodToJsonSchema(IsbnExtractionResultSchema, {
+  $refStrategy: "none",
+});
+
+function parseIsbnResult(raw: string): IsbnExtractionResult | null {
+  try {
+    return IsbnExtractionResultSchema.parse(JSON.parse(raw));
+  } catch {
+    // fall through to repair
+  }
+  try {
+    return IsbnExtractionResultSchema.parse(JSON.parse(jsonrepair(raw)));
+  } catch {
+    return null;
+  }
+}
+
+// ---
+
 async function callOpenRouter(
   messages: OpenRouterMessage[],
   phaseModel: string,
   tools?: object[],
+  responseFormat?: object,
 ): Promise<OpenRouterResponse> {
   return ky
     .post("https://openrouter.ai/api/v1/chat/completions", {
@@ -90,6 +129,7 @@ async function callOpenRouter(
         model: phaseModel,
         messages,
         ...(tools ? { tools } : {}),
+        ...(responseFormat ? { response_format: responseFormat } : {}),
       },
       timeout: 120_000,
     })
@@ -456,7 +496,9 @@ CONFIRMED — Both OCR and Google Books agree. Title and author were clearly ext
 
 LIKELY — Strong signal but incomplete. OCR recovered enough text to make a confident identification, and Google Books returned a plausible match, but at least one of the following is true: OCR had unclear characters or partial text, the title is common enough that other books could match, or the Google Books result required inference rather than direct confirmation.
 
-UNCERTAIN — Weak or conflicting evidence. OCR recovered little usable text, no Google Books result matched convincingly, signals from the cover and search results conflict, or the best candidate is a guess rather than a supported conclusion.`;
+UNCERTAIN — Weak or conflicting evidence. OCR recovered little usable text, no Google Books result matched convincingly, signals from the cover and search results conflict, or the best candidate is a guess rather than a supported conclusion.
+
+NO_MATCH — No clear match was found. The evidence suggests the title and author are not recognizable, or the book is not in Google Books.`;
 
 const phase3Messages: OpenRouterMessage[] = [
   { role: "system", content: phase3SystemPrompt },
@@ -564,6 +606,44 @@ while (true) {
 
 console.log("Phase 3 - Analysis:");
 console.log(phase3FinalContent);
+console.log("---");
+
+// --- Phase 4: Structured extraction ---
+
+console.log(`Phase 4 model: ${getModel(3)}`);
+
+const phase4SystemPrompt =
+  "You are a structured data extractor. You will receive a book identification analysis. Extract the recommended ISBN-13 and evidence classification into the required JSON format. If the analysis concluded no match was found, set isbn13 to null and evidence to NO_MATCH.";
+
+const phase4Messages: OpenRouterMessage[] = [
+  { role: "system", content: phase4SystemPrompt },
+  { role: "user", content: phase3FinalContent },
+];
+
+const phase4Response = await callOpenRouter(
+  phase4Messages,
+  getModel(3),
+  undefined,
+  {
+    type: "json_schema",
+    json_schema: {
+      name: "isbn_extraction_result",
+      strict: true,
+      schema: isbnResultJsonSchema,
+    },
+  },
+);
+
+const phase4Raw = phase4Response.choices[0]?.message?.content ?? "";
+const phase4Result = parseIsbnResult(phase4Raw);
+
+console.log("Phase 4 - Structured Result:");
+if (phase4Result) {
+  console.log(JSON.stringify(phase4Result, null, 2));
+} else {
+  console.warn("Phase 4 failed to produce valid structured output. Raw response:");
+  console.warn(phase4Raw);
+}
 console.log("---");
 
 await sql.end();

@@ -74,6 +74,9 @@ importers:
       jina-ai-provider:
         specifier: ^1.0.0
         version: 1.0.0(zod@3.25.76)
+      jsonrepair:
+        specifier: ^3.13.3
+        version: 3.13.3
       ky:
         specifier: ^1.8.1
         version: 1.14.3
@@ -131,6 +134,9 @@ importers:
       zod:
         specifier: ^3.25.76
         version: 3.25.76
+      zod-to-json-schema:
+        specifier: ^3.25.1
+        version: 3.25.1(zod@3.25.76)
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: ^1.23.0
@@ -2609,6 +2615,10 @@ packages:
     engines: {node: '>=6'}
     hasBin: true
 
+  jsonrepair@3.13.3:
+    resolution: {integrity: sha512-BTznj0owIt2CBAH/LTo7+1I5pMvl1e1033LRl/HUowlZmJOIhzC0zbX5bxMngLkfT4WnzPP26QnW5wMr2g9tsQ==}
+    hasBin: true
+
   jsx-ast-utils@3.3.5:
     resolution: {integrity: sha512-ZZow9HBI5O6EPgSJLUb8n2NKgmVWTwCvHGwFuJlMjvLFqlGG6pjirPhtdsseaLZjSibD8eegzmYpUZwoIlj2cQ==}
     engines: {node: '>=4.0'}
@@ -3575,6 +3585,11 @@ packages:
 
   youch@4.1.0-beta.10:
     resolution: {integrity: sha512-rLfVLB4FgQneDr0dv1oddCVZmKjcJ6yX6mS4pU82Mq/Dt9a3cLZQ62pDBL4AUO+uVrCvtWz3ZFUL2HFAFJ/BXQ==}
+
+  zod-to-json-schema@3.25.1:
+    resolution: {integrity: sha512-pM/SU9d3YAggzi6MtR4h7ruuQlqKtad8e9S0fmxcMi+ueAK5Korys/aWcV9LIIHTVbj01NdzxcnXSN+O74ZIVA==}
+    peerDependencies:
+      zod: ^3.25 || ^4
 
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
@@ -5987,6 +6002,8 @@ snapshots:
 
   json5@2.2.3: {}
 
+  jsonrepair@3.13.3: {}
+
   jsx-ast-utils@3.3.5:
     dependencies:
       array-includes: 3.1.9
@@ -7056,5 +7073,9 @@ snapshots:
       '@speed-highlight/core': 1.2.14
       cookie: 1.1.1
       youch-core: 0.3.3
+
+  zod-to-json-schema@3.25.1(zod@3.25.76):
+    dependencies:
+      zod: 3.25.76
 
   zod@3.25.76: {}

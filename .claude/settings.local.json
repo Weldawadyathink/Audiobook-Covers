@@ -7,7 +7,8 @@
       "WebSearch",
       "WebFetch(domain:tanstack.com)",
       "Bash(task extract_isbn -- --image-id e2125369-fa5d-4ca5-bb45-663e5f474088)",
-      "Bash(curl -s \"https://www.googleapis.com/books/v1/volumes?q=The+Horse+and+His+Boy&maxResults=1\")"
+      "Bash(curl -s \"https://www.googleapis.com/books/v1/volumes?q=The+Horse+and+His+Boy&maxResults=1\")",
+      "Bash(npx tsc:*)"
     ]
   }
 }
