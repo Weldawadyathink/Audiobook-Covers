@@ -165,7 +165,7 @@ async function searchGoogleBooks(query: string): Promise<string> {
     return ky
       .get(`https://www.googleapis.com/books/v1/volumes?${params}`, {
         headers,
-        timeout: 30_000,
+        timeout: 60_000,
         throwHttpErrors: true,
         retry: { limit: 0 }, // We handle retries ourselves below
       })
@@ -225,7 +225,10 @@ async function searchGoogleBooks(query: string): Promise<string> {
     }
     return identifiers
       .filter((id) => id.type === "ISBN_10")
-      .map((id) => ({ type: "ISBN_13", identifier: isbn10ToIsbn13(id.identifier) }));
+      .map((id) => ({
+        type: "ISBN_13",
+        identifier: isbn10ToIsbn13(id.identifier),
+      }));
   }
 
   const results = data.items.map((vol) => ({
@@ -414,6 +417,153 @@ for (const msg of phase2Messages) {
 }
 console.log("Phase 2 - Final model output:");
 console.log(phase2FinalContent);
+console.log("---");
+
+// --- Phase 3: Candidate analysis & validation ---
+
+console.log(`Phase 3 model: ${getModel(2)}`);
+
+const validateGoogleBooksTool = {
+  type: "function",
+  function: {
+    name: "search_google_books",
+    description:
+      "Look up a specific book in the Google Books API to validate or confirm an existing candidate. Use this ONLY to verify metadata (ISBNs, publication date, authors) for a candidate already identified in the previous search phase — not to find new candidates.",
+    parameters: searchGoogleBooksTool.function.parameters,
+  },
+};
+
+const phase3SystemPrompt = `You are a book identification expert performing final analysis.
+You will receive:
+1. The original audiobook cover image
+2. OCR text extracted from the cover (Phase 1)
+3. The full research session from Phase 2: all Google Books searches performed and their results
+
+Your task:
+1. Review the candidates found in Phase 2 and determine the single best match for this audiobook cover
+2. If you need to confirm metadata for a specific candidate (e.g. verify an ISBN or publication date), you may use the search_google_books tool — but only to validate an existing candidate, NOT to explore new ones
+3. Write a thorough analysis that includes:
+   - Why this candidate is the best match (evidence from the cover image, OCR text, and search results)
+   - Any weaknesses or uncertainties in the match (ambiguous text, multiple editions, common titles, etc.)
+   - The evidence classification (see below) and the reasoning behind it
+   - All known metadata for the selected book: title, authors, ISBN-13, publication date, description, categories, page count
+4. Be honest about uncertainty — if no good match was found, say so clearly
+
+Evidence Classification:
+Classify the strength of your evidence using exactly one of these three labels:
+
+CONFIRMED — Both OCR and Google Books agree. Title and author were clearly extracted from the cover and match a specific book in Google Books without ambiguity.
+
+LIKELY — Strong signal but incomplete. OCR recovered enough text to make a confident identification, and Google Books returned a plausible match, but at least one of the following is true: OCR had unclear characters or partial text, the title is common enough that other books could match, or the Google Books result required inference rather than direct confirmation.
+
+UNCERTAIN — Weak or conflicting evidence. OCR recovered little usable text, no Google Books result matched convincingly, signals from the cover and search results conflict, or the best candidate is a guess rather than a supported conclusion.`;
+
+const phase3Messages: OpenRouterMessage[] = [
+  { role: "system", content: phase3SystemPrompt },
+  // Carry over all of phase 2's conversation (image, OCR, searches, results)
+  // Skip phase 2's system prompt (index 0)
+  ...phase2Messages.slice(1),
+  // Include phase 2 final output if present
+  ...(phase2FinalContent &&
+  phase2FinalContent !== "(no final summary from model)"
+    ? [{ role: "assistant" as const, content: phase2FinalContent }]
+    : []),
+  {
+    role: "user",
+    content:
+      "Based on the research above, please analyze the candidates and select the best match. Discuss the strengths and weaknesses of this identification, your confidence level, and provide all available metadata for the selected book.",
+  },
+];
+
+let phase3FinalContent = "";
+
+// Agentic tool-use loop (validation only)
+while (true) {
+  const response = await callOpenRouter(phase3Messages, getModel(2), [
+    validateGoogleBooksTool,
+  ]);
+
+  const message = response.choices[0]?.message;
+  if (!message) break;
+
+  const toolCalls = message.tool_calls;
+
+  if (!toolCalls || toolCalls.length === 0) {
+    phase3FinalContent = message.content ?? "(no final analysis from model)";
+    break;
+  }
+
+  // Append assistant message with tool calls
+  phase3Messages.push({
+    role: "assistant",
+    content: message.content ?? "",
+    tool_calls: toolCalls,
+  });
+
+  // Execute each tool call and append results
+  for (const toolCall of toolCalls) {
+    if (toolCall.function.name !== "search_google_books") continue;
+
+    let query = "";
+    try {
+      query = JSON.parse(toolCall.function.arguments).query ?? "";
+    } catch {
+      query = toolCall.function.arguments;
+    }
+
+    const searchResultJson = await searchGoogleBooks(query);
+
+    let thumbnailParts: Array<{
+      type: "image_url";
+      image_url: { url: string };
+    }> = [];
+    try {
+      const parsed = JSON.parse(searchResultJson) as {
+        results?: Array<{ thumbnail?: string; title?: string }>;
+      };
+      if (parsed.results) {
+        const imagePromises = parsed.results
+          .filter((r) => r.thumbnail)
+          .map(async (r) => {
+            const imgData = await fetchImageAsBase64(r.thumbnail!);
+            if (!imgData) return null;
+            return {
+              type: "image_url" as const,
+              image_url: {
+                url: `data:${imgData.mimeType};base64,${imgData.base64}`,
+              },
+            };
+          });
+        const resolved = await Promise.all(imagePromises);
+        thumbnailParts = resolved.filter(
+          (p): p is { type: "image_url"; image_url: { url: string } } =>
+            p !== null,
+        );
+        if (thumbnailParts.length > 0) {
+          console.log(
+            `  [tool] fetched ${thumbnailParts.length} cover thumbnail(s)`,
+          );
+        }
+      }
+    } catch {
+      // continue without thumbnails
+    }
+
+    const toolResultContent: Array<
+      | { type: "text"; text: string }
+      | { type: "image_url"; image_url: { url: string } }
+    > = [{ type: "text", text: searchResultJson }, ...thumbnailParts];
+
+    phase3Messages.push({
+      role: "tool",
+      tool_call_id: toolCall.id,
+      content: toolResultContent as OpenRouterMessage["content"],
+    });
+  }
+}
+
+console.log("Phase 3 - Analysis:");
+console.log(phase3FinalContent);
 console.log("---");
 
 await sql.end();
