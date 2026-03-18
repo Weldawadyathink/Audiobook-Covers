@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import { getDbWriteConnection } from "@/server/db";
-import { DBImageDataValidator, shapeImageData } from "@/server/imageData";
+import { DBImageDataValidator, shapeImageData, shapeImageDataArray } from "@/server/imageData";
 import { getEnv } from "@/server/env";
 import ky from "ky";
 import "dotenv/config";
@@ -9,22 +9,46 @@ import { z } from "zod";
 import zodToJsonSchema from "zod-to-json-schema";
 import { jsonrepair } from "jsonrepair";
 
+// Suppress logs from other modules until we set the level from CLI flags
 logger.setLogLevel("disabled");
 
 const program = new Command();
 
 program
-  .requiredOption("-i, --image-id <uuid>", "The image ID to process")
+  .option("-i, --image-id <uuid>", "The image ID to process")
   .option(
     "-m, --model <text>",
     "The OpenRouter model(s) to use. Use : to specify different models per phase (e.g. 'phase1model:phase2model')",
     "google/gemini-2.5-flash-lite",
+  )
+  .option("--save", "Save results to the database")
+  .option("-s, --tablesample <number>", "Process a random sample of images missing an ISBN (percentage)")
+  .option("--complete", "Process all images missing an ISBN")
+  .option(
+    "-l, --log-level <level>",
+    "Log level: debug | info | warn | error",
+    "info",
   );
 
 program.parse(process.argv);
 
-const imageId: string = program.opts().imageId;
+const imageId: string | undefined = program.opts().imageId;
 const model: string = program.opts().model;
+const save: boolean = program.opts().save ?? false;
+const tablesample: string | undefined = program.opts().tablesample;
+const complete: boolean = program.opts().complete ?? false;
+const logLevel: string = program.opts().logLevel ?? "info";
+
+logger.setLogLevel(logLevel as Parameters<typeof logger.setLogLevel>[0]);
+
+if (!imageId && !tablesample && !complete) {
+  console.error("Must provide --image-id, --tablesample, or --complete");
+  process.exit(1);
+}
+if (imageId && (tablesample || complete)) {
+  console.error("Cannot use --image-id with --tablesample or --complete");
+  process.exit(1);
+}
 
 const modelParts = model.split(":").map((s: string) => s.trim());
 const getModel = (phase: number) =>
@@ -32,58 +56,6 @@ const getModel = (phase: number) =>
 
 const env = getEnv();
 const { sql, sqlTools } = getDbWriteConnection();
-
-const dbImage = await sqlTools.one(DBImageDataValidator)`
-  SELECT id, source, extension, blurhash, from_old_database, searchable
-  FROM image
-  WHERE id = ${imageId}
-`;
-
-const image = await shapeImageData(dbImage);
-console.log(`Processing image: ${image.id}`);
-console.log(`Image URL: ${image.jpeg[640]}`);
-console.log(`Phase 1 model: ${getModel(0)}`);
-console.log("---");
-
-// --- Phase 1: OCR ---
-
-type OpenRouterMessage = {
-  role: "user" | "assistant" | "system" | "tool";
-  content:
-    | string
-    | Array<
-        | { type: "text"; text: string }
-        | { type: "image_url"; image_url: { url: string } }
-        | { type: "tool_result"; tool_use_id: string; content: string }
-      >;
-  tool_calls?: Array<{
-    id: string;
-    type: "function";
-    function: { name: string; arguments: string };
-  }>;
-  tool_call_id?: string;
-  name?: string;
-};
-
-type OpenRouterResponse = {
-  id: string;
-  choices: Array<{
-    message: {
-      content: string | null;
-      tool_calls?: Array<{
-        id: string;
-        type: "function";
-        function: { name: string; arguments: string };
-      }>;
-    };
-  }>;
-  usage?: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-    cost?: number;
-  };
-};
 
 // --- Phase 4 schema ---
 
@@ -123,6 +95,44 @@ function parseIsbnResult(raw: string): IsbnExtractionResult | null {
 
 // ---
 
+type OpenRouterMessage = {
+  role: "user" | "assistant" | "system" | "tool";
+  content:
+    | string
+    | Array<
+        | { type: "text"; text: string }
+        | { type: "image_url"; image_url: { url: string } }
+        | { type: "tool_result"; tool_use_id: string; content: string }
+      >;
+  tool_calls?: Array<{
+    id: string;
+    type: "function";
+    function: { name: string; arguments: string };
+  }>;
+  tool_call_id?: string;
+  name?: string;
+};
+
+type OpenRouterResponse = {
+  id: string;
+  choices: Array<{
+    message: {
+      content: string | null;
+      tool_calls?: Array<{
+        id: string;
+        type: "function";
+        function: { name: string; arguments: string };
+      }>;
+    };
+  }>;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+    cost?: number;
+  };
+};
+
 function extractCost(response: OpenRouterResponse): number {
   return response.usage?.cost ?? 0;
 }
@@ -134,7 +144,7 @@ type PhaseUsage = {
 };
 
 function printPhaseUsage(phase: number, u: PhaseUsage): void {
-  console.log(
+  logger.debug(
     `Phase ${phase} cost: $${u.cost.toFixed(8)} | tokens in: ${u.promptTokens.toLocaleString()} out: ${u.completionTokens.toLocaleString()}`,
   );
 }
@@ -164,46 +174,6 @@ async function callOpenRouter(
     .json<OpenRouterResponse>();
 }
 
-const phase1Response = await callOpenRouter(
-  [
-    {
-      role: "system",
-      content:
-        "You are an OCR engine. Extract all visible text from images verbatim. Output raw text only — no markdown, no formatting, no commentary.",
-    },
-    {
-      role: "user",
-      content: [
-        {
-          type: "image_url",
-          image_url: { url: image.jpeg[640] },
-        },
-        {
-          type: "text",
-          text: "Extract all visible text from this audiobook cover image. Include the title, subtitle, author name, series name, and any other text you can see. Return only the extracted text, nothing else.",
-        },
-      ],
-    },
-  ],
-  getModel(0),
-);
-
-const ocrText = phase1Response.choices[0]?.message?.content ?? "";
-console.log("Phase 1 - OCR Result:");
-console.log(ocrText);
-const phase1Usage: PhaseUsage = {
-  promptTokens: phase1Response.usage?.prompt_tokens ?? 0,
-  completionTokens: phase1Response.usage?.completion_tokens ?? 0,
-  cost: extractCost(phase1Response),
-};
-totalCost += phase1Usage.cost;
-printPhaseUsage(1, phase1Usage);
-console.log("---");
-
-// --- Phase 2: Google Books metadata collection via tool calling ---
-
-console.log(`Phase 2 model: ${getModel(1)}`);
-
 type GoogleBooksVolume = {
   id: string;
   volumeInfo: {
@@ -224,10 +194,8 @@ type GoogleBooksResponse = {
 };
 
 async function searchGoogleBooks(query: string): Promise<string> {
-  console.log(`  [tool] search_google_books: "${query}"`);
+  logger.debug(`  [tool] search_google_books: "${query}"`);
 
-  // Detect credential type: standard API keys start with "AIza",
-  // OAuth2 access tokens start with "AQ." or "ya29.", or similar short-lived tokens.
   const googleKey = env.GOOGLE_BOOKS_API_KEY;
   const isApiKey = googleKey?.startsWith("AIza");
 
@@ -238,7 +206,6 @@ async function searchGoogleBooks(query: string): Promise<string> {
       if (isApiKey) {
         params.set("key", googleKey);
       } else {
-        // OAuth2 access token — pass as Bearer
         headers["Authorization"] = `Bearer ${googleKey}`;
       }
     }
@@ -247,13 +214,11 @@ async function searchGoogleBooks(query: string): Promise<string> {
         headers,
         timeout: 60_000,
         throwHttpErrors: true,
-        retry: { limit: 0 }, // We handle retries ourselves below
+        retry: { limit: 0 },
       })
       .json<GoogleBooksResponse>();
   }
 
-  // Retry loop: on 429 keep backing off and retrying so the LLM never sees
-  // a rate-limit error. Base delay starts at 10s, doubles each attempt, caps at 5min.
   let attempt = 0;
   let data: GoogleBooksResponse;
   while (true) {
@@ -271,7 +236,7 @@ async function searchGoogleBooks(query: string): Promise<string> {
 
       if (isRateLimited || isTransient) {
         const delaySec = Math.min(10 * 2 ** attempt, 300);
-        console.warn(
+        logger.warn(
           `  [tool] Google Books API ${status} — waiting ${delaySec}s before retry (attempt ${attempt + 1})...`,
         );
         await new Promise((r) => setTimeout(r, delaySec * 1_000));
@@ -356,6 +321,16 @@ const searchGoogleBooksTool = {
   },
 };
 
+const validateGoogleBooksTool = {
+  type: "function",
+  function: {
+    name: "search_google_books",
+    description:
+      "Look up a specific book in the Google Books API to validate or confirm an existing candidate. Use this ONLY to verify metadata (ISBNs, publication date, authors) for a candidate already identified in the previous search phase — not to find new candidates.",
+    parameters: searchGoogleBooksTool.function.parameters,
+  },
+};
+
 const phase2SystemPrompt = `You are a book identification assistant. Your goal is to look for book entries in the Google Books database that may match the audiobook cover image. Do not state or imply a conclusion before completing your searches. Begin tool calls immediately. Respond in plain text without emoji or markdown.
 
 You will be given:
@@ -372,156 +347,6 @@ Your task:
 Your goal is to find candidate books. The initial image is for an audiobook, but that is irrelevant to your task. You do not need to find an audiobook edition, a standard edition will do.
 
 Be thorough: try variations of the title, author name, and series. Explore multiple candidates before concluding.`;
-
-const phase2Messages: OpenRouterMessage[] = [
-  { role: "system", content: phase2SystemPrompt },
-  {
-    role: "user",
-    content: [
-      {
-        type: "image_url",
-        image_url: { url: image.jpeg[640] },
-      },
-      {
-        type: "text",
-        text: `Here is the audiobook cover image. The OCR text extracted from it is:\n\n${ocrText}\n\nPlease search Google Books to find the correct book entry for this audiobook cover.`,
-      },
-    ],
-  },
-];
-
-let phase2FinalContent = "";
-const phase2Usage: PhaseUsage = {
-  promptTokens: 0,
-  completionTokens: 0,
-  cost: 0,
-};
-
-// Agentic tool-use loop
-while (true) {
-  const response = await callOpenRouter(phase2Messages, getModel(1), [
-    searchGoogleBooksTool,
-  ]);
-  phase2Usage.promptTokens += response.usage?.prompt_tokens ?? 0;
-  phase2Usage.completionTokens += response.usage?.completion_tokens ?? 0;
-  phase2Usage.cost += extractCost(response);
-
-  const message = response.choices[0]?.message;
-  if (!message) break;
-
-  const toolCalls = message.tool_calls;
-
-  if (!toolCalls || toolCalls.length === 0) {
-    // No more tool calls — final response
-    // Some models (e.g. Gemini) return content: null on their last tool-use
-    // turn instead of a concluding text message. Treat that as done.
-    phase2FinalContent = message.content ?? "(no final summary from model)";
-    break;
-  }
-
-  // Append assistant message with tool calls
-  phase2Messages.push({
-    role: "assistant",
-    content: message.content ?? "",
-    tool_calls: toolCalls,
-  });
-
-  // Execute each tool call and append results
-  for (const toolCall of toolCalls) {
-    if (toolCall.function.name !== "search_google_books") continue;
-
-    let query = "";
-    try {
-      query = JSON.parse(toolCall.function.arguments).query ?? "";
-    } catch {
-      query = toolCall.function.arguments;
-    }
-
-    const searchResultJson = await searchGoogleBooks(query);
-
-    // Parse results to extract thumbnail URLs for multimodal inclusion
-    let thumbnailParts: Array<{
-      type: "image_url";
-      image_url: { url: string };
-    }> = [];
-    try {
-      const parsed = JSON.parse(searchResultJson) as {
-        results?: Array<{ thumbnail?: string; title?: string }>;
-      };
-      if (parsed.results) {
-        const imagePromises = parsed.results
-          .filter((r) => r.thumbnail)
-          .map(async (r) => {
-            const imgData = await fetchImageAsBase64(r.thumbnail!);
-            if (!imgData) return null;
-            return {
-              type: "image_url" as const,
-              image_url: {
-                url: `data:${imgData.mimeType};base64,${imgData.base64}`,
-              },
-            };
-          });
-        const resolved = await Promise.all(imagePromises);
-        thumbnailParts = resolved.filter(
-          (p): p is { type: "image_url"; image_url: { url: string } } =>
-            p !== null,
-        );
-        if (thumbnailParts.length > 0) {
-          console.log(
-            `  [tool] fetched ${thumbnailParts.length} cover thumbnail(s)`,
-          );
-        }
-      }
-    } catch {
-      // continue without thumbnails
-    }
-
-    // Build tool result message content
-    const toolResultContent: Array<
-      | { type: "text"; text: string }
-      | { type: "image_url"; image_url: { url: string } }
-    > = [{ type: "text", text: searchResultJson }, ...thumbnailParts];
-
-    phase2Messages.push({
-      role: "tool",
-      tool_call_id: toolCall.id,
-      content: toolResultContent as OpenRouterMessage["content"],
-    });
-  }
-}
-
-console.log("Phase 2 - Full conversation context:");
-for (const msg of phase2Messages) {
-  if (msg.role !== "assistant") continue;
-  if (typeof msg.content === "string" && msg.content)
-    console.log(`  [ASSISTANT] ${msg.content}`);
-  if (msg.tool_calls) {
-    for (const tc of msg.tool_calls) {
-      console.log(
-        `  [ASSISTANT → TOOL] ${tc.function.name}(${tc.function.arguments})`,
-      );
-    }
-  }
-}
-console.log("Phase 2 - Final model output:");
-console.log(phase2FinalContent);
-totalCost += phase2Usage.cost;
-printPhaseUsage(2, phase2Usage);
-console.log("---");
-
-// --- Phase 3: Candidate analysis & validation ---
-
-console.log(`Phase 3 model: ${getModel(2)}`);
-
-const validateGoogleBooksTool = {
-  type: "function",
-  function: {
-    name: "search_google_books",
-    description:
-      "Look up a specific book in the Google Books API to validate or confirm an existing candidate. Use this ONLY to verify metadata (ISBNs, publication date, authors) for a candidate already identified in the previous search phase — not to find new candidates.",
-    parameters: searchGoogleBooksTool.function.parameters,
-  },
-};
 
 const phase3SystemPrompt = `You are a book identification expert performing final analysis.
 You will receive:
@@ -550,172 +375,391 @@ UNCERTAIN — Weak or conflicting evidence. OCR recovered little usable text, no
 
 NO_MATCH — No clear match was found. The evidence suggests the title and author are not recognizable, or the book is not in Google Books.`;
 
-const phase3Messages: OpenRouterMessage[] = [
-  { role: "system", content: phase3SystemPrompt },
-  // Carry over all of phase 2's conversation (image, OCR, searches, results)
-  // Skip phase 2's system prompt (index 0)
-  ...phase2Messages.slice(1),
-  // Include phase 2 final output if present
-  ...(phase2FinalContent &&
-  phase2FinalContent !== "(no final summary from model)"
-    ? [{ role: "assistant" as const, content: phase2FinalContent }]
-    : []),
-  {
-    role: "user",
-    content:
-      "Based on the research above, please analyze the candidates and select the best match. Discuss the strengths and weaknesses of this identification, your confidence level, and provide all available metadata for the selected book.",
-  },
-];
-
-let phase3FinalContent = "";
-const phase3Usage: PhaseUsage = {
-  promptTokens: 0,
-  completionTokens: 0,
-  cost: 0,
-};
-
-// Agentic tool-use loop (validation only)
-while (true) {
-  const response = await callOpenRouter(phase3Messages, getModel(2), [
-    validateGoogleBooksTool,
-  ]);
-  phase3Usage.promptTokens += response.usage?.prompt_tokens ?? 0;
-  phase3Usage.completionTokens += response.usage?.completion_tokens ?? 0;
-  phase3Usage.cost += extractCost(response);
-
-  const message = response.choices[0]?.message;
-  if (!message) break;
-
-  const toolCalls = message.tool_calls;
-
-  if (!toolCalls || toolCalls.length === 0) {
-    phase3FinalContent = message.content ?? "(no final analysis from model)";
-    break;
-  }
-
-  // Append assistant message with tool calls
-  phase3Messages.push({
-    role: "assistant",
-    content: message.content ?? "",
-    tool_calls: toolCalls,
-  });
-
-  // Execute each tool call and append results
-  for (const toolCall of toolCalls) {
-    if (toolCall.function.name !== "search_google_books") continue;
-
-    let query = "";
-    try {
-      query = JSON.parse(toolCall.function.arguments).query ?? "";
-    } catch {
-      query = toolCall.function.arguments;
-    }
-
-    const searchResultJson = await searchGoogleBooks(query);
-
-    let thumbnailParts: Array<{
-      type: "image_url";
-      image_url: { url: string };
-    }> = [];
-    try {
-      const parsed = JSON.parse(searchResultJson) as {
-        results?: Array<{ thumbnail?: string; title?: string }>;
-      };
-      if (parsed.results) {
-        const imagePromises = parsed.results
-          .filter((r) => r.thumbnail)
-          .map(async (r) => {
-            const imgData = await fetchImageAsBase64(r.thumbnail!);
-            if (!imgData) return null;
-            return {
-              type: "image_url" as const,
-              image_url: {
-                url: `data:${imgData.mimeType};base64,${imgData.base64}`,
-              },
-            };
-          });
-        const resolved = await Promise.all(imagePromises);
-        thumbnailParts = resolved.filter(
-          (p): p is { type: "image_url"; image_url: { url: string } } =>
-            p !== null,
-        );
-        if (thumbnailParts.length > 0) {
-          console.log(
-            `  [tool] fetched ${thumbnailParts.length} cover thumbnail(s)`,
-          );
-        }
-      }
-    } catch {
-      // continue without thumbnails
-    }
-
-    const toolResultContent: Array<
-      | { type: "text"; text: string }
-      | { type: "image_url"; image_url: { url: string } }
-    > = [{ type: "text", text: searchResultJson }, ...thumbnailParts];
-
-    phase3Messages.push({
-      role: "tool",
-      tool_call_id: toolCall.id,
-      content: toolResultContent as OpenRouterMessage["content"],
-    });
-  }
-}
-
-console.log("Phase 3 - Analysis:");
-console.log(phase3FinalContent);
-totalCost += phase3Usage.cost;
-printPhaseUsage(3, phase3Usage);
-console.log("---");
-
-// --- Phase 4: Structured extraction ---
-
-console.log(`Phase 4 model: ${getModel(3)}`);
-
 const phase4SystemPrompt =
   "You are a structured data extractor. You will receive a book identification analysis. Extract the recommended ISBN-13 and evidence classification into the required JSON format. If the analysis concluded no match was found, set isbn13 to null and evidence to NO_MATCH.";
 
-const phase4Messages: OpenRouterMessage[] = [
-  { role: "system", content: phase4SystemPrompt },
-  { role: "user", content: phase3FinalContent },
-];
+type ShapedImage = Awaited<ReturnType<typeof shapeImageData>>;
 
-const phase4Response = await callOpenRouter(
-  phase4Messages,
-  getModel(3),
-  undefined,
-  {
-    type: "json_schema",
-    json_schema: {
-      name: "isbn_extraction_result",
-      strict: true,
-      schema: isbnResultJsonSchema,
-    },
-  },
-);
+async function processImage(image: ShapedImage): Promise<IsbnExtractionResult | null> {
+  logger.info(`Processing image: ${image.id}`);
+  logger.debug(`Image URL: ${image.jpeg[640]}`);
+  logger.debug(`Phase 1 model: ${getModel(0)}`);
 
-const phase4Raw = phase4Response.choices[0]?.message?.content ?? "";
-const phase4Result = parseIsbnResult(phase4Raw);
+  // --- Phase 1: OCR ---
 
-console.log("Phase 4 - Structured Result:");
-if (phase4Result) {
-  console.log(JSON.stringify(phase4Result, null, 2));
-} else {
-  console.warn(
-    "Phase 4 failed to produce valid structured output. Raw response:",
+  const phase1Response = await callOpenRouter(
+    [
+      {
+        role: "system",
+        content:
+          "You are an OCR engine. Extract all visible text from images verbatim. Output raw text only — no markdown, no formatting, no commentary.",
+      },
+      {
+        role: "user",
+        content: [
+          {
+            type: "image_url",
+            image_url: { url: image.jpeg[640] },
+          },
+          {
+            type: "text",
+            text: "Extract all visible text from this audiobook cover image. Include the title, subtitle, author name, series name, and any other text you can see. Return only the extracted text, nothing else.",
+          },
+        ],
+      },
+    ],
+    getModel(0),
   );
-  console.warn(phase4Raw);
-}
-const phase4Usage: PhaseUsage = {
-  promptTokens: phase4Response.usage?.prompt_tokens ?? 0,
-  completionTokens: phase4Response.usage?.completion_tokens ?? 0,
-  cost: extractCost(phase4Response),
-};
-totalCost += phase4Usage.cost;
-printPhaseUsage(4, phase4Usage);
-console.log("---");
 
-console.log(
+  const ocrText = phase1Response.choices[0]?.message?.content ?? "";
+  logger.debug("Phase 1 - OCR Result:");
+  logger.debug(ocrText);
+  const phase1Usage: PhaseUsage = {
+    promptTokens: phase1Response.usage?.prompt_tokens ?? 0,
+    completionTokens: phase1Response.usage?.completion_tokens ?? 0,
+    cost: extractCost(phase1Response),
+  };
+  totalCost += phase1Usage.cost;
+  printPhaseUsage(1, phase1Usage);
+
+  // --- Phase 2: Google Books metadata collection via tool calling ---
+
+  logger.debug(`Phase 2 model: ${getModel(1)}`);
+
+  const phase2Messages: OpenRouterMessage[] = [
+    { role: "system", content: phase2SystemPrompt },
+    {
+      role: "user",
+      content: [
+        {
+          type: "image_url",
+          image_url: { url: image.jpeg[640] },
+        },
+        {
+          type: "text",
+          text: `Here is the audiobook cover image. The OCR text extracted from it is:\n\n${ocrText}\n\nPlease search Google Books to find the correct book entry for this audiobook cover.`,
+        },
+      ],
+    },
+  ];
+
+  let phase2FinalContent = "";
+  const phase2Usage: PhaseUsage = {
+    promptTokens: 0,
+    completionTokens: 0,
+    cost: 0,
+  };
+
+  while (true) {
+    const response = await callOpenRouter(phase2Messages, getModel(1), [
+      searchGoogleBooksTool,
+    ]);
+    phase2Usage.promptTokens += response.usage?.prompt_tokens ?? 0;
+    phase2Usage.completionTokens += response.usage?.completion_tokens ?? 0;
+    phase2Usage.cost += extractCost(response);
+
+    const message = response.choices[0]?.message;
+    if (!message) break;
+
+    const toolCalls = message.tool_calls;
+
+    if (!toolCalls || toolCalls.length === 0) {
+      phase2FinalContent = message.content ?? "(no final summary from model)";
+      break;
+    }
+
+    phase2Messages.push({
+      role: "assistant",
+      content: message.content ?? "",
+      tool_calls: toolCalls,
+    });
+
+    for (const toolCall of toolCalls) {
+      if (toolCall.function.name !== "search_google_books") continue;
+
+      let query = "";
+      try {
+        query = JSON.parse(toolCall.function.arguments).query ?? "";
+      } catch {
+        query = toolCall.function.arguments;
+      }
+
+      const searchResultJson = await searchGoogleBooks(query);
+
+      let thumbnailParts: Array<{
+        type: "image_url";
+        image_url: { url: string };
+      }> = [];
+      try {
+        const parsed = JSON.parse(searchResultJson) as {
+          results?: Array<{ thumbnail?: string; title?: string }>;
+        };
+        if (parsed.results) {
+          const imagePromises = parsed.results
+            .filter((r) => r.thumbnail)
+            .map(async (r) => {
+              const imgData = await fetchImageAsBase64(r.thumbnail!);
+              if (!imgData) return null;
+              return {
+                type: "image_url" as const,
+                image_url: {
+                  url: `data:${imgData.mimeType};base64,${imgData.base64}`,
+                },
+              };
+            });
+          const resolved = await Promise.all(imagePromises);
+          thumbnailParts = resolved.filter(
+            (p): p is { type: "image_url"; image_url: { url: string } } =>
+              p !== null,
+          );
+          if (thumbnailParts.length > 0) {
+            logger.debug(
+              `  [tool] fetched ${thumbnailParts.length} cover thumbnail(s)`,
+            );
+          }
+        }
+      } catch {
+        // continue without thumbnails
+      }
+
+      const toolResultContent: Array<
+        | { type: "text"; text: string }
+        | { type: "image_url"; image_url: { url: string } }
+      > = [{ type: "text", text: searchResultJson }, ...thumbnailParts];
+
+      phase2Messages.push({
+        role: "tool",
+        tool_call_id: toolCall.id,
+        content: toolResultContent as OpenRouterMessage["content"],
+      });
+    }
+  }
+
+  logger.debug("Phase 2 - Full conversation context:");
+  for (const msg of phase2Messages) {
+    if (msg.role !== "assistant") continue;
+    if (typeof msg.content === "string" && msg.content)
+      logger.debug(`  [ASSISTANT] ${msg.content}`);
+    if (msg.tool_calls) {
+      for (const tc of msg.tool_calls) {
+        logger.debug(
+          `  [ASSISTANT → TOOL] ${tc.function.name}(${tc.function.arguments})`,
+        );
+      }
+    }
+  }
+  logger.debug("Phase 2 - Final model output:");
+  logger.debug(phase2FinalContent);
+  totalCost += phase2Usage.cost;
+  printPhaseUsage(2, phase2Usage);
+
+  // --- Phase 3: Candidate analysis & validation ---
+
+  logger.debug(`Phase 3 model: ${getModel(2)}`);
+
+  const phase3Messages: OpenRouterMessage[] = [
+    { role: "system", content: phase3SystemPrompt },
+    ...phase2Messages.slice(1),
+    ...(phase2FinalContent &&
+    phase2FinalContent !== "(no final summary from model)"
+      ? [{ role: "assistant" as const, content: phase2FinalContent }]
+      : []),
+    {
+      role: "user",
+      content:
+        "Based on the research above, please analyze the candidates and select the best match. Discuss the strengths and weaknesses of this identification, your confidence level, and provide all available metadata for the selected book.",
+    },
+  ];
+
+  let phase3FinalContent = "";
+  const phase3Usage: PhaseUsage = {
+    promptTokens: 0,
+    completionTokens: 0,
+    cost: 0,
+  };
+
+  while (true) {
+    const response = await callOpenRouter(phase3Messages, getModel(2), [
+      validateGoogleBooksTool,
+    ]);
+    phase3Usage.promptTokens += response.usage?.prompt_tokens ?? 0;
+    phase3Usage.completionTokens += response.usage?.completion_tokens ?? 0;
+    phase3Usage.cost += extractCost(response);
+
+    const message = response.choices[0]?.message;
+    if (!message) break;
+
+    const toolCalls = message.tool_calls;
+
+    if (!toolCalls || toolCalls.length === 0) {
+      phase3FinalContent = message.content ?? "(no final analysis from model)";
+      break;
+    }
+
+    phase3Messages.push({
+      role: "assistant",
+      content: message.content ?? "",
+      tool_calls: toolCalls,
+    });
+
+    for (const toolCall of toolCalls) {
+      if (toolCall.function.name !== "search_google_books") continue;
+
+      let query = "";
+      try {
+        query = JSON.parse(toolCall.function.arguments).query ?? "";
+      } catch {
+        query = toolCall.function.arguments;
+      }
+
+      const searchResultJson = await searchGoogleBooks(query);
+
+      let thumbnailParts: Array<{
+        type: "image_url";
+        image_url: { url: string };
+      }> = [];
+      try {
+        const parsed = JSON.parse(searchResultJson) as {
+          results?: Array<{ thumbnail?: string; title?: string }>;
+        };
+        if (parsed.results) {
+          const imagePromises = parsed.results
+            .filter((r) => r.thumbnail)
+            .map(async (r) => {
+              const imgData = await fetchImageAsBase64(r.thumbnail!);
+              if (!imgData) return null;
+              return {
+                type: "image_url" as const,
+                image_url: {
+                  url: `data:${imgData.mimeType};base64,${imgData.base64}`,
+                },
+              };
+            });
+          const resolved = await Promise.all(imagePromises);
+          thumbnailParts = resolved.filter(
+            (p): p is { type: "image_url"; image_url: { url: string } } =>
+              p !== null,
+          );
+          if (thumbnailParts.length > 0) {
+            logger.debug(
+              `  [tool] fetched ${thumbnailParts.length} cover thumbnail(s)`,
+            );
+          }
+        }
+      } catch {
+        // continue without thumbnails
+      }
+
+      const toolResultContent: Array<
+        | { type: "text"; text: string }
+        | { type: "image_url"; image_url: { url: string } }
+      > = [{ type: "text", text: searchResultJson }, ...thumbnailParts];
+
+      phase3Messages.push({
+        role: "tool",
+        tool_call_id: toolCall.id,
+        content: toolResultContent as OpenRouterMessage["content"],
+      });
+    }
+  }
+
+  logger.debug("Phase 3 - Analysis:");
+  logger.debug(phase3FinalContent);
+  totalCost += phase3Usage.cost;
+  printPhaseUsage(3, phase3Usage);
+
+  // --- Phase 4: Structured extraction ---
+
+  logger.debug(`Phase 4 model: ${getModel(3)}`);
+
+  const phase4Messages: OpenRouterMessage[] = [
+    { role: "system", content: phase4SystemPrompt },
+    { role: "user", content: phase3FinalContent },
+  ];
+
+  const phase4Response = await callOpenRouter(
+    phase4Messages,
+    getModel(3),
+    undefined,
+    {
+      type: "json_schema",
+      json_schema: {
+        name: "isbn_extraction_result",
+        strict: true,
+        schema: isbnResultJsonSchema,
+      },
+    },
+  );
+
+  const phase4Raw = phase4Response.choices[0]?.message?.content ?? "";
+  const phase4Result = parseIsbnResult(phase4Raw);
+
+  if (phase4Result) {
+    logger.info(
+      `Result: ${image.id} → ISBN ${phase4Result.isbn13 ?? "null"} (${phase4Result.evidence}) — "${phase4Result.title ?? "unknown"}"`,
+    );
+    logger.debug("Phase 4 - Structured Result:");
+    logger.debug(JSON.stringify(phase4Result, null, 2));
+  } else {
+    logger.warn(
+      "Phase 4 failed to produce valid structured output. Raw response:",
+    );
+    logger.warn(phase4Raw);
+  }
+  const phase4Usage: PhaseUsage = {
+    promptTokens: phase4Response.usage?.prompt_tokens ?? 0,
+    completionTokens: phase4Response.usage?.completion_tokens ?? 0,
+    cost: extractCost(phase4Response),
+  };
+  totalCost += phase4Usage.cost;
+  printPhaseUsage(4, phase4Usage);
+
+  return phase4Result;
+}
+
+// --- Image selection ---
+
+let images: ShapedImage[];
+
+if (imageId) {
+  const dbImage = await sqlTools.one(DBImageDataValidator)`
+    SELECT id, source, extension, blurhash, from_old_database, searchable
+    FROM image
+    WHERE id = ${imageId}
+  `;
+  images = [await shapeImageData(dbImage)];
+} else {
+  const dbImages = await sqlTools.many(DBImageDataValidator)`
+    SELECT id, source, extension, blurhash, from_old_database, searchable
+    FROM image
+    ${tablesample ? sql`TABLESAMPLE BERNOULLI(${tablesample})` : sql``}
+    WHERE isbn IS NULL AND deleted = false
+  `;
+  images = await shapeImageDataArray(dbImages);
+  logger.info(`Found ${images.length} images to process`);
+}
+
+// --- Main loop ---
+
+const expandedModel = [0, 1, 2, 3].map(getModel).join(":");
+
+for (const image of images) {
+  const result = await processImage(image);
+  if (save && result) {
+    await sqlTools.query`
+      UPDATE image
+      SET isbn = ${result.isbn13},
+          isbn_confidence = ${result.evidence},
+          isbn_model = ${expandedModel}
+      WHERE id = ${image.id}
+    `;
+    logger.info(
+      `Saved: ${image.id} → ISBN ${result.isbn13} (${result.evidence})`,
+    );
+  }
+}
+
+logger.info(
   `Total cost: $${totalCost.toFixed(8)} | estimated cost per 1k runs: $${(totalCost * 1000).toFixed(2)}`,
 );
 

@@ -21,7 +21,7 @@ tasks:
       - pnpm exec tsc --noEmit
 
   extract_isbn:
-    desc: Run ISBN extraction pipeline (Phases 1-2). Pass args after --, e.g. -- --image-id <uuid> [--model phase1model|phase2model]
+    desc: Run ISBN extraction pipeline. Pass args after --, e.g. -- --image-id <uuid> | --tablesample <pct> | --complete [--save] [--model phase1:phase2:phase3:phase4]
     env:
       NODE_OPTIONS: "--import=./src/maintenance/cloudflare-loader.mjs"
     cmds:
