@@ -12,6 +12,7 @@ import { logger } from "@/server/logger";
 import { z } from "zod";
 import zodToJsonSchema from "zod-to-json-schema";
 import { jsonrepair } from "jsonrepair";
+import pLimit from "p-limit";
 
 // Suppress logs from other modules until we set the level from CLI flags
 logger.setLogLevel("disabled");
@@ -35,7 +36,8 @@ program
     "-l, --log-level <level>",
     "Log level: debug | info | warn | error",
     "info",
-  );
+  )
+  .option("-t, --threads <number>", "Number of images to process in parallel", "1");
 
 program.parse(process.argv);
 
@@ -45,6 +47,7 @@ const save: boolean = program.opts().save ?? false;
 const tablesample: string | undefined = program.opts().tablesample;
 const complete: boolean = program.opts().complete ?? false;
 const logLevel: string = program.opts().logLevel ?? "info";
+const threads: number = parseInt(program.opts().threads, 10);
 
 logger.setLogLevel(logLevel as Parameters<typeof logger.setLogLevel>[0]);
 
@@ -262,14 +265,14 @@ type GoogleBooksResponse = {
   items?: GoogleBooksVolume[];
 };
 
-async function searchGoogleBooks(query: string): Promise<string> {
+async function searchGoogleBooks(query: string, quotaUser: string): Promise<string> {
   logger.debug(`  [tool] search_google_books: "${query}"`);
 
   const googleKey = env.GOOGLE_BOOKS_API_KEY;
   const isApiKey = googleKey?.startsWith("AIza");
 
   async function fetchBooks(): Promise<GoogleBooksResponse> {
-    const params = new URLSearchParams({ q: query, maxResults: "5" });
+    const params = new URLSearchParams({ q: query, maxResults: "5", quotaUser });
     const headers: Record<string, string> = {};
     if (googleKey) {
       if (isApiKey) {
@@ -558,7 +561,7 @@ async function processImage(
         query = toolCall.function.arguments;
       }
 
-      const searchResultJson = await searchGoogleBooks(query);
+      const searchResultJson = await searchGoogleBooks(query, image.id);
 
       let thumbnailParts: Array<{
         type: "image_url";
@@ -683,7 +686,7 @@ async function processImage(
         query = toolCall.function.arguments;
       }
 
-      const searchResultJson = await searchGoogleBooks(query);
+      const searchResultJson = await searchGoogleBooks(query, image.id);
 
       let thumbnailParts: Array<{
         type: "image_url";
@@ -815,33 +818,38 @@ if (imageId) {
 const expandedModel = [0, 1, 2, 3].map(getModel).join(":");
 
 const isBatch = !imageId;
+const limit = pLimit(threads);
 
-for (const image of images) {
-  let result: IsbnExtractionResult | null;
-  try {
-    result = await processImage(image);
-  } catch (err: unknown) {
-    if (isBatch) {
-      logger.error(
-        `Failed to process image ${image.id}: ${err instanceof Error ? err.message : String(err)}`,
-      );
-      continue;
-    }
-    throw err;
-  }
-  if (save && result) {
-    await sqlTools.query`
-      UPDATE image
-      SET isbn = ${result.isbn13},
-          isbn_confidence = ${result.evidence},
-          isbn_model = ${expandedModel}
-      WHERE id = ${image.id}
-    `;
-    logger.info(
-      `Saved: ${image.id} → ISBN ${result.isbn13} (${result.evidence})`,
-    );
-  }
-}
+await Promise.all(
+  images.map((image) =>
+    limit(async () => {
+      let result: IsbnExtractionResult | null;
+      try {
+        result = await processImage(image);
+      } catch (err: unknown) {
+        if (isBatch) {
+          logger.error(
+            `Failed to process image ${image.id}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+          return;
+        }
+        throw err;
+      }
+      if (save && result) {
+        await sqlTools.query`
+          UPDATE image
+          SET isbn = ${result.isbn13},
+              isbn_confidence = ${result.evidence},
+              isbn_model = ${expandedModel}
+          WHERE id = ${image.id}
+        `;
+        logger.info(
+          `Saved: ${image.id} → ISBN ${result.isbn13} (${result.evidence})`,
+        );
+      }
+    }),
+  ),
+);
 
 logger.info(
   `Total cost: $${totalCost.toFixed(8)} | estimated cost per 1k runs: $${(totalCost * 1000).toFixed(2)}`,
