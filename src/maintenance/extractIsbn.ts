@@ -1,6 +1,10 @@
 import { Command } from "commander";
 import { getDbWriteConnection } from "@/server/db";
-import { DBImageDataValidator, shapeImageData, shapeImageDataArray } from "@/server/imageData";
+import {
+  DBImageDataValidator,
+  shapeImageData,
+  shapeImageDataArray,
+} from "@/server/imageData";
 import { getEnv } from "@/server/env";
 import ky from "ky";
 import "dotenv/config";
@@ -22,7 +26,10 @@ program
     "google/gemini-2.5-flash-lite",
   )
   .option("--save", "Save results to the database")
-  .option("-s, --tablesample <number>", "Process a random sample of images missing an ISBN (percentage)")
+  .option(
+    "-s, --tablesample <number>",
+    "Process a random sample of images missing an ISBN (percentage)",
+  )
   .option("--complete", "Process all images missing an ISBN")
   .option(
     "-l, --log-level <level>",
@@ -116,6 +123,8 @@ type OpenRouterMessage = {
 type OpenRouterResponse = {
   id: string;
   choices: Array<{
+    finish_reason: string | null;
+    native_finish_reason?: string | null;
     message: {
       content: string | null;
       tool_calls?: Array<{
@@ -157,21 +166,81 @@ async function callOpenRouter(
   tools?: object[],
   responseFormat?: object,
 ): Promise<OpenRouterResponse> {
-  return ky
-    .post("https://openrouter.ai/api/v1/chat/completions", {
-      headers: {
-        Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      json: {
-        model: phaseModel,
-        messages,
-        ...(tools ? { tools } : {}),
-        ...(responseFormat ? { response_format: responseFormat } : {}),
-      },
-      timeout: 120_000,
-    })
-    .json<OpenRouterResponse>();
+  let attempt = 0;
+  while (true) {
+    let response: OpenRouterResponse;
+    try {
+      response = await ky
+        .post("https://openrouter.ai/api/v1/chat/completions", {
+          headers: {
+            Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          json: {
+            model: phaseModel,
+            messages,
+            ...(tools ? { tools } : {}),
+            ...(responseFormat ? { response_format: responseFormat } : {}),
+          },
+          timeout: 120_000,
+          throwHttpErrors: true,
+          retry: { limit: 0 },
+        })
+        .json<OpenRouterResponse>();
+    } catch (err: unknown) {
+      const status =
+        err instanceof Error &&
+        "response" in err &&
+        (err as { response?: { status?: number } }).response?.status;
+      const isRateLimited = status === 429;
+      const isTransient =
+        status === 500 || status === 502 || status === 503 || status === 504;
+
+      if (isRateLimited || isTransient) {
+        logger.warn(
+          `OpenRouter API ${status} — retrying (attempt ${attempt + 1})...`,
+        );
+        attempt++;
+        continue;
+      }
+      throw err;
+    }
+
+    const choice = response.choices[0];
+    const finishReason = choice?.finish_reason;
+    const nativeFinishReason = choice?.native_finish_reason;
+    const finishReasonSuffix = nativeFinishReason
+      ? ` (native: ${nativeFinishReason})`
+      : "";
+
+    if (finishReason === "error") {
+      attempt++;
+      if (attempt > 10) {
+        throw new Error(
+          `OpenRouter returned finish_reason=error${finishReasonSuffix} after ${attempt} attempts`,
+        );
+      }
+      logger.warn(
+        `OpenRouter returned finish_reason=error${finishReasonSuffix} — retrying (attempt ${attempt})...`,
+      );
+      continue;
+    }
+
+    if (finishReason === "MALFORMED_FUNCTION_CALL") {
+      attempt++;
+      if (attempt > 5) {
+        throw new Error(
+          `OpenRouter returned MALFORMED_FUNCTION_CALL${finishReasonSuffix} after ${attempt} attempts`,
+        );
+      }
+      logger.warn(
+        `OpenRouter returned MALFORMED_FUNCTION_CALL${finishReasonSuffix} — retrying (attempt ${attempt})...`,
+      );
+      continue;
+    }
+
+    return response;
+  }
 }
 
 type GoogleBooksVolume = {
@@ -380,7 +449,9 @@ const phase4SystemPrompt =
 
 type ShapedImage = Awaited<ReturnType<typeof shapeImageData>>;
 
-async function processImage(image: ShapedImage): Promise<IsbnExtractionResult | null> {
+async function processImage(
+  image: ShapedImage,
+): Promise<IsbnExtractionResult | null> {
   logger.info(`Processing image: ${image.id}`);
   logger.debug(`Image URL: ${image.jpeg[640]}`);
   logger.debug(`Phase 1 model: ${getModel(0)}`);
@@ -411,7 +482,10 @@ async function processImage(image: ShapedImage): Promise<IsbnExtractionResult | 
     getModel(0),
   );
 
-  const ocrText = phase1Response.choices[0]?.message?.content ?? "";
+  const ocrText = phase1Response.choices[0]?.message?.content;
+  if (!ocrText) {
+    throw new Error("Phase 1 OCR returned empty content");
+  }
   logger.debug("Phase 1 - OCR Result:");
   logger.debug(ocrText);
   const phase1Usage: PhaseUsage = {
@@ -464,7 +538,7 @@ async function processImage(image: ShapedImage): Promise<IsbnExtractionResult | 
     const toolCalls = message.tool_calls;
 
     if (!toolCalls || toolCalls.length === 0) {
-      phase2FinalContent = message.content ?? "(no final summary from model)";
+      phase2FinalContent = message.content!;
       break;
     }
 
@@ -560,10 +634,7 @@ async function processImage(image: ShapedImage): Promise<IsbnExtractionResult | 
   const phase3Messages: OpenRouterMessage[] = [
     { role: "system", content: phase3SystemPrompt },
     ...phase2Messages.slice(1),
-    ...(phase2FinalContent &&
-    phase2FinalContent !== "(no final summary from model)"
-      ? [{ role: "assistant" as const, content: phase2FinalContent }]
-      : []),
+    { role: "assistant" as const, content: phase2FinalContent },
     {
       role: "user",
       content:
@@ -592,7 +663,7 @@ async function processImage(image: ShapedImage): Promise<IsbnExtractionResult | 
     const toolCalls = message.tool_calls;
 
     if (!toolCalls || toolCalls.length === 0) {
-      phase3FinalContent = message.content ?? "(no final analysis from model)";
+      phase3FinalContent = message.content!;
       break;
     }
 
@@ -743,8 +814,21 @@ if (imageId) {
 
 const expandedModel = [0, 1, 2, 3].map(getModel).join(":");
 
+const isBatch = !imageId;
+
 for (const image of images) {
-  const result = await processImage(image);
+  let result: IsbnExtractionResult | null;
+  try {
+    result = await processImage(image);
+  } catch (err: unknown) {
+    if (isBatch) {
+      logger.error(
+        `Failed to process image ${image.id}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      continue;
+    }
+    throw err;
+  }
   if (save && result) {
     await sqlTools.query`
       UPDATE image
