@@ -265,6 +265,23 @@ type GoogleBooksResponse = {
   items?: GoogleBooksVolume[];
 };
 
+// Per-quotaUser rate limiter for Google Books API.
+// Google allows 1 req/sec per quota user; we pace at 1 req/1.2s to stay comfortably under.
+const GOOGLE_BOOKS_INTERVAL_MS = 1_200;
+const googleBooksNextAvailable = new Map<string, number>();
+
+async function waitForGoogleBooksRateLimit(quotaUser: string): Promise<void> {
+  const now = Date.now();
+  const next = googleBooksNextAvailable.get(quotaUser) ?? 0;
+  const wait = next - now;
+  // Update atomically before any await so concurrent callers queue correctly.
+  googleBooksNextAvailable.set(quotaUser, Math.max(now, next) + GOOGLE_BOOKS_INTERVAL_MS);
+  if (wait > 0) {
+    logger.info(`  [pace] Google Books: waiting ${wait}ms for quota user ${quotaUser}`);
+    await new Promise((r) => setTimeout(r, wait));
+  }
+}
+
 async function searchGoogleBooks(query: string, quotaUser: string): Promise<string> {
   logger.debug(`  [tool] search_google_books: "${query}"`);
 
@@ -272,6 +289,7 @@ async function searchGoogleBooks(query: string, quotaUser: string): Promise<stri
   const isApiKey = googleKey?.startsWith("AIza");
 
   async function fetchBooks(): Promise<GoogleBooksResponse> {
+    await waitForGoogleBooksRateLimit(quotaUser);
     const params = new URLSearchParams({ q: query, maxResults: "5", quotaUser });
     const headers: Record<string, string> = {};
     if (googleKey) {
