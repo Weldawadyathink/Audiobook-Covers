@@ -37,7 +37,11 @@ program
     "Log level: debug | info | warn | error",
     "info",
   )
-  .option("-t, --threads <number>", "Number of images to process in parallel", "1");
+  .option(
+    "-t, --threads <number>",
+    "Number of images to process in parallel",
+    "1",
+  );
 
 program.parse(process.argv);
 
@@ -212,36 +216,32 @@ async function callOpenRouter(
     const choice = response.choices[0];
     const finishReason = choice?.finish_reason;
     const nativeFinishReason = choice?.native_finish_reason;
-    const finishReasonSuffix = nativeFinishReason
-      ? ` (native: ${nativeFinishReason})`
-      : "";
 
-    if (finishReason === "error") {
+    if (nativeFinishReason === "MALFORMED_FUNCTION_CALL") {
       attempt++;
       if (attempt > 10) {
         throw new Error(
-          `OpenRouter returned finish_reason=error${finishReasonSuffix} after ${attempt} attempts`,
+          `OpenRouter returned MALFORMED_FUNCTION_CALL after ${attempt} attempts`,
         );
       }
-      logger.warn(
-        `OpenRouter returned finish_reason=error${finishReasonSuffix} — retrying (attempt ${attempt})...`,
+      logger.debug(
+        `OpenRouter returned MALFORMED_FUNCTION_CALL — retrying (attempt ${attempt})...`,
       );
       continue;
     }
 
-    if (finishReason === "MALFORMED_FUNCTION_CALL") {
+    if (finishReason === "error") {
       attempt++;
       if (attempt > 5) {
         throw new Error(
-          `OpenRouter returned MALFORMED_FUNCTION_CALL${finishReasonSuffix} after ${attempt} attempts`,
+          `OpenRouter returned finish_reason=${finishReason}:${nativeFinishReason} after ${attempt} attempts`,
         );
       }
-      logger.warn(
-        `OpenRouter returned MALFORMED_FUNCTION_CALL${finishReasonSuffix} — retrying (attempt ${attempt})...`,
+      logger.debug(
+        `OpenRouter returned finish_reason=${finishReason}:${nativeFinishReason} — retrying (attempt ${attempt})...`,
       );
       continue;
     }
-
     return response;
   }
 }
@@ -275,14 +275,22 @@ async function waitForGoogleBooksRateLimit(quotaUser: string): Promise<void> {
   const next = googleBooksNextAvailable.get(quotaUser) ?? 0;
   const wait = next - now;
   // Update atomically before any await so concurrent callers queue correctly.
-  googleBooksNextAvailable.set(quotaUser, Math.max(now, next) + GOOGLE_BOOKS_INTERVAL_MS);
+  googleBooksNextAvailable.set(
+    quotaUser,
+    Math.max(now, next) + GOOGLE_BOOKS_INTERVAL_MS,
+  );
   if (wait > 0) {
-    logger.info(`  [pace] Google Books: waiting ${wait}ms for quota user ${quotaUser}`);
+    logger.info(
+      `  [pace] Google Books: waiting ${wait}ms for quota user ${quotaUser}`,
+    );
     await new Promise((r) => setTimeout(r, wait));
   }
 }
 
-async function searchGoogleBooks(query: string, quotaUser: string): Promise<string> {
+async function searchGoogleBooks(
+  query: string,
+  quotaUser: string,
+): Promise<string> {
   logger.debug(`  [tool] search_google_books: "${query}"`);
 
   const googleKey = env.GOOGLE_BOOKS_API_KEY;
@@ -290,7 +298,11 @@ async function searchGoogleBooks(query: string, quotaUser: string): Promise<stri
 
   async function fetchBooks(): Promise<GoogleBooksResponse> {
     await waitForGoogleBooksRateLimit(quotaUser);
-    const params = new URLSearchParams({ q: query, maxResults: "5", quotaUser });
+    const params = new URLSearchParams({
+      q: query,
+      maxResults: "5",
+      quotaUser,
+    });
     const headers: Record<string, string> = {};
     if (googleKey) {
       if (isApiKey) {
