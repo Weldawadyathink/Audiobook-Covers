@@ -5,3 +5,5 @@ node_modules
 dist
 .wrangler
 search-test-results.csv
+
+.trigger
