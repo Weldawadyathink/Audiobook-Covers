@@ -41,6 +41,16 @@ tasks:
     cmds:
       - pnpm tsx src/maintenance/testRunner.ts {{.CLI_ARGS}}
 
+  trigger:dev:
+    desc: Start the Trigger.dev local dev runner
+    cmds:
+      - pnpm dlx trigger.dev@latest dev
+
+  trigger:deploy:
+    desc: Deploy Trigger.dev tasks to production
+    cmds:
+      - pnpm dlx trigger.dev@latest deploy
+
   deploy:dev:
     desc: Build and deploy to Cloudflare (development env)
     deps: [build]
