@@ -3,6 +3,7 @@ import {
   S3Client,
   GetObjectCommand,
   PutObjectCommand,
+  DeleteObjectCommand,
   NoSuchKey,
 } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
@@ -15,9 +16,6 @@ const worksDumpUrl = "https://openlibrary.org/data/ol_dump_works_latest.txt.gz";
 const authorsDumpUrl =
   "https://openlibrary.org/data/ol_dump_authors_latest.txt.gz";
 const metadataKey = "openlibrary/etl-metadata.json";
-const tmpWorksParquetPath = "/tmp/works.parquet";
-const tmpAuthorsParquetPath = "/tmp/authors.parquet";
-
 const worksParquetFile = `s3://${env.S3_BUCKET}/openlibrary/works.parquet`;
 const authorsParquetFile = `s3://${env.S3_BUCKET}/openlibrary/authors.parquet`;
 
@@ -94,32 +92,6 @@ async function getStoredMetadata(
   }
 }
 
-async function uploadParquet(
-  s3: S3Client,
-  bucket: string,
-  key: string,
-  localPath: string,
-): Promise<void> {
-  const upload = new Upload({
-    client: s3,
-    params: {
-      Bucket: bucket,
-      Key: key,
-      Body: fs.createReadStream(localPath),
-      ContentType: "application/octet-stream",
-    },
-    partSize: 100 * 1024 * 1024,
-    queueSize: 2,
-  });
-  const toMB = (n: number) =>
-    (n / 1024 / 1024).toLocaleString("en-US", { maximumFractionDigits: 1 });
-  upload.on("httpUploadProgress", (p) => {
-    const total = p.total != null ? `${toMB(p.total)}` : "?";
-    console.log(`Upload ${key}: ${toMB(p.loaded ?? 0)} / ${total} MB`);
-  });
-  await upload.done();
-}
-
 async function runEtl(): Promise<void> {
   const s3 = makeS3Client();
 
@@ -129,25 +101,34 @@ async function runEtl(): Promise<void> {
 
   const storedMeta = await getStoredMetadata(s3, env.S3_BUCKET);
   const upToDate = storedMeta != null && storedMeta.dump_date === dumpDate;
-  const worksAlreadyDone = upToDate;
-  const authorsAlreadyDone = upToDate && storedMeta!.authors_row_count != null;
 
-  if (worksAlreadyDone && authorsAlreadyDone) {
+  if (upToDate) {
     console.log(`Already imported dump for ${dumpDate}. Skipping.`);
     return;
   }
 
-  if (fs.existsSync(tmpWorksParquetPath)) fs.unlinkSync(tmpWorksParquetPath);
-  if (fs.existsSync(tmpAuthorsParquetPath))
-    fs.unlinkSync(tmpAuthorsParquetPath);
+  await s3.send(
+    new DeleteObjectCommand({
+      Bucket: env.S3_BUCKET,
+      Key: metadataKey,
+    }),
+  );
 
   const db = await DuckDBInstance.create("/tmp/duck.db");
   const con = await db.connect();
 
-  let worksRows = storedMeta?.works_row_count ?? 0;
-  let authorsRows: number | undefined = storedMeta?.authors_row_count;
-
   try {
+    try {
+      fs.mkdirSync("/tmp/duckdb_home");
+    } catch (e) {
+      // directory already exists, ignore
+    }
+    try {
+      fs.mkdirSync("/tmp/duckdb_temp");
+    } catch (e) {
+      // directory already exists, ignore
+    }
+
     await con.run("SET home_directory='/tmp/duckdb_home'");
     await con.run("SET temp_directory='/tmp/duckdb_temp'");
 
@@ -167,9 +148,8 @@ async function runEtl(): Promise<void> {
       );
     `);
 
-    if (!authorsAlreadyDone) {
-      console.log("Downloading authors dump and converting to Parquet");
-      await con.run(`
+    console.log("Downloading authors dump and copying to S3 parquet");
+    await con.run(`
         COPY (
           SELECT
             replace(json_extract_string(data, '$.key'), '/authors/', '') AS olid,
@@ -202,23 +182,21 @@ async function runEtl(): Promise<void> {
         ) TO '${authorsParquetFile}' (FORMAT PARQUET, COMPRESSION ZSTD)
       `);
 
-      const countResult = await con.run(
-        `SELECT count(*) FROM '${authorsParquetFile}'`,
-      );
-      const rows = await countResult.getRows();
-      authorsRows = Number(rows[0][0]);
-      console.log(
-        `Wrote ${authorsRows.toLocaleString()} authors rows to Parquet in S3`,
-      );
-    }
+    const authorsCountResult = await con.run(
+      `SELECT count(*) FROM '${authorsParquetFile}'`,
+    );
+    const authorsRows = await authorsCountResult.getRows();
+    const countAuthors = Number(authorsRows[0][0]);
+    console.log(
+      `Wrote ${countAuthors.toLocaleString()} authors rows to Parquet in S3`,
+    );
 
-    if (!worksAlreadyDone) {
-      // Stream the gzipped TSV from OpenLibrary directly to Parquet,
-      // flattening the top-level JSON fields into typed columns.
-      // Complex nested types (authors, links, etc.) are kept as raw JSON VARCHAR.
-      // /type/text fields are polymorphic: either a plain string or {type, value}.
-      console.log("Downloading works dump and converting to Parquet");
-      await con.run(`
+    // Stream the gzipped TSV from OpenLibrary directly to Parquet,
+    // flattening the top-level JSON fields into typed columns.
+    // Complex nested types (authors, links, etc.) are kept as raw JSON VARCHAR.
+    // /type/text fields are polymorphic: either a plain string or {type, value}.
+    console.log("Downloading works dump and copying to S3 parquet");
+    await con.run(`
         COPY (
           SELECT
             replace(json_extract_string(data, '$.key'), '/works/', '') AS olid,
@@ -262,25 +240,24 @@ async function runEtl(): Promise<void> {
         ) TO '${worksParquetFile}' (FORMAT PARQUET, COMPRESSION ZSTD)
       `);
 
-      const countResult = await con.run(
-        `SELECT count(*) FROM '${worksParquetFile}'`,
-      );
-      const rows = await countResult.getRows();
-      worksRows = Number(rows[0][0]);
-      console.log(
-        `Wrote ${worksRows.toLocaleString()} works rows to Parquet in S3`,
-      );
-    }
+    const worksCountResult = await con.run(
+      `SELECT count(*) FROM '${worksParquetFile}'`,
+    );
+    const worksRows = await worksCountResult.getRows();
+    const countWorks = Number(worksRows[0][0]);
+    console.log(
+      `Wrote ${countWorks.toLocaleString()} works rows to Parquet in S3`,
+    );
 
     const meta: EtlMetadata = {
       dump_date: dumpDate,
-      works_row_count: worksRows,
-      authors_row_count: authorsRows,
+      works_row_count: countWorks,
+      authors_row_count: countAuthors,
       updated_at: new Date().toISOString(),
     };
     await s3.send(
       new PutObjectCommand({
-        Bucket: bucket,
+        Bucket: env.S3_BUCKET,
         Key: metadataKey,
         Body: JSON.stringify(meta, null, 2),
         ContentType: "application/json",
@@ -290,18 +267,6 @@ async function runEtl(): Promise<void> {
   } finally {
     con.closeSync();
     db.closeSync();
-    try {
-      if (fs.existsSync(tmpWorksParquetPath))
-        fs.unlinkSync(tmpWorksParquetPath);
-    } catch {
-      // ignore cleanup errors
-    }
-    try {
-      if (fs.existsSync(tmpAuthorsParquetPath))
-        fs.unlinkSync(tmpAuthorsParquetPath);
-    } catch {
-      // ignore cleanup errors
-    }
   }
 }
 
