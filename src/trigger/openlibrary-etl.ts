@@ -116,14 +116,15 @@ async function runEtl(): Promise<void> {
   const con = await db.connect();
 
   try {
+    await con.run("SET home_directory='/tmp'");
     await con.run("INSTALL httpfs");
-    await con.run("LOAD httpfs;");
+    await con.run("LOAD httpfs");
 
     // Stream the gzipped TSV from OpenLibrary directly to Parquet,
     // flattening the top-level JSON fields into typed columns.
     // Complex nested types (authors, links, etc.) are kept as raw JSON VARCHAR.
     // /type/text fields are polymorphic: either a plain string or {type, value}.
-    console.log("Downloading dump and converting to Parquet...");
+    console.log("Downloading dump and converting to Parquet");
     await con.run(`
       COPY (
         SELECT
@@ -188,9 +189,10 @@ async function runEtl(): Promise<void> {
       partSize: 100 * 1024 * 1024,
       queueSize: 2,
     });
-    const toMB = (n: number) => (n / 1024 / 1024).toLocaleString("en-US", { maximumFractionDigits: 1 });
+    const toMB = (n: number) =>
+      (n / 1024 / 1024).toLocaleString("en-US", { maximumFractionDigits: 1 });
     upload.on("httpUploadProgress", (p) => {
-      const total = p.total != null ? `${toMB(p.total)} MB` : "?";
+      const total = p.total != null ? `${toMB(p.total)}` : "?";
       console.log(`Upload: ${toMB(p.loaded ?? 0)} / ${total} MB`);
     });
     await upload.done();
@@ -222,7 +224,8 @@ async function runEtl(): Promise<void> {
 
 export const openLibraryEtlTask = schedules.task({
   id: "openlibrary-works-etl",
-  cron: "0 3 1 * *", // 1st of month, 03:00 UTC
+  cron: "0 9 * * *",
+  machine: "medium-1x",
   run: async () => {
     await runEtl();
   },
