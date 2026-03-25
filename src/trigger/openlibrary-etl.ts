@@ -23,14 +23,20 @@ function getEnv() {
   return envSchema.parse(process.env);
 }
 
-const DUMP_URL = "https://openlibrary.org/data/ol_dump_works_latest.txt.gz";
+const WORKS_DUMP_URL =
+  "https://openlibrary.org/data/ol_dump_works_latest.txt.gz";
+const AUTHORS_DUMP_URL =
+  "https://openlibrary.org/data/ol_dump_authors_latest.txt.gz";
 const METADATA_KEY = "openlibrary/etl-metadata.json";
-const PARQUET_KEY = "openlibrary/works.parquet";
-const TMP_PARQUET_PATH = "/tmp/works.parquet";
+const WORKS_PARQUET_KEY = "openlibrary/works.parquet";
+const AUTHORS_PARQUET_KEY = "openlibrary/authors.parquet";
+const TMP_WORKS_PARQUET_PATH = "/tmp/works.parquet";
+const TMP_AUTHORS_PARQUET_PATH = "/tmp/authors.parquet";
 
 interface EtlMetadata {
   dump_date: string;
   row_count: number;
+  authors_row_count?: number;
   updated_at: string;
 }
 
@@ -94,112 +100,190 @@ async function getStoredMetadata(
   }
 }
 
+async function uploadParquet(
+  s3: S3Client,
+  bucket: string,
+  key: string,
+  localPath: string,
+): Promise<void> {
+  const upload = new Upload({
+    client: s3,
+    params: {
+      Bucket: bucket,
+      Key: key,
+      Body: fs.createReadStream(localPath),
+      ContentType: "application/octet-stream",
+    },
+    partSize: 100 * 1024 * 1024,
+    queueSize: 2,
+  });
+  const toMB = (n: number) =>
+    (n / 1024 / 1024).toLocaleString("en-US", { maximumFractionDigits: 1 });
+  upload.on("httpUploadProgress", (p) => {
+    const total = p.total != null ? `${toMB(p.total)}` : "?";
+    console.log(`Upload ${key}: ${toMB(p.loaded ?? 0)} / ${total} MB`);
+  });
+  await upload.done();
+}
+
 async function runEtl(): Promise<void> {
   const { S3_BUCKET: bucket } = getEnv();
   const s3 = makeS3Client();
 
   console.log("Fetching dump date from OpenLibrary...");
-  const dumpDate = await getDumpDate(DUMP_URL);
+  const dumpDate = await getDumpDate(WORKS_DUMP_URL);
   console.log(`Dump date: ${dumpDate}`);
 
   const storedMeta = await getStoredMetadata(s3, bucket);
-  if (storedMeta && storedMeta.dump_date.slice(0, 7) === dumpDate.slice(0, 7)) {
+  const sameMonth =
+    storedMeta != null &&
+    storedMeta.dump_date.slice(0, 7) === dumpDate.slice(0, 7);
+  const worksAlreadyDone = sameMonth;
+  const authorsAlreadyDone = sameMonth && storedMeta!.authors_row_count != null;
+
+  if (worksAlreadyDone && authorsAlreadyDone) {
     console.log(
-      `Already imported dump for ${dumpDate.slice(0, 7)} (stored: ${storedMeta.dump_date}). Skipping.`,
+      `Already imported dump for ${dumpDate.slice(0, 7)} (stored: ${storedMeta!.dump_date}). Skipping.`,
     );
     return;
   }
 
-  if (fs.existsSync(TMP_PARQUET_PATH)) fs.unlinkSync(TMP_PARQUET_PATH);
+  if (fs.existsSync(TMP_WORKS_PARQUET_PATH))
+    fs.unlinkSync(TMP_WORKS_PARQUET_PATH);
+  if (fs.existsSync(TMP_AUTHORS_PARQUET_PATH))
+    fs.unlinkSync(TMP_AUTHORS_PARQUET_PATH);
 
   const db = await DuckDBInstance.create(":memory:");
   const con = await db.connect();
+
+  let worksRows = storedMeta?.row_count ?? 0;
+  let authorsRows: number | undefined = storedMeta?.authors_row_count;
 
   try {
     await con.run("SET home_directory='/tmp'");
     await con.run("INSTALL httpfs");
     await con.run("LOAD httpfs");
 
-    // Stream the gzipped TSV from OpenLibrary directly to Parquet,
-    // flattening the top-level JSON fields into typed columns.
-    // Complex nested types (authors, links, etc.) are kept as raw JSON VARCHAR.
-    // /type/text fields are polymorphic: either a plain string or {type, value}.
-    console.log("Downloading dump and converting to Parquet");
-    await con.run(`
-      COPY (
-        SELECT
-          replace(json_extract_string(data, '$.key'), '/works/', '') AS olid,
-          json_extract_string(data, '$.title')                       AS title,
-          json_extract_string(data, '$.subtitle')                    AS subtitle,
-          json_extract(data, '$.authors')::VARCHAR                   AS authors,
-          json_extract(data, '$.translated_titles')::VARCHAR         AS translated_titles,
-          coalesce(json_extract(data, '$.subjects')::VARCHAR[],        []::VARCHAR[]) AS subjects,
-          coalesce(json_extract(data, '$.subject_places')::VARCHAR[],  []::VARCHAR[]) AS subject_places,
-          coalesce(json_extract(data, '$.subject_times')::VARCHAR[],   []::VARCHAR[]) AS subject_times,
-          coalesce(json_extract(data, '$.subject_people')::VARCHAR[],  []::VARCHAR[]) AS subject_people,
-          CASE json_type(data, '$.description')
-            WHEN 'VARCHAR' THEN json_extract_string(data, '$.description')
-            WHEN 'OBJECT'  THEN json_extract_string(data, '$.description.value')
-          END AS description,
-          coalesce(json_extract(data, '$.dewey_number')::VARCHAR[],       []::VARCHAR[]) AS dewey_number,
-          coalesce(json_extract(data, '$.lc_classifications')::VARCHAR[], []::VARCHAR[]) AS lc_classifications,
-          CASE json_type(data, '$.first_sentence')
-            WHEN 'VARCHAR' THEN json_extract_string(data, '$.first_sentence')
-            WHEN 'OBJECT'  THEN json_extract_string(data, '$.first_sentence.value')
-          END AS first_sentence,
-          json_extract(data, '$.original_languages')::VARCHAR AS original_languages,
-          coalesce(json_extract(data, '$.other_titles')::VARCHAR[], []::VARCHAR[]) AS other_titles,
-          json_extract_string(data, '$.first_publish_date')   AS first_publish_date,
-          json_extract(data, '$.links')::VARCHAR               AS links,
-          CASE json_type(data, '$.notes')
-            WHEN 'VARCHAR' THEN json_extract_string(data, '$.notes')
-            WHEN 'OBJECT'  THEN json_extract_string(data, '$.notes.value')
-          END AS notes,
-          json_extract_string(data, '$.cover_edition.key')    AS cover_edition,
-          coalesce(json_extract(data, '$.covers')::BIGINT[], []::BIGINT[]) AS covers
-        FROM read_csv(
-          '${DUMP_URL}',
-          sep           = '\t',
-          header        = false,
-          quote         = '',
-          columns       = {type: 'VARCHAR', key: 'VARCHAR', revision: 'VARCHAR',
-                           last_modified: 'VARCHAR', data: 'VARCHAR'},
-          ignore_errors = true
-        )
-        WHERE type = '/type/work'
-      ) TO '${TMP_PARQUET_PATH}' (FORMAT PARQUET, COMPRESSION ZSTD)
-    `);
+    if (!worksAlreadyDone) {
+      // Stream the gzipped TSV from OpenLibrary directly to Parquet,
+      // flattening the top-level JSON fields into typed columns.
+      // Complex nested types (authors, links, etc.) are kept as raw JSON VARCHAR.
+      // /type/text fields are polymorphic: either a plain string or {type, value}.
+      console.log("Downloading works dump and converting to Parquet");
+      await con.run(`
+        COPY (
+          SELECT
+            replace(json_extract_string(data, '$.key'), '/works/', '') AS olid,
+            json_extract_string(data, '$.title')                       AS title,
+            json_extract_string(data, '$.subtitle')                    AS subtitle,
+            json_extract(data, '$.authors')::VARCHAR                   AS authors,
+            json_extract(data, '$.translated_titles')::VARCHAR         AS translated_titles,
+            coalesce(json_extract(data, '$.subjects')::VARCHAR[],        []::VARCHAR[]) AS subjects,
+            coalesce(json_extract(data, '$.subject_places')::VARCHAR[],  []::VARCHAR[]) AS subject_places,
+            coalesce(json_extract(data, '$.subject_times')::VARCHAR[],   []::VARCHAR[]) AS subject_times,
+            coalesce(json_extract(data, '$.subject_people')::VARCHAR[],  []::VARCHAR[]) AS subject_people,
+            CASE json_type(data, '$.description')
+              WHEN 'VARCHAR' THEN json_extract_string(data, '$.description')
+              WHEN 'OBJECT'  THEN json_extract_string(data, '$.description.value')
+            END AS description,
+            coalesce(json_extract(data, '$.dewey_number')::VARCHAR[],       []::VARCHAR[]) AS dewey_number,
+            coalesce(json_extract(data, '$.lc_classifications')::VARCHAR[], []::VARCHAR[]) AS lc_classifications,
+            CASE json_type(data, '$.first_sentence')
+              WHEN 'VARCHAR' THEN json_extract_string(data, '$.first_sentence')
+              WHEN 'OBJECT'  THEN json_extract_string(data, '$.first_sentence.value')
+            END AS first_sentence,
+            json_extract(data, '$.original_languages')::VARCHAR AS original_languages,
+            coalesce(json_extract(data, '$.other_titles')::VARCHAR[], []::VARCHAR[]) AS other_titles,
+            json_extract_string(data, '$.first_publish_date')   AS first_publish_date,
+            json_extract(data, '$.links')::VARCHAR               AS links,
+            CASE json_type(data, '$.notes')
+              WHEN 'VARCHAR' THEN json_extract_string(data, '$.notes')
+              WHEN 'OBJECT'  THEN json_extract_string(data, '$.notes.value')
+            END AS notes,
+            json_extract_string(data, '$.cover_edition.key')    AS cover_edition,
+            coalesce(json_extract(data, '$.covers')::BIGINT[], []::BIGINT[]) AS covers
+          FROM read_csv(
+            '${WORKS_DUMP_URL}',
+            sep           = '\t',
+            header        = false,
+            quote         = '',
+            columns       = {type: 'VARCHAR', key: 'VARCHAR', revision: 'VARCHAR',
+                             last_modified: 'VARCHAR', data: 'VARCHAR'},
+            ignore_errors = true
+          )
+          WHERE type = '/type/work'
+        ) TO '${TMP_WORKS_PARQUET_PATH}' (FORMAT PARQUET, COMPRESSION ZSTD)
+      `);
 
-    const countResult = await con.run(
-      `SELECT count(*) FROM '${TMP_PARQUET_PATH}'`,
-    );
-    const rows = await countResult.getRows();
-    const totalRows = Number(rows[0][0]);
-    console.log(`Wrote ${totalRows.toLocaleString()} rows to Parquet.`);
+      const countResult = await con.run(
+        `SELECT count(*) FROM '${TMP_WORKS_PARQUET_PATH}'`,
+      );
+      const rows = await countResult.getRows();
+      worksRows = Number(rows[0][0]);
+      console.log(`Wrote ${worksRows.toLocaleString()} works rows to Parquet.`);
 
-    console.log("Uploading works.parquet to S3...");
-    const upload = new Upload({
-      client: s3,
-      params: {
-        Bucket: bucket,
-        Key: PARQUET_KEY,
-        Body: fs.createReadStream(TMP_PARQUET_PATH),
-        ContentType: "application/octet-stream",
-      },
-      partSize: 100 * 1024 * 1024,
-      queueSize: 2,
-    });
-    const toMB = (n: number) =>
-      (n / 1024 / 1024).toLocaleString("en-US", { maximumFractionDigits: 1 });
-    upload.on("httpUploadProgress", (p) => {
-      const total = p.total != null ? `${toMB(p.total)}` : "?";
-      console.log(`Upload: ${toMB(p.loaded ?? 0)} / ${total} MB`);
-    });
-    await upload.done();
+      console.log("Uploading works.parquet to S3...");
+      await uploadParquet(s3, bucket, WORKS_PARQUET_KEY, TMP_WORKS_PARQUET_PATH);
+    }
+
+    if (!authorsAlreadyDone) {
+      console.log("Downloading authors dump and converting to Parquet");
+      await con.run(`
+        COPY (
+          SELECT
+            replace(json_extract_string(data, '$.key'), '/authors/', '') AS olid,
+            json_extract_string(data, '$.name')                          AS name,
+            TRY_CAST(json_extract(data, '$.eastern_order') AS BOOLEAN)  AS eastern_order,
+            json_extract_string(data, '$.personal_name')                 AS personal_name,
+            json_extract_string(data, '$.enumeration')                   AS enumeration,
+            json_extract_string(data, '$.title')                         AS title,
+            coalesce(json_extract(data, '$.alternate_names')::VARCHAR[], []::VARCHAR[]) AS alternate_names,
+            coalesce(json_extract(data, '$.uris')::VARCHAR[],            []::VARCHAR[]) AS uris,
+            CASE json_type(data, '$.bio')
+              WHEN 'VARCHAR' THEN json_extract_string(data, '$.bio')
+              WHEN 'OBJECT'  THEN json_extract_string(data, '$.bio.value')
+            END AS bio,
+            json_extract_string(data, '$.location')                      AS location,
+            json_extract_string(data, '$.birth_date')                    AS birth_date,
+            json_extract_string(data, '$.death_date')                    AS death_date,
+            json_extract_string(data, '$.date')                          AS date,
+            json_extract_string(data, '$.wikipedia')                     AS wikipedia,
+            json_extract(data, '$.links')::VARCHAR                       AS links
+          FROM read_csv(
+            '${AUTHORS_DUMP_URL}',
+            sep           = '\t',
+            header        = false,
+            quote         = '',
+            columns       = {type: 'VARCHAR', key: 'VARCHAR', revision: 'VARCHAR',
+                             last_modified: 'VARCHAR', data: 'VARCHAR'},
+            ignore_errors = true
+          )
+          WHERE type = '/type/author'
+        ) TO '${TMP_AUTHORS_PARQUET_PATH}' (FORMAT PARQUET, COMPRESSION ZSTD)
+      `);
+
+      const countResult = await con.run(
+        `SELECT count(*) FROM '${TMP_AUTHORS_PARQUET_PATH}'`,
+      );
+      const rows = await countResult.getRows();
+      authorsRows = Number(rows[0][0]);
+      console.log(
+        `Wrote ${authorsRows.toLocaleString()} authors rows to Parquet.`,
+      );
+
+      console.log("Uploading authors.parquet to S3...");
+      await uploadParquet(
+        s3,
+        bucket,
+        AUTHORS_PARQUET_KEY,
+        TMP_AUTHORS_PARQUET_PATH,
+      );
+    }
 
     const meta: EtlMetadata = {
       dump_date: dumpDate,
-      row_count: totalRows,
+      row_count: worksRows,
+      authors_row_count: authorsRows,
       updated_at: new Date().toISOString(),
     };
     await s3.send(
@@ -215,7 +299,14 @@ async function runEtl(): Promise<void> {
     con.closeSync();
     db.closeSync();
     try {
-      if (fs.existsSync(TMP_PARQUET_PATH)) fs.unlinkSync(TMP_PARQUET_PATH);
+      if (fs.existsSync(TMP_WORKS_PARQUET_PATH))
+        fs.unlinkSync(TMP_WORKS_PARQUET_PATH);
+    } catch {
+      // ignore cleanup errors
+    }
+    try {
+      if (fs.existsSync(TMP_AUTHORS_PARQUET_PATH))
+        fs.unlinkSync(TMP_AUTHORS_PARQUET_PATH);
     } catch {
       // ignore cleanup errors
     }

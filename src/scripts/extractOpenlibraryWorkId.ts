@@ -265,59 +265,73 @@ async function callOpenRouter(
 
 const OL_PARQUET_URL =
   "https://images.audiobookcovers.com/openlibrary/works.parquet";
+const OL_AUTHORS_PARQUET_URL =
+  "https://images.audiobookcovers.com/openlibrary/authors.parquet";
 const OL_METADATA_URL =
   "https://images.audiobookcovers.com/openlibrary/etl-metadata.json";
 const OL_PARQUET_PATH = "/tmp/ol_works.parquet";
+const OL_AUTHORS_PARQUET_PATH = "/tmp/ol_authors.parquet";
 
-async function fetchExpectedRowCount(): Promise<number | null> {
+async function fetchEtlMetadata(): Promise<{
+  row_count?: number;
+  authors_row_count?: number;
+} | null> {
   try {
-    const meta = await ky.get(OL_METADATA_URL, { timeout: 15_000 }).json<{ row_count: number }>();
-    return meta.row_count ?? null;
+    return await ky
+      .get(OL_METADATA_URL, { timeout: 15_000 })
+      .json<{ row_count?: number; authors_row_count?: number }>();
   } catch {
     return null;
   }
 }
 
-async function ensureParquetCached(): Promise<void> {
-  const expectedRows = await fetchExpectedRowCount();
-
-  if (fs.existsSync(OL_PARQUET_PATH)) {
+async function ensureParquetCached(
+  localPath: string,
+  remoteUrl: string,
+  expectedRows: number | null,
+  label: string,
+): Promise<void> {
+  if (fs.existsSync(localPath)) {
     const validateDb = await DuckDBInstance.create(":memory:");
     const validateCon = await validateDb.connect();
     let valid = false;
     try {
       const countResult = await validateCon.run(
-        `SELECT count(*) FROM read_parquet('${OL_PARQUET_PATH}')`,
+        `SELECT count(*) FROM read_parquet('${localPath}')`,
       );
       const rows = await countResult.getRows();
       const localCount = Number(rows[0]?.[0]);
       if (expectedRows !== null && localCount !== expectedRows) {
         logger.warn(
-          `Cached parquet has ${localCount.toLocaleString()} rows but expected ${expectedRows.toLocaleString()}, re-downloading...`,
+          `Cached ${label} parquet has ${localCount.toLocaleString()} rows but expected ${expectedRows.toLocaleString()}, re-downloading...`,
         );
       } else {
         logger.debug(
-          `OpenLibrary parquet cached at ${OL_PARQUET_PATH} (${localCount.toLocaleString()} rows)`,
+          `OpenLibrary ${label} parquet cached at ${localPath} (${localCount.toLocaleString()} rows)`,
         );
         valid = true;
       }
     } catch {
-      logger.warn(`Cached parquet at ${OL_PARQUET_PATH} is invalid, re-downloading...`);
+      logger.warn(
+        `Cached ${label} parquet at ${localPath} is invalid, re-downloading...`,
+      );
     } finally {
       validateCon.closeSync();
       validateDb.closeSync();
     }
     if (valid) return;
-    fs.unlinkSync(OL_PARQUET_PATH);
+    fs.unlinkSync(localPath);
   }
 
-  logger.info(`Downloading OpenLibrary works parquet to ${OL_PARQUET_PATH}...`);
+  logger.info(`Downloading OpenLibrary ${label} parquet to ${localPath}...`);
   await new Promise<void>((resolve, reject) => {
-    const file = fs.createWriteStream(OL_PARQUET_PATH);
+    const file = fs.createWriteStream(localPath);
     https
-      .get(OL_PARQUET_URL, (res) => {
+      .get(remoteUrl, (res) => {
         if (res.statusCode !== 200) {
-          reject(new Error(`Failed to download parquet: HTTP ${res.statusCode}`));
+          reject(
+            new Error(`Failed to download parquet: HTTP ${res.statusCode}`),
+          );
           return;
         }
         res.pipe(file);
@@ -326,14 +340,29 @@ async function ensureParquetCached(): Promise<void> {
       })
       .on("error", reject);
   });
-  logger.info("Download complete.");
+  logger.info(`Download complete.`);
 }
 
 if (!useRemote) {
-  await ensureParquetCached();
+  const etlMeta = await fetchEtlMetadata();
+  await ensureParquetCached(
+    OL_PARQUET_PATH,
+    OL_PARQUET_URL,
+    etlMeta?.row_count ?? null,
+    "works",
+  );
+  await ensureParquetCached(
+    OL_AUTHORS_PARQUET_PATH,
+    OL_AUTHORS_PARQUET_URL,
+    etlMeta?.authors_row_count ?? null,
+    "authors",
+  );
 }
 
 const parquetSource = useRemote ? OL_PARQUET_URL : OL_PARQUET_PATH;
+const authorsParquetSource = useRemote
+  ? OL_AUTHORS_PARQUET_URL
+  : OL_AUTHORS_PARQUET_PATH;
 
 const db = await DuckDBInstance.create(":memory:");
 const con = await db.connect();
@@ -349,10 +378,38 @@ async function searchOpenLibrary(query: string): Promise<string> {
 
   const escapedQuery = query.replace(/'/g, "''");
   const result = await con.run(`
-    SELECT olid, title, subtitle, authors, subjects, description, first_publish_date, other_titles
-    FROM read_parquet('${parquetSource}')
-    WHERE title ILIKE '%${escapedQuery}%'
-    LIMIT 10
+    WITH works_match AS (
+      SELECT olid, title, subtitle, authors, subjects, description, first_publish_date, other_titles
+      FROM read_parquet('${parquetSource}')
+      WHERE title ILIKE '%${escapedQuery}%'
+      LIMIT 10
+    ),
+    author_olids AS (
+      SELECT
+        w.olid AS work_olid,
+        replace(author_key, '/authors/', '') AS author_olid
+      FROM works_match w,
+      UNNEST(
+        coalesce(
+          TRY_CAST(json_extract(w.authors::JSON, '$[*].author.key') AS VARCHAR[]),
+          []::VARCHAR[]
+        )
+      ) t(author_key)
+    )
+    SELECT
+      w.olid,
+      w.title,
+      w.subtitle,
+      list(DISTINCT a.name) FILTER (WHERE a.name IS NOT NULL) AS author_names,
+      list_distinct(flatten(list(coalesce(a.alternate_names, []::VARCHAR[])))) AS author_alternate_names,
+      w.subjects,
+      w.description,
+      w.first_publish_date,
+      w.other_titles
+    FROM works_match w
+    LEFT JOIN author_olids ao ON ao.work_olid = w.olid
+    LEFT JOIN read_parquet('${authorsParquetSource}') a ON a.olid = ao.author_olid
+    GROUP BY w.olid, w.title, w.subtitle, w.subjects, w.description, w.first_publish_date, w.other_titles
   `);
 
   const rows = await result.getRows();
@@ -360,7 +417,8 @@ async function searchOpenLibrary(query: string): Promise<string> {
     "olid",
     "title",
     "subtitle",
-    "authors",
+    "author_names",
+    "author_alternate_names",
     "subjects",
     "description",
     "first_publish_date",
@@ -372,6 +430,13 @@ async function searchOpenLibrary(query: string): Promise<string> {
     columns.forEach((col, i) => {
       obj[col] = row[i];
     });
+    // Omit empty alternate names to keep results concise
+    if (
+      Array.isArray(obj.author_alternate_names) &&
+      (obj.author_alternate_names as unknown[]).length === 0
+    ) {
+      delete obj.author_alternate_names;
+    }
     return obj;
   });
 
@@ -383,14 +448,14 @@ const searchOpenLibraryTool = {
   function: {
     name: "search_openlibrary",
     description:
-      "Search the OpenLibrary works database for book metadata. Use this to look up potential matches by title. Note: author names are not available — only author keys (e.g. /authors/OL123A) are stored. Searches must be title-based.",
+      "Search the OpenLibrary works database for book metadata. Use this to look up potential matches by title. Results include resolved author names. Searches must be title-based — author name search is not supported.",
     parameters: {
       type: "object",
       properties: {
         query: {
           type: "string",
           description:
-            "Title search string (e.g. 'The Name of the Wind'). Author names cannot be searched — use title variations only.",
+            "Title search string (e.g. 'The Name of the Wind'). Only title-based search is supported.",
         },
       },
       required: ["query"],
@@ -403,7 +468,7 @@ const validateOpenLibraryTool = {
   function: {
     name: "search_openlibrary",
     description:
-      "Look up a specific book in the OpenLibrary database to validate or confirm an existing candidate. Use this ONLY to verify metadata (work ID, publication date, subjects) for a candidate already identified in the previous search phase — not to find new candidates. Note: author names are not available, only author keys.",
+      "Look up a specific book in the OpenLibrary database to validate or confirm an existing candidate. Use this ONLY to verify metadata (work ID, publication date, subjects, author names) for a candidate already identified in the previous search phase — not to find new candidates.",
     parameters: searchOpenLibraryTool.function.parameters,
   },
 };
@@ -418,10 +483,10 @@ Your task:
 1. Analyze the cover image and OCR text to identify the book title, series, and any other identifying information
 2. Brainstorm multiple possible search queries to find the correct book
 3. Use the search_openlibrary tool multiple times to gather metadata for candidate matches
-4. For each search, you will receive book metadata including title, subtitle, subjects, description, and OpenLibrary work IDs. Use this metadata for identification.
+4. For each search, you will receive book metadata including title, subtitle, author names, subjects, description, and OpenLibrary work IDs. Use this metadata for identification.
 5. Collect all relevant metadata found across your searches, including OpenLibrary work IDs (olid)
 
-Important: OpenLibrary only supports title-based search. Author names are not available in the database — only author keys (e.g. /authors/OL123A) are stored. Do not attempt to search by author name.
+Important: OpenLibrary only supports title-based search. You cannot search by author name — use title variations only.
 
 Your goal is to find candidate books. The initial image is for an audiobook, but that is irrelevant to your task. You do not need to find an audiobook edition, a standard edition will do.
 
@@ -443,7 +508,7 @@ Your task:
    - All known metadata for the selected book: title, subjects, OpenLibrary work ID, publication date, description
 4. Be honest about uncertainty — if no good match was found, say so clearly
 
-Note: Author names are not available in OpenLibrary parquet data — only author keys. Do not rely on author name confirmation.
+Note: Author names are available in search results and may be used to confirm a match.
 
 Evidence Classification:
 Classify the strength of your evidence using exactly one of these three labels:
