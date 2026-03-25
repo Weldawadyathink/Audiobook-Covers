@@ -18,6 +18,7 @@ const authorsDumpUrl =
 const metadataKey = "openlibrary/etl-metadata.json";
 const worksParquetFile = `s3://${env.S3_BUCKET}/openlibrary/works.parquet`;
 const authorsParquetFile = `s3://${env.S3_BUCKET}/openlibrary/authors.parquet`;
+const enrichedWorksParquetFile = `s3://${env.S3_BUCKET}/openlibrary/enriched_works.parquet`;
 
 interface EtlMetadata {
   dump_date: string;
@@ -248,6 +249,42 @@ async function runEtl(): Promise<void> {
     console.log(
       `Wrote ${countWorks.toLocaleString()} works rows to Parquet in S3`,
     );
+
+    console.log(`Enrich works data with authors`);
+    await con.run(`
+      CREATE TABLE author_lookup AS
+      SELECT * FROM read_parquet('${authorsParquetFile}')
+    `);
+    await con.run("CREATE INDEX idx_author_olid ON author_lookup (olid)");
+    console.log("Created local author lookup table");
+
+    await con.run(`
+      COPY (
+        WITH flattened_links AS (
+          -- Stream from parquet, unnesting on the fly
+          SELECT
+            w.* EXCLUDE (authors),
+            replace(
+              unnest(json_transform(json_extract(w.authors, '$[*].author.key'), '["VARCHAR"]')),
+              '/authors/',
+              ''
+            ) AS author_id
+          FROM read_parquet('${worksParquetFile}') w
+          WHERE w.authors IS NOT NULL
+        )
+        SELECT
+          fl.*,
+          -- Treat the author data as a struct
+          a.* EXCLUDE (olid)
+        FROM flattened_links fl
+        -- This join uses the index we created, keeping memory usage low
+        LEFT JOIN author_lookup a ON fl.author_id = a.olid
+      )
+      TO '${enrichedWorksParquetFile}'
+      (FORMAT PARQUET, COMPRESSION 'ZSTD')
+    `);
+
+    console.log("Enriched works written to S3");
 
     const meta: EtlMetadata = {
       dump_date: dumpDate,
