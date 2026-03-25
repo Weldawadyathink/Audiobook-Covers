@@ -263,23 +263,23 @@ async function callOpenRouter(
 
 // --- OpenLibrary parquet setup ---
 
-const OL_PARQUET_URL =
+const olParquetUrl =
   "https://images.audiobookcovers.com/openlibrary/works.parquet";
-const OL_AUTHORS_PARQUET_URL =
+const olAuthorsParquetUrl =
   "https://images.audiobookcovers.com/openlibrary/authors.parquet";
-const OL_METADATA_URL =
+const olMetadataUrl =
   "https://images.audiobookcovers.com/openlibrary/etl-metadata.json";
-const OL_PARQUET_PATH = "/tmp/ol_works.parquet";
-const OL_AUTHORS_PARQUET_PATH = "/tmp/ol_authors.parquet";
+const olParquetPath = "/tmp/ol_works.parquet";
+const olAuthorsParquetPath = "/tmp/ol_authors.parquet";
 
 async function fetchEtlMetadata(): Promise<{
-  row_count?: number;
+  works_row_count?: number;
   authors_row_count?: number;
 } | null> {
   try {
     return await ky
-      .get(OL_METADATA_URL, { timeout: 15_000 })
-      .json<{ row_count?: number; authors_row_count?: number }>();
+      .get(olMetadataUrl, { timeout: 15_000 })
+      .json<{ works_row_count?: number; authors_row_count?: number }>();
   } catch {
     return null;
   }
@@ -346,23 +346,21 @@ async function ensureParquetCached(
 if (!useRemote) {
   const etlMeta = await fetchEtlMetadata();
   await ensureParquetCached(
-    OL_PARQUET_PATH,
-    OL_PARQUET_URL,
-    etlMeta?.row_count ?? null,
+    olParquetPath,
+    olParquetUrl,
+    etlMeta?.works_row_count ?? null,
     "works",
   );
   await ensureParquetCached(
-    OL_AUTHORS_PARQUET_PATH,
-    OL_AUTHORS_PARQUET_URL,
+    olAuthorsParquetPath,
+    olAuthorsParquetUrl,
     etlMeta?.authors_row_count ?? null,
     "authors",
   );
 }
 
-const parquetSource = useRemote ? OL_PARQUET_URL : OL_PARQUET_PATH;
-const authorsParquetSource = useRemote
-  ? OL_AUTHORS_PARQUET_URL
-  : OL_AUTHORS_PARQUET_PATH;
+const parquetSource = useRemote ? olParquetUrl : olParquetPath;
+const authorsParquetSource = useRemote ? olAuthorsParquetUrl : olAuthorsParquetPath;
 
 const db = await DuckDBInstance.create(":memory:");
 const con = await db.connect();

@@ -23,19 +23,19 @@ function getEnv() {
   return envSchema.parse(process.env);
 }
 
-const WORKS_DUMP_URL =
+const worksDumpUrl =
   "https://openlibrary.org/data/ol_dump_works_latest.txt.gz";
-const AUTHORS_DUMP_URL =
+const authorsDumpUrl =
   "https://openlibrary.org/data/ol_dump_authors_latest.txt.gz";
-const METADATA_KEY = "openlibrary/etl-metadata.json";
-const WORKS_PARQUET_KEY = "openlibrary/works.parquet";
-const AUTHORS_PARQUET_KEY = "openlibrary/authors.parquet";
-const TMP_WORKS_PARQUET_PATH = "/tmp/works.parquet";
-const TMP_AUTHORS_PARQUET_PATH = "/tmp/authors.parquet";
+const metadataKey = "openlibrary/etl-metadata.json";
+const worksParquetKey = "openlibrary/works.parquet";
+const authorsParquetKey = "openlibrary/authors.parquet";
+const tmpWorksParquetPath = "/tmp/works.parquet";
+const tmpAuthorsParquetPath = "/tmp/authors.parquet";
 
 interface EtlMetadata {
   dump_date: string;
-  row_count: number;
+  works_row_count: number;
   authors_row_count?: number;
   updated_at: string;
 }
@@ -89,7 +89,7 @@ async function getStoredMetadata(
 ): Promise<EtlMetadata | null> {
   try {
     const res = await s3.send(
-      new GetObjectCommand({ Bucket: bucket, Key: METADATA_KEY }),
+      new GetObjectCommand({ Bucket: bucket, Key: metadataKey }),
     );
     const body = await res.Body?.transformToString();
     if (!body) return null;
@@ -131,7 +131,7 @@ async function runEtl(): Promise<void> {
   const s3 = makeS3Client();
 
   console.log("Fetching dump date from OpenLibrary...");
-  const dumpDate = await getDumpDate(WORKS_DUMP_URL);
+  const dumpDate = await getDumpDate(worksDumpUrl);
   console.log(`Dump date: ${dumpDate}`);
 
   const storedMeta = await getStoredMetadata(s3, bucket);
@@ -148,15 +148,15 @@ async function runEtl(): Promise<void> {
     return;
   }
 
-  if (fs.existsSync(TMP_WORKS_PARQUET_PATH))
-    fs.unlinkSync(TMP_WORKS_PARQUET_PATH);
-  if (fs.existsSync(TMP_AUTHORS_PARQUET_PATH))
-    fs.unlinkSync(TMP_AUTHORS_PARQUET_PATH);
+  if (fs.existsSync(tmpWorksParquetPath))
+    fs.unlinkSync(tmpWorksParquetPath);
+  if (fs.existsSync(tmpAuthorsParquetPath))
+    fs.unlinkSync(tmpAuthorsParquetPath);
 
   const db = await DuckDBInstance.create(":memory:");
   const con = await db.connect();
 
-  let worksRows = storedMeta?.row_count ?? 0;
+  let worksRows = storedMeta?.works_row_count ?? 0;
   let authorsRows: number | undefined = storedMeta?.authors_row_count;
 
   try {
@@ -203,7 +203,7 @@ async function runEtl(): Promise<void> {
             json_extract_string(data, '$.cover_edition.key')    AS cover_edition,
             coalesce(json_extract(data, '$.covers')::BIGINT[], []::BIGINT[]) AS covers
           FROM read_csv(
-            '${WORKS_DUMP_URL}',
+            '${worksDumpUrl}',
             sep           = '\t',
             header        = false,
             quote         = '',
@@ -212,18 +212,18 @@ async function runEtl(): Promise<void> {
             ignore_errors = true
           )
           WHERE type = '/type/work'
-        ) TO '${TMP_WORKS_PARQUET_PATH}' (FORMAT PARQUET, COMPRESSION ZSTD)
+        ) TO '${tmpWorksParquetPath}' (FORMAT PARQUET, COMPRESSION ZSTD)
       `);
 
       const countResult = await con.run(
-        `SELECT count(*) FROM '${TMP_WORKS_PARQUET_PATH}'`,
+        `SELECT count(*) FROM '${tmpWorksParquetPath}'`,
       );
       const rows = await countResult.getRows();
       worksRows = Number(rows[0][0]);
       console.log(`Wrote ${worksRows.toLocaleString()} works rows to Parquet.`);
 
       console.log("Uploading works.parquet to S3...");
-      await uploadParquet(s3, bucket, WORKS_PARQUET_KEY, TMP_WORKS_PARQUET_PATH);
+      await uploadParquet(s3, bucket, worksParquetKey, tmpWorksParquetPath);
     }
 
     if (!authorsAlreadyDone) {
@@ -250,7 +250,7 @@ async function runEtl(): Promise<void> {
             json_extract_string(data, '$.wikipedia')                     AS wikipedia,
             json_extract(data, '$.links')::VARCHAR                       AS links
           FROM read_csv(
-            '${AUTHORS_DUMP_URL}',
+            '${authorsDumpUrl}',
             sep           = '\t',
             header        = false,
             quote         = '',
@@ -259,11 +259,11 @@ async function runEtl(): Promise<void> {
             ignore_errors = true
           )
           WHERE type = '/type/author'
-        ) TO '${TMP_AUTHORS_PARQUET_PATH}' (FORMAT PARQUET, COMPRESSION ZSTD)
+        ) TO '${tmpAuthorsParquetPath}' (FORMAT PARQUET, COMPRESSION ZSTD)
       `);
 
       const countResult = await con.run(
-        `SELECT count(*) FROM '${TMP_AUTHORS_PARQUET_PATH}'`,
+        `SELECT count(*) FROM '${tmpAuthorsParquetPath}'`,
       );
       const rows = await countResult.getRows();
       authorsRows = Number(rows[0][0]);
@@ -275,21 +275,21 @@ async function runEtl(): Promise<void> {
       await uploadParquet(
         s3,
         bucket,
-        AUTHORS_PARQUET_KEY,
-        TMP_AUTHORS_PARQUET_PATH,
+        authorsParquetKey,
+        tmpAuthorsParquetPath,
       );
     }
 
     const meta: EtlMetadata = {
       dump_date: dumpDate,
-      row_count: worksRows,
+      works_row_count: worksRows,
       authors_row_count: authorsRows,
       updated_at: new Date().toISOString(),
     };
     await s3.send(
       new PutObjectCommand({
         Bucket: bucket,
-        Key: METADATA_KEY,
+        Key: metadataKey,
         Body: JSON.stringify(meta, null, 2),
         ContentType: "application/json",
       }),
@@ -299,14 +299,14 @@ async function runEtl(): Promise<void> {
     con.closeSync();
     db.closeSync();
     try {
-      if (fs.existsSync(TMP_WORKS_PARQUET_PATH))
-        fs.unlinkSync(TMP_WORKS_PARQUET_PATH);
+      if (fs.existsSync(tmpWorksParquetPath))
+        fs.unlinkSync(tmpWorksParquetPath);
     } catch {
       // ignore cleanup errors
     }
     try {
-      if (fs.existsSync(TMP_AUTHORS_PARQUET_PATH))
-        fs.unlinkSync(TMP_AUTHORS_PARQUET_PATH);
+      if (fs.existsSync(tmpAuthorsParquetPath))
+        fs.unlinkSync(tmpAuthorsParquetPath);
     } catch {
       // ignore cleanup errors
     }
