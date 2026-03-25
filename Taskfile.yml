@@ -20,12 +20,12 @@ tasks:
       - pnpm exec wrangler types
       - pnpm exec tsc --noEmit
 
-  extract_isbn:
-    desc: Run ISBN extraction pipeline. Pass args after --, e.g. -- --image-id <uuid> | --tablesample <pct> | --complete [--save] [--model phase1:phase2:phase3:phase4]
+  extract_olid:
+    desc: Run OpenLibrary work ID extraction pipeline. Pass args after --, e.g. -- --image-id <uuid> | --tablesample <pct> | --complete [--save] [--model phase1:phase2:phase3:phase4]
     env:
       NODE_OPTIONS: "--import=./src/scripts/cloudflare-loader.mjs"
     cmds:
-      - pnpm tsx src/scripts/extractIsbn.ts {{.CLI_ARGS}}
+      - pnpm tsx src/scripts/extractOpenlibraryWorkId.ts {{.CLI_ARGS}}
 
   reindex_images:
     desc: Run the image reindex script (pass args after --, e.g. -- --tablesample 1 --threads 10 --model voyage-multimodal-3.5)
