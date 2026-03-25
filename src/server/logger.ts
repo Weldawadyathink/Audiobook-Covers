@@ -1,60 +1,63 @@
-import { log } from "console";
+import { z } from "zod/v4";
 
-type LogLevel = "debug" | "info" | "warn" | "error" | "disabled";
+export const zLogLevel = z.enum(["disabled", "error", "warn", "info", "debug"]);
+type LogLevel = z.infer<typeof zLogLevel>;
 
 const defaultLogLevel: LogLevel = "debug";
 
-const logGlobal = globalThis as unknown as {
-  logLevel: LogLevel | undefined;
-};
+export class Logger {
+  logFunction: (...data: any[]) => void;
+  logLevel: LogLevel;
 
-function getLogLevel(): LogLevel {
-  if (logGlobal.logLevel === undefined) {
-    logGlobal.logLevel = defaultLogLevel;
+  constructor() {
+    this.logFunction = console.log;
+    this.logLevel = defaultLogLevel;
   }
-  return logGlobal.logLevel;
+
+  setLogLevel(level: LogLevel) {
+    this.logLevel = level;
+  }
+
+  shouldLog(level: LogLevel): boolean {
+    if (this.logLevel === "disabled") return false;
+    if (this.logLevel === level) return true;
+
+    if (this.logLevel === "warn" && level === "error") return true;
+
+    if (this.logLevel === "info" && level === "warn") return true;
+    if (this.logLevel === "info" && level === "error") return true;
+
+    if (this.logLevel === "debug" && level === "info") return true;
+    if (this.logLevel === "debug" && level === "warn") return true;
+    if (this.logLevel === "debug" && level === "error") return true;
+
+    return false;
+  }
+
+  log(level: LogLevel, ...data: any[]) {
+    if (!this.shouldLog(level)) return;
+    this.logFunction(...data);
+  }
+
+  info(...data: any[]) {
+    if (!this.shouldLog("info")) return;
+    this.log("info", ...data);
+  }
+
+  debug(...data: any[]) {
+    if (!this.shouldLog("debug")) return;
+    this.log("debug", ...data);
+  }
+
+  warn(...data: any[]) {
+    if (!this.shouldLog("warn")) return;
+    this.log("warn", ...data);
+  }
+
+  error(...data: any[]) {
+    if (!this.shouldLog("error")) return;
+    this.log("error", ...data);
+  }
 }
 
-function shouldLog(level: LogLevel): boolean {
-  const logLevel = getLogLevel();
-  if (logLevel === "disabled") return false;
-  if (logLevel === level) return true;
-
-  if (logLevel === "debug" && level === "info") return true;
-  if (logLevel === "debug" && level === "warn") return true;
-  if (logLevel === "debug" && level === "error") return true;
-
-  if (logLevel === "info" && level === "warn") return true;
-  if (logLevel === "info" && level === "error") return true;
-
-  if (logLevel === "warn" && level === "error") return true;
-
-  return false;
-}
-
-export const logger = {
-  setLogLevel: (level: LogLevel) => {
-    logGlobal.logLevel = level;
-  },
-
-  log: (level: LogLevel, ...data: any[]) => {
-    if (!shouldLog(level)) return;
-    log(...data);
-  },
-
-  debug: (...data: any[]) => {
-    logger.log("debug", ...data);
-  },
-
-  info: (...data: any[]) => {
-    logger.log("info", ...data);
-  },
-
-  warn: (...data: any[]) => {
-    logger.log("warn", ...data);
-  },
-
-  error: (...data: any[]) => {
-    logger.log("error", ...data);
-  },
-};
+export const logger = new Logger();

@@ -8,7 +8,7 @@ import {
 import { getEnv } from "@/server/env";
 import ky from "ky";
 import "dotenv/config";
-import { logger } from "@/server/logger";
+import { logger as systemLogger, Logger, zLogLevel } from "@/server/logger";
 import { z } from "zod";
 import zodToJsonSchema from "zod-to-json-schema";
 import { jsonrepair } from "jsonrepair";
@@ -18,7 +18,10 @@ import * as fs from "fs";
 import * as https from "https";
 
 // Suppress logs from other modules until we set the level from CLI flags
-logger.setLogLevel("disabled");
+systemLogger.setLogLevel("disabled");
+
+// Use our own logger instance for this script
+const logger = new Logger();
 
 const program = new Command();
 
@@ -57,11 +60,11 @@ const model: string = program.opts().model;
 const save: boolean = program.opts().save ?? false;
 const tablesample: string | undefined = program.opts().tablesample;
 const complete: boolean = program.opts().complete ?? false;
-const logLevel: string = program.opts().logLevel ?? "info";
-const threads: number = parseInt(program.opts().threads, 10);
+const logLevel = zLogLevel.parse(program.opts().logLevel ?? "info");
+const threads = parseInt(program.opts().threads, 10);
 const useRemote: boolean = program.opts().remote ?? false;
 
-logger.setLogLevel(logLevel as Parameters<typeof logger.setLogLevel>[0]);
+logger.setLogLevel(logLevel);
 
 if (!imageId && !tablesample && !complete) {
   console.error("Must provide --image-id, --tablesample, or --complete");
@@ -360,7 +363,9 @@ if (!useRemote) {
 }
 
 const parquetSource = useRemote ? olParquetUrl : olParquetPath;
-const authorsParquetSource = useRemote ? olAuthorsParquetUrl : olAuthorsParquetPath;
+const authorsParquetSource = useRemote
+  ? olAuthorsParquetUrl
+  : olAuthorsParquetPath;
 
 const db = await DuckDBInstance.create(":memory:");
 const con = await db.connect();
@@ -371,7 +376,7 @@ if (useRemote) {
   await con.run("LOAD httpfs");
 }
 
-async function searchOpenLibrary(query: string): Promise<string> {
+async function searchOpenLibraryByTitle(query: string): Promise<string> {
   logger.debug(`  [tool] search_openlibrary: "${query}"`);
 
   const escapedQuery = query.replace(/'/g, "''");
@@ -438,7 +443,10 @@ async function searchOpenLibrary(query: string): Promise<string> {
     return obj;
   });
 
-  return JSON.stringify({ totalItems: results.length, results });
+  logger.info(`  [extractOLID] found ${results.length} results`);
+  const output = JSON.stringify({ totalItems: results.length, results });
+  logger.debug(output);
+  return output;
 }
 
 const searchOpenLibraryTool = {
@@ -633,7 +641,7 @@ async function processImage(
         query = toolCall.function.arguments;
       }
 
-      const searchResultJson = await searchOpenLibrary(query);
+      const searchResultJson = await searchOpenLibraryByTitle(query);
 
       phase2Messages.push({
         role: "tool",
@@ -717,7 +725,7 @@ async function processImage(
         query = toolCall.function.arguments;
       }
 
-      const searchResultJson = await searchOpenLibrary(query);
+      const searchResultJson = await searchOpenLibraryByTitle(query);
 
       phase3Messages.push({
         role: "tool",

@@ -25,7 +25,7 @@ tasks:
     env:
       NODE_OPTIONS: "--import=./src/scripts/cloudflare-loader.mjs"
     cmds:
-      - pnpm tsx src/scripts/extractOpenlibraryWorkId.ts {{.CLI_ARGS}}
+      - pnpm tsx src/scripts/extractOLID.ts {{.CLI_ARGS}}
 
   reindex_images:
     desc: Run the image reindex script (pass args after --, e.g. -- --tablesample 1 --threads 10 --model voyage-multimodal-3.5)
