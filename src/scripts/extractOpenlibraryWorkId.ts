@@ -46,8 +46,8 @@ program
     "1",
   )
   .option(
-    "--cache",
-    "Download the OpenLibrary parquet to /tmp/ol_works.parquet and query it locally (faster for bulk runs)",
+    "--remote",
+    "Query the OpenLibrary parquet directly from the remote URL instead of using a local cache",
   );
 
 program.parse(process.argv);
@@ -59,7 +59,7 @@ const tablesample: string | undefined = program.opts().tablesample;
 const complete: boolean = program.opts().complete ?? false;
 const logLevel: string = program.opts().logLevel ?? "info";
 const threads: number = parseInt(program.opts().threads, 10);
-const useCache: boolean = program.opts().cache ?? false;
+const useRemote: boolean = program.opts().remote ?? false;
 
 logger.setLogLevel(logLevel as Parameters<typeof logger.setLogLevel>[0]);
 
@@ -265,24 +265,52 @@ async function callOpenRouter(
 
 const OL_PARQUET_URL =
   "https://images.audiobookcovers.com/openlibrary/works.parquet";
+const OL_METADATA_URL =
+  "https://images.audiobookcovers.com/openlibrary/etl-metadata.json";
 const OL_PARQUET_PATH = "/tmp/ol_works.parquet";
 
-async function downloadParquet(): Promise<void> {
+async function fetchExpectedRowCount(): Promise<number | null> {
+  try {
+    const meta = await ky.get(OL_METADATA_URL, { timeout: 15_000 }).json<{ row_count: number }>();
+    return meta.row_count ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function ensureParquetCached(): Promise<void> {
+  const expectedRows = await fetchExpectedRowCount();
+
   if (fs.existsSync(OL_PARQUET_PATH)) {
     const validateDb = await DuckDBInstance.create(":memory:");
     const validateCon = await validateDb.connect();
+    let valid = false;
     try {
-      await validateCon.run(`SELECT count(*) FROM read_parquet('${OL_PARQUET_PATH}')`);
-      logger.debug(`OpenLibrary parquet already cached at ${OL_PARQUET_PATH}`);
-      return;
+      const countResult = await validateCon.run(
+        `SELECT count(*) FROM read_parquet('${OL_PARQUET_PATH}')`,
+      );
+      const rows = await countResult.getRows();
+      const localCount = Number(rows[0]?.[0]);
+      if (expectedRows !== null && localCount !== expectedRows) {
+        logger.warn(
+          `Cached parquet has ${localCount.toLocaleString()} rows but expected ${expectedRows.toLocaleString()}, re-downloading...`,
+        );
+      } else {
+        logger.debug(
+          `OpenLibrary parquet cached at ${OL_PARQUET_PATH} (${localCount.toLocaleString()} rows)`,
+        );
+        valid = true;
+      }
     } catch {
       logger.warn(`Cached parquet at ${OL_PARQUET_PATH} is invalid, re-downloading...`);
-      fs.unlinkSync(OL_PARQUET_PATH);
     } finally {
       validateCon.closeSync();
       validateDb.closeSync();
     }
+    if (valid) return;
+    fs.unlinkSync(OL_PARQUET_PATH);
   }
+
   logger.info(`Downloading OpenLibrary works parquet to ${OL_PARQUET_PATH}...`);
   await new Promise<void>((resolve, reject) => {
     const file = fs.createWriteStream(OL_PARQUET_PATH);
@@ -301,16 +329,16 @@ async function downloadParquet(): Promise<void> {
   logger.info("Download complete.");
 }
 
-if (useCache) {
-  await downloadParquet();
+if (!useRemote) {
+  await ensureParquetCached();
 }
 
-const parquetSource = useCache ? OL_PARQUET_PATH : OL_PARQUET_URL;
+const parquetSource = useRemote ? OL_PARQUET_URL : OL_PARQUET_PATH;
 
 const db = await DuckDBInstance.create(":memory:");
 const con = await db.connect();
 
-if (!useCache) {
+if (useRemote) {
   await con.run("SET home_directory='/tmp'");
   await con.run("INSTALL httpfs");
   await con.run("LOAD httpfs");
