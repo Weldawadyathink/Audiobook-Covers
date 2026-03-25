@@ -1,6 +1,6 @@
 import ky from "ky";
 import { RerankerDefinition } from "./rerankers";
-import { getEnv } from "@/server/env";
+import { env } from "@/server/env";
 import { embedAndSortRelevanceScoreIntoImageData } from "./rerankerHelpers";
 import { type ImageData } from "@/server/imageData";
 
@@ -16,7 +16,7 @@ async function fetchJinaRerank(
   const response = await ky
     .post("https://api.jina.ai/v1/rerank", {
       headers: {
-        Authorization: `Bearer ${getEnv().JINA_API_KEY}`,
+        Authorization: `Bearer ${env.JINA_API_KEY}`,
       },
       json: {
         model: "jina-reranker-m0",

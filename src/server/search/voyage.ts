@@ -1,10 +1,10 @@
 import { createVoyage } from "voyage-ai-provider";
 import { ModelDefinition, EmbeddingOutput } from "./search";
-import { getEnv } from "@/server/env";
+import { env } from "@/server/env";
 import { embed, embedMany } from "ai";
 
 const voyage = createVoyage({
-  apiKey: getEnv().VOYAGE_API_KEY,
+  apiKey: env.VOYAGE_API_KEY,
 });
 
 export const models = {

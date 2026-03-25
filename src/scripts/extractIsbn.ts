@@ -5,7 +5,7 @@ import {
   shapeImageData,
   shapeImageDataArray,
 } from "@/server/imageData";
-import { getEnv } from "@/server/env";
+import { env } from "@/env";
 import ky from "ky";
 import "dotenv/config";
 import { logger } from "@/server/logger";
@@ -68,7 +68,6 @@ const modelParts = model.split(":").map((s: string) => s.trim());
 const getModel = (phase: number) =>
   modelParts[phase] ?? modelParts[modelParts.length - 1];
 
-const env = getEnv();
 const { sql, sqlTools } = getDbWriteConnection();
 
 // --- Phase 4 schema ---

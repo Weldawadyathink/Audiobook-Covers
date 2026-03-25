@@ -9,29 +9,17 @@ import { Upload } from "@aws-sdk/lib-storage";
 import * as https from "https";
 import * as fs from "fs";
 import { DuckDBInstance } from "@duckdb/node-api";
-import { z } from "zod/v4";
+import { env } from "@/env";
 
-const envSchema = z.object({
-  S3_ACCESS_KEY_ID: z.string(),
-  S3_SECRET_ACCESS_KEY: z.string(),
-  S3_BUCKET: z.string(),
-  S3_REGION: z.string(),
-  S3_ENDPOINT: z.string().optional(),
-});
-
-function getEnv() {
-  return envSchema.parse(process.env);
-}
-
-const worksDumpUrl =
-  "https://openlibrary.org/data/ol_dump_works_latest.txt.gz";
+const worksDumpUrl = "https://openlibrary.org/data/ol_dump_works_latest.txt.gz";
 const authorsDumpUrl =
   "https://openlibrary.org/data/ol_dump_authors_latest.txt.gz";
 const metadataKey = "openlibrary/etl-metadata.json";
-const worksParquetKey = "openlibrary/works.parquet";
-const authorsParquetKey = "openlibrary/authors.parquet";
 const tmpWorksParquetPath = "/tmp/works.parquet";
 const tmpAuthorsParquetPath = "/tmp/authors.parquet";
+
+const worksParquetFile = `s3://${env.S3_BUCKET}/openlibrary/works.parquet`;
+const authorsParquetFile = `s3://${env.S3_BUCKET}/openlibrary/authors.parquet`;
 
 interface EtlMetadata {
   dump_date: string;
@@ -41,7 +29,6 @@ interface EtlMetadata {
 }
 
 function makeS3Client(): S3Client {
-  const env = getEnv();
   return new S3Client({
     region: env.S3_REGION,
     ...(env.S3_ENDPOINT ? { endpoint: env.S3_ENDPOINT } : {}),
@@ -52,8 +39,10 @@ function makeS3Client(): S3Client {
   });
 }
 
-// Follows redirects to read Last-Modified for freshness check
-async function getDumpDate(url: string): Promise<string> {
+// Follows the "latest" redirect to extract the dump date from the resolved URL.
+// OpenLibrary redirects ol_dump_works_latest.txt.gz →
+// ol_dump_works_YYYY-MM-DD.txt.gz, so the date is in the filename.
+async function resolveDumpDate(url: string): Promise<string> {
   let current = url;
   for (let hops = 0; hops < 5; hops++) {
     const { statusCode, headers } = await new Promise<{
@@ -69,18 +58,23 @@ async function getDumpDate(url: string): Promise<string> {
       req.on("error", reject);
       req.end();
     });
-    if (statusCode === 301 || statusCode === 302) {
+    if (
+      statusCode === 301 ||
+      statusCode === 302 ||
+      statusCode === 307 ||
+      statusCode === 308
+    ) {
       const loc = headers["location"];
       if (!loc) throw new Error("Redirect with no Location header");
       current = Array.isArray(loc) ? loc[0] : loc;
       continue;
     }
-    const lm = headers["last-modified"];
-    if (!lm) throw new Error("No Last-Modified header on dump URL");
-    const raw = Array.isArray(lm) ? lm[0] : lm;
-    return new Date(raw).toISOString().slice(0, 10);
+    const match = current.match(/(\d{4}-\d{2}-\d{2})\.txt\.gz/);
+    if (!match)
+      throw new Error(`Could not extract dump date from URL: ${current}`);
+    return match[1];
   }
-  throw new Error("Too many redirects fetching dump URL");
+  throw new Error("Too many redirects resolving dump URL");
 }
 
 async function getStoredMetadata(
@@ -127,42 +121,96 @@ async function uploadParquet(
 }
 
 async function runEtl(): Promise<void> {
-  const { S3_BUCKET: bucket } = getEnv();
   const s3 = makeS3Client();
 
-  console.log("Fetching dump date from OpenLibrary...");
-  const dumpDate = await getDumpDate(worksDumpUrl);
-  console.log(`Dump date: ${dumpDate}`);
+  console.log("Resolving latest dump date from OpenLibrary...");
+  const dumpDate = await resolveDumpDate(worksDumpUrl);
+  console.log(`Latest dump date: ${dumpDate}`);
 
-  const storedMeta = await getStoredMetadata(s3, bucket);
-  const sameMonth =
-    storedMeta != null &&
-    storedMeta.dump_date.slice(0, 7) === dumpDate.slice(0, 7);
-  const worksAlreadyDone = sameMonth;
-  const authorsAlreadyDone = sameMonth && storedMeta!.authors_row_count != null;
+  const storedMeta = await getStoredMetadata(s3, env.S3_BUCKET);
+  const upToDate = storedMeta != null && storedMeta.dump_date === dumpDate;
+  const worksAlreadyDone = upToDate;
+  const authorsAlreadyDone = upToDate && storedMeta!.authors_row_count != null;
 
   if (worksAlreadyDone && authorsAlreadyDone) {
-    console.log(
-      `Already imported dump for ${dumpDate.slice(0, 7)} (stored: ${storedMeta!.dump_date}). Skipping.`,
-    );
+    console.log(`Already imported dump for ${dumpDate}. Skipping.`);
     return;
   }
 
-  if (fs.existsSync(tmpWorksParquetPath))
-    fs.unlinkSync(tmpWorksParquetPath);
+  if (fs.existsSync(tmpWorksParquetPath)) fs.unlinkSync(tmpWorksParquetPath);
   if (fs.existsSync(tmpAuthorsParquetPath))
     fs.unlinkSync(tmpAuthorsParquetPath);
 
-  const db = await DuckDBInstance.create(":memory:");
+  const db = await DuckDBInstance.create("/tmp/duck.db");
   const con = await db.connect();
 
   let worksRows = storedMeta?.works_row_count ?? 0;
   let authorsRows: number | undefined = storedMeta?.authors_row_count;
 
   try {
-    await con.run("SET home_directory='/tmp'");
+    await con.run("SET home_directory='/tmp/duckdb_home'");
+    await con.run("SET temp_directory='/tmp/duckdb_temp'");
+
+    await con.run("SET max_temp_directory_size = '8GB'");
+    await con.run("SET memory_limit = '1GB'");
+
     await con.run("INSTALL httpfs");
     await con.run("LOAD httpfs");
+
+    await con.run(`
+      CREATE OR REPLACE SECRET secret (
+        type s3,
+        endpoint '${env.S3_ENDPOINT.replace("https://", "")}',
+        region '${env.S3_REGION}',
+        key_id '${env.S3_ACCESS_KEY_ID}',
+        secret '${env.S3_SECRET_ACCESS_KEY}'
+      );
+    `);
+
+    if (!authorsAlreadyDone) {
+      console.log("Downloading authors dump and converting to Parquet");
+      await con.run(`
+        COPY (
+          SELECT
+            replace(json_extract_string(data, '$.key'), '/authors/', '') AS olid,
+            json_extract_string(data, '$.name')                          AS name,
+            TRY_CAST(json_extract(data, '$.eastern_order') AS BOOLEAN)  AS eastern_order,
+            json_extract_string(data, '$.personal_name')                 AS personal_name,
+            json_extract_string(data, '$.enumeration')                   AS enumeration,
+            json_extract_string(data, '$.title')                         AS title,
+            coalesce(json_extract(data, '$.alternate_names')::VARCHAR[], []::VARCHAR[]) AS alternate_names,
+            coalesce(json_extract(data, '$.uris')::VARCHAR[],            []::VARCHAR[]) AS uris,
+            CASE json_type(data, '$.bio')
+              WHEN 'VARCHAR' THEN json_extract_string(data, '$.bio')
+              WHEN 'OBJECT'  THEN json_extract_string(data, '$.bio.value')
+            END AS bio,
+            json_extract_string(data, '$.location')                      AS location,
+            json_extract_string(data, '$.birth_date')                    AS birth_date,
+            json_extract_string(data, '$.death_date')                    AS death_date,
+            json_extract_string(data, '$.date')                          AS date,
+            json_extract_string(data, '$.wikipedia')                     AS wikipedia,
+            json_extract(data, '$.links')::VARCHAR                       AS links
+          FROM read_csv(
+            '${authorsDumpUrl}',
+            sep           = '\t',
+            header        = false,
+            quote         = '',
+            columns       = {type: 'VARCHAR', key: 'VARCHAR', revision: 'VARCHAR',
+                             last_modified: 'VARCHAR', data: 'VARCHAR'},
+            ignore_errors = true
+          )
+        ) TO '${authorsParquetFile}' (FORMAT PARQUET, COMPRESSION ZSTD)
+      `);
+
+      const countResult = await con.run(
+        `SELECT count(*) FROM '${authorsParquetFile}'`,
+      );
+      const rows = await countResult.getRows();
+      authorsRows = Number(rows[0][0]);
+      console.log(
+        `Wrote ${authorsRows.toLocaleString()} authors rows to Parquet in S3`,
+      );
+    }
 
     if (!worksAlreadyDone) {
       // Stream the gzipped TSV from OpenLibrary directly to Parquet,
@@ -211,72 +259,16 @@ async function runEtl(): Promise<void> {
                              last_modified: 'VARCHAR', data: 'VARCHAR'},
             ignore_errors = true
           )
-          WHERE type = '/type/work'
-        ) TO '${tmpWorksParquetPath}' (FORMAT PARQUET, COMPRESSION ZSTD)
+        ) TO '${worksParquetFile}' (FORMAT PARQUET, COMPRESSION ZSTD)
       `);
 
       const countResult = await con.run(
-        `SELECT count(*) FROM '${tmpWorksParquetPath}'`,
+        `SELECT count(*) FROM '${worksParquetFile}'`,
       );
       const rows = await countResult.getRows();
       worksRows = Number(rows[0][0]);
-      console.log(`Wrote ${worksRows.toLocaleString()} works rows to Parquet.`);
-
-      console.log("Uploading works.parquet to S3...");
-      await uploadParquet(s3, bucket, worksParquetKey, tmpWorksParquetPath);
-    }
-
-    if (!authorsAlreadyDone) {
-      console.log("Downloading authors dump and converting to Parquet");
-      await con.run(`
-        COPY (
-          SELECT
-            replace(json_extract_string(data, '$.key'), '/authors/', '') AS olid,
-            json_extract_string(data, '$.name')                          AS name,
-            TRY_CAST(json_extract(data, '$.eastern_order') AS BOOLEAN)  AS eastern_order,
-            json_extract_string(data, '$.personal_name')                 AS personal_name,
-            json_extract_string(data, '$.enumeration')                   AS enumeration,
-            json_extract_string(data, '$.title')                         AS title,
-            coalesce(json_extract(data, '$.alternate_names')::VARCHAR[], []::VARCHAR[]) AS alternate_names,
-            coalesce(json_extract(data, '$.uris')::VARCHAR[],            []::VARCHAR[]) AS uris,
-            CASE json_type(data, '$.bio')
-              WHEN 'VARCHAR' THEN json_extract_string(data, '$.bio')
-              WHEN 'OBJECT'  THEN json_extract_string(data, '$.bio.value')
-            END AS bio,
-            json_extract_string(data, '$.location')                      AS location,
-            json_extract_string(data, '$.birth_date')                    AS birth_date,
-            json_extract_string(data, '$.death_date')                    AS death_date,
-            json_extract_string(data, '$.date')                          AS date,
-            json_extract_string(data, '$.wikipedia')                     AS wikipedia,
-            json_extract(data, '$.links')::VARCHAR                       AS links
-          FROM read_csv(
-            '${authorsDumpUrl}',
-            sep           = '\t',
-            header        = false,
-            quote         = '',
-            columns       = {type: 'VARCHAR', key: 'VARCHAR', revision: 'VARCHAR',
-                             last_modified: 'VARCHAR', data: 'VARCHAR'},
-            ignore_errors = true
-          )
-          WHERE type = '/type/author'
-        ) TO '${tmpAuthorsParquetPath}' (FORMAT PARQUET, COMPRESSION ZSTD)
-      `);
-
-      const countResult = await con.run(
-        `SELECT count(*) FROM '${tmpAuthorsParquetPath}'`,
-      );
-      const rows = await countResult.getRows();
-      authorsRows = Number(rows[0][0]);
       console.log(
-        `Wrote ${authorsRows.toLocaleString()} authors rows to Parquet.`,
-      );
-
-      console.log("Uploading authors.parquet to S3...");
-      await uploadParquet(
-        s3,
-        bucket,
-        authorsParquetKey,
-        tmpAuthorsParquetPath,
+        `Wrote ${worksRows.toLocaleString()} works rows to Parquet in S3`,
       );
     }
 

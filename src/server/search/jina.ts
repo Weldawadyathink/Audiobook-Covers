@@ -1,7 +1,7 @@
 import ky from "ky";
 import { z } from "zod";
 import { ModelDefinition, EmbeddingOutput } from "./search";
-import { getEnv } from "@/server/env";
+import { env } from "@/server/env";
 
 const JinaEmbeddingResponse = z.object({
   model: z.string(),
@@ -25,7 +25,7 @@ async function embed(
   const response = await ky
     .post("https://api.jina.ai/v1/embeddings", {
       headers: {
-        Authorization: `Bearer ${getEnv().JINA_API_KEY}`,
+        Authorization: `Bearer ${env.JINA_API_KEY}`,
       },
       json: {
         model: modelId,

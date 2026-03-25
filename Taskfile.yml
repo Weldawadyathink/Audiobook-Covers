@@ -43,6 +43,8 @@ tasks:
 
   trigger:dev:
     desc: Start the Trigger.dev local dev runner
+    env:
+      APP_STAGE: local
     cmds:
       - pnpm dlx trigger.dev@latest dev
 

@@ -2,7 +2,7 @@ import { z } from "zod/v4";
 import { createServerFn } from "@tanstack/react-start";
 import { waitUntil } from "cloudflare:workers";
 import { PostHog } from "posthog-node";
-import { getEnv } from "./env";
+import { env } from "@/server/env";
 import { logger } from "./logger";
 
 // In theory, z.json() should work, but typescript complains about recursion with a server function
@@ -25,8 +25,8 @@ export const logAnalyticsEvent = createServerFn()
     }),
   )
   .handler(async ({ data }) => {
-    const posthog = new PostHog(getEnv().VITE_PUBLIC_POSTHOG_KEY, {
-      host: getEnv().VITE_PUBLIC_POSTHOG_HOST,
+    const posthog = new PostHog(env.VITE_PUBLIC_POSTHOG_KEY, {
+      host: env.VITE_PUBLIC_POSTHOG_HOST,
     });
     waitUntil(
       posthog.captureImmediate({

@@ -10,7 +10,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
 import { logAnalyticsEvent } from "@/server/analytics";
 import { getReranker } from "@/server/rerankers/rerankers";
-import { getEnv } from "@/server/env";
+import { env } from "@/server/env";
 import { waitUntil } from "cloudflare:workers";
 
 const rrfModelConfig = z.object({
@@ -188,7 +188,7 @@ async function singleModelSearch(
     data: {
       eventType: "singleModelSearch",
       payload: {
-        appStage: getEnv().APP_STAGE,
+        appStage: env.APP_STAGE,
         model: modelName,
         q,
         results: final.length,
@@ -272,7 +272,7 @@ async function multiModelSearch(
     data: {
       eventType: "multiModelSearch",
       payload: {
-        appStage: getEnv().APP_STAGE,
+        appStage: env.APP_STAGE,
         models: configs.map((c) => c.model),
         q,
         results: final.length,
