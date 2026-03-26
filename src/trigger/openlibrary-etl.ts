@@ -1,4 +1,4 @@
-import { schedules, tasks, queue } from "@trigger.dev/sdk/v3";
+import { schedules, queue } from "@trigger.dev/sdk/v3";
 import {
   makeS3Client,
   getStoredMetadata,
@@ -10,9 +10,11 @@ import {
   worksMetadataKey,
   enrichedMetadataKey,
 } from "./openlibrary-utils";
-import type { openLibraryWorksTask } from "./openlibrary-works";
-import type { openLibraryAuthorsTask } from "./openlibrary-authors";
-import type { openLibraryEnrichTask } from "./openlibrary-enrich";
+import { openLibraryWorksTask } from "./openlibrary-works";
+import { openLibraryAuthorsTask } from "./openlibrary-authors";
+import { openLibraryEnrichTask } from "./openlibrary-enrich";
+import { openLibraryEnrichCombineTask } from "./openlibrary-enrich-combine";
+import { triggerAndWait, batchTriggerAndWait } from "./utils";
 
 export const olQueue = queue({
   name: "OpenLibrary Queue",
@@ -53,33 +55,23 @@ export const openLibraryEtlTask = schedules.task({
       return;
     }
 
-    console.log("Triggering authors task...");
-    const authorsResult = await tasks.triggerAndWait<typeof openLibraryAuthorsTask>(
-      "openlibrary-authors",
-      { dumpDate },
-    );
-    if (!authorsResult.ok) {
-      throw new Error(`Authors task failed: ${JSON.stringify(authorsResult.error)}`);
-    }
-
-    console.log("Triggering works task...");
-    const worksResult = await tasks.triggerAndWait<typeof openLibraryWorksTask>(
-      "openlibrary-works",
-      { dumpDate },
-    );
-    if (!worksResult.ok) {
-      throw new Error(`Works task failed: ${JSON.stringify(worksResult.error)}`);
-    }
+    console.log("Triggering works and authors tasks");
+    await batchTriggerAndWait([
+      {
+        task: openLibraryWorksTask,
+        payload: { dumpDate },
+      },
+      {
+        task: openLibraryAuthorsTask,
+        payload: { dumpDate },
+      },
+    ]);
 
     console.log("Triggering enrichment...");
-    const enrichResult = await tasks.triggerAndWait<typeof openLibraryEnrichTask>(
-      "openlibrary-enrich",
-      { dumpDate },
-    );
-    if (!enrichResult.ok) {
-      throw new Error(`Enrich task failed: ${JSON.stringify(enrichResult.error)}`);
-    }
-    console.log("Enrichment complete.");
+    await triggerAndWait(openLibraryEnrichTask, { dumpDate });
+
+    console.log("Triggering enrich combine...");
+    await triggerAndWait(openLibraryEnrichCombineTask, { dumpDate });
 
     await putMetadata(s3, etlMetadataKey, {
       dump_date: dumpDate,

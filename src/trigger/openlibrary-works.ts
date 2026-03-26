@@ -24,9 +24,9 @@ tasks.middleware("resource-monitor", async ({ ctx, next }) => {
 
 export const openLibraryWorksTask = task({
   id: "openlibrary-works",
-  machine: "medium-1x",
+  machine: "small-2x",
   retry: {
-    maxAttempts: 3,
+    maxAttempts: 1,
   },
   queue: olQueue,
   run: async ({ dumpDate }: { dumpDate: string }) => {
@@ -55,7 +55,7 @@ export const openLibraryWorksTask = task({
       await con.run(`SET home_directory='${tmpDir}/home'`);
       await con.run(`SET temp_directory='${tmpDir}/temp'`);
       await con.run("SET max_temp_directory_size = '6GB'");
-      await con.run("SET memory_limit = '1.5GB'");
+      await con.run("SET memory_limit = '700MB'");
 
       await con.run("INSTALL httpfs");
       await con.run("LOAD httpfs");

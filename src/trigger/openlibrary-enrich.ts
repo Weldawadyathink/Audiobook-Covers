@@ -2,13 +2,10 @@ import { task, tasks } from "@trigger.dev/sdk/v3";
 import {
   makeS3Client,
   getStoredMetadata,
-  putMetadata,
   deleteMetadata,
   downloadS3File,
   deleteS3Prefix,
   worksParquetFile,
-  authorsParquetFile,
-  enrichedWorksParquetFile,
   enrichedMetadataKey,
   enrichTmpChunkPrefix,
 } from "./openlibrary-utils";
@@ -30,9 +27,9 @@ const LOCAL_AUTHORS_PATH = "/tmp/enrich/authors_local.parquet";
 
 export const openLibraryEnrichTask = task({
   id: "openlibrary-enrich",
-  machine: "medium-1x",
+  machine: "small-2x",
   retry: {
-    maxAttempts: 3,
+    maxAttempts: 1,
   },
   queue: olQueue,
   run: async ({ dumpDate }: { dumpDate: string }) => {
@@ -134,38 +131,7 @@ export const openLibraryEnrichTask = task({
         console.log(`Chunk ${i + 1}/${numChunks} done`);
       }
 
-      // Step 4: Combine all chunks into final output
-      console.log("Combining chunks into final enriched_works.parquet");
-      const allChunksGlob = `s3://${env.S3_BUCKET}/${enrichTmpChunkPrefix}*.parquet`;
-      await con.run(`
-        COPY (
-          SELECT * FROM read_parquet('${allChunksGlob}')
-        )
-        TO '${enrichedWorksParquetFile}' (FORMAT PARQUET, COMPRESSION 'ZSTD')
-      `);
-      console.log("Combined all chunks");
-
-      // Step 5: Delete temp S3 chunks
-      console.log("Cleaning up temp S3 chunks");
-      await deleteS3Prefix(s3, enrichTmpChunkPrefix);
-
-      // Step 6: Count output rows and save metadata
-      const result = await con.run(
-        `SELECT count(*) FROM '${enrichedWorksParquetFile}'`,
-      );
-      const rows = await result.getRows();
-      const rowCount = Number(rows[0][0]);
-      console.log(
-        `Wrote ${rowCount.toLocaleString()} enriched works rows to Parquet in S3`,
-      );
-
-      await putMetadata(s3, enrichedMetadataKey, {
-        dump_date: dumpDate,
-        row_count: rowCount,
-        updated_at: new Date().toISOString(),
-      });
-
-      return { row_count: rowCount };
+      return { numChunks };
     } finally {
       con.closeSync();
       db.closeSync();
