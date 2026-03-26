@@ -1,19 +1,17 @@
-import { task, tasks } from "@trigger.dev/sdk/v3";
+import { task } from "@trigger.dev/sdk/v3";
 import {
   makeS3Client,
   getStoredMetadata,
-  deleteMetadata,
-  downloadS3File,
-  deleteS3Prefix,
   worksParquetFile,
   enrichedMetadataKey,
-  enrichTmpChunkPrefix,
 } from "./openlibrary-utils";
+import { openLibraryEnrichWorkerTask } from "./openlibrary-enrich-worker";
 import { DuckDBInstance } from "@duckdb/node-api";
 import * as fs from "fs";
 import { env } from "@/env";
+import { batchTriggerAndWait } from "./utils";
 import { ResourceMonitor } from "./resourceMonitor";
-import { olQueue } from "./openlibrary-etl";
+import { tasks } from "@trigger.dev/sdk/v3";
 
 tasks.middleware("resource-monitor", async ({ ctx, next }) => {
   const resourceMonitor = new ResourceMonitor({ ctx });
@@ -22,16 +20,14 @@ tasks.middleware("resource-monitor", async ({ ctx, next }) => {
   resourceMonitor.stopMonitoring();
 });
 
-const CHUNK_SIZE = 500_000;
-const LOCAL_AUTHORS_PATH = "/tmp/enrich/authors_local.parquet";
+const CHUNK_SIZE = 100_000;
 
 export const openLibraryEnrichTask = task({
   id: "openlibrary-enrich",
-  machine: "small-2x",
+  machine: "micro",
   retry: {
     maxAttempts: 1,
   },
-  queue: olQueue,
   run: async ({ dumpDate }: { dumpDate: string }) => {
     const s3 = makeS3Client();
 
@@ -41,11 +37,7 @@ export const openLibraryEnrichTask = task({
       return { row_count: stored.row_count ?? 0 };
     }
 
-    await deleteMetadata(s3, enrichedMetadataKey);
-    await deleteS3Prefix(s3, enrichTmpChunkPrefix);
-
-    const tmpDir = "/tmp/enrich";
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    const tmpDir = "/tmp/enrich-coordinator";
     fs.mkdirSync(`${tmpDir}/home`, { recursive: true });
     fs.mkdirSync(`${tmpDir}/temp`, { recursive: true });
 
@@ -55,10 +47,8 @@ export const openLibraryEnrichTask = task({
     try {
       await con.run(`SET home_directory='${tmpDir}/home'`);
       await con.run(`SET temp_directory='${tmpDir}/temp'`);
-      await con.run("SET max_temp_directory_size = '6GB'");
-      await con.run("SET memory_limit = '1GB'");
-      await con.run("SET threads = 2");
-      await con.run("SET preserve_insertion_order = false");
+      await con.run("SET memory_limit = '200MB'");
+      await con.run("SET threads = 1");
 
       await con.run("INSTALL httpfs");
       await con.run("LOAD httpfs");
@@ -73,13 +63,6 @@ export const openLibraryEnrichTask = task({
         );
       `);
 
-      // Step 1: Download authors parquet locally
-      const authorsS3Key = `openlibrary/authors.parquet`;
-      console.log("Downloading authors parquet to local disk");
-      await downloadS3File(s3, authorsS3Key, LOCAL_AUTHORS_PATH);
-      console.log("Authors parquet downloaded");
-
-      // Step 2: Count total works rows
       const countResult = await con.run(
         `SELECT count(*) FROM read_parquet('${worksParquetFile}')`,
       );
@@ -87,49 +70,15 @@ export const openLibraryEnrichTask = task({
       const totalRows = Number(countRows[0][0]);
       const numChunks = Math.ceil(totalRows / CHUNK_SIZE);
       console.log(
-        `Total works rows: ${totalRows.toLocaleString()}, processing in ${numChunks} chunks`,
+        `Total works rows: ${totalRows.toLocaleString()}, dispatching ${numChunks} worker tasks`,
       );
 
-      // Step 3: Process chunks
-      for (let i = 0; i < numChunks; i++) {
-        const offset = i * CHUNK_SIZE;
-        const chunkKey = `${enrichTmpChunkPrefix}chunk_${i}.parquet`;
-        const chunkFile = `s3://${env.S3_BUCKET}/${chunkKey}`;
-
-        await con.run(`
-          COPY (
-            WITH chunk AS (
-              SELECT * FROM read_parquet('${worksParquetFile}')
-              LIMIT ${CHUNK_SIZE} OFFSET ${offset}
-            ),
-            flattened AS (
-              SELECT
-                w.* EXCLUDE (authors),
-                replace(
-                  unnest(json_transform(json_extract(w.authors, '$[*].author.key'), '["VARCHAR"]')),
-                  '/authors/',
-                  ''
-                ) AS author_id
-              FROM chunk w
-              WHERE w.authors IS NOT NULL
-            ),
-            needed_ids AS (SELECT DISTINCT author_id FROM flattened),
-            filtered_authors AS (
-              SELECT a.*
-              FROM read_parquet('${LOCAL_AUTHORS_PATH}') a
-              INNER JOIN needed_ids n ON a.olid = n.author_id
-            )
-            SELECT
-              fl.*,
-              a.* EXCLUDE (olid)
-            FROM flattened fl
-            LEFT JOIN filtered_authors a ON fl.author_id = a.olid
-          )
-          TO '${chunkFile}' (FORMAT PARQUET, COMPRESSION 'ZSTD')
-        `);
-
-        console.log(`Chunk ${i + 1}/${numChunks} done`);
-      }
+      await batchTriggerAndWait(
+        Array.from({ length: numChunks }, (_, i) => ({
+          task: openLibraryEnrichWorkerTask,
+          payload: { dumpDate, chunkIndex: i, totalChunks: numChunks, chunkSize: CHUNK_SIZE },
+        })),
+      );
 
       return { numChunks };
     } finally {

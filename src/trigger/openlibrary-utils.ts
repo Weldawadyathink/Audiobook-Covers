@@ -5,6 +5,7 @@ import {
   DeleteObjectCommand,
   ListObjectsV2Command,
   DeleteObjectsCommand,
+  HeadObjectCommand,
   NoSuchKey,
 } from "@aws-sdk/client-s3";
 import * as https from "https";
@@ -122,6 +123,24 @@ export async function deleteMetadata(
   await s3.send(
     new DeleteObjectCommand({ Bucket: env.S3_BUCKET, Key: key }),
   );
+}
+
+export async function headS3Object(
+  s3: S3Client,
+  key: string,
+): Promise<{ etag: string; contentLength: number } | null> {
+  try {
+    const res = await s3.send(
+      new HeadObjectCommand({ Bucket: env.S3_BUCKET, Key: key }),
+    );
+    return {
+      etag: res.ETag ?? "",
+      contentLength: res.ContentLength ?? 0,
+    };
+  } catch (err) {
+    if (err instanceof NoSuchKey) return null;
+    throw err;
+  }
 }
 
 export async function downloadS3File(

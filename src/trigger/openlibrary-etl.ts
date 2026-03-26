@@ -4,11 +4,13 @@ import {
   getStoredMetadata,
   putMetadata,
   resolveDumpDate,
+  deleteS3Prefix,
   worksDumpUrl,
   etlMetadataKey,
   authorsMetadataKey,
   worksMetadataKey,
   enrichedMetadataKey,
+  enrichTmpChunkPrefix,
 } from "./openlibrary-utils";
 import { openLibraryWorksTask } from "./openlibrary-works";
 import { openLibraryAuthorsTask } from "./openlibrary-authors";
@@ -66,6 +68,9 @@ export const openLibraryEtlTask = schedules.task({
         payload: { dumpDate },
       },
     ]);
+
+    console.log("Clearing enrich tmp chunks...");
+    await deleteS3Prefix(s3, enrichTmpChunkPrefix);
 
     console.log("Triggering enrichment...");
     await triggerAndWait(openLibraryEnrichTask, { dumpDate });
