@@ -4,7 +4,7 @@ import { jsonrepair } from "jsonrepair";
 import ky from "ky";
 import * as fs from "fs";
 import { env } from "@/env";
-import { makeS3Client, headS3Object, downloadS3File } from "./openlibrary-utils";
+import { makeS3Client, headS3Object, downloadS3File } from "../openlibrary/utils";
 
 // --- Types ---
 

@@ -1,6 +1,6 @@
 import { schemaTask } from "@trigger.dev/sdk/v3";
 import { z } from "zod";
-import { callOpenRouter, type PhaseUsage } from "./extract-olid-utils";
+import { callOpenRouter, type PhaseUsage } from "./utils";
 
 const Phase1Payload = z.object({
   imageUrl: z.string(),

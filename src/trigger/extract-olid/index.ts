@@ -1,11 +1,11 @@
 import { schemaTask } from "@trigger.dev/sdk/v3";
 import { z } from "zod";
 import { getDbWriteConnection } from "@/server/db";
-import { triggerAndWait } from "./utils";
-import { extractOlidPhase1Task } from "./extract-olid-phase1";
-import { extractOlidPhase2Task } from "./extract-olid-phase2";
-import { extractOlidPhase3Task } from "./extract-olid-phase3";
-import { extractOlidPhase4Task } from "./extract-olid-phase4";
+import { triggerAndWait } from "../utils";
+import { extractOlidPhase1Task } from "./phase1";
+import { extractOlidPhase2Task } from "./phase2";
+import { extractOlidPhase3Task } from "./phase3";
+import { extractOlidPhase4Task } from "./phase4";
 
 const IMAGE_URL_PREFIX = "https://images.audiobookcovers.com";
 

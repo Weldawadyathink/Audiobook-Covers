@@ -8,7 +8,7 @@ import {
   worksParquetFile,
   authorsMetadataKey,
   enrichTmpChunkPrefix,
-} from "./openlibrary-utils";
+} from "./utils";
 import { DuckDBInstance } from "@duckdb/node-api";
 import * as fs from "fs";
 import { env } from "@/env";

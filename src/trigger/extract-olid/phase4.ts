@@ -6,7 +6,7 @@ import {
   openlibraryWorkIdResultJsonSchema,
   phase4SystemPrompt,
   type PhaseUsage,
-} from "./extract-olid-utils";
+} from "./utils";
 
 const Phase4Payload = z.object({
   phase3FinalContent: z.string(),

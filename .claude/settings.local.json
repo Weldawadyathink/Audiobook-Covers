@@ -15,7 +15,11 @@
       "WebFetch(domain:duckdb.org)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "WebFetch(domain:www.npmjs.com)"
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(for f:*)",
+      "Bash(do echo:*)",
+      "Read(//Users/Spenser/Programming/Audiobook-Covers/**)",
+      "Bash(done)"
     ]
   }
 }

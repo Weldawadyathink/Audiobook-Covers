@@ -4,13 +4,13 @@ import {
   getStoredMetadata,
   worksParquetFile,
   enrichedMetadataKey,
-} from "./openlibrary-utils";
-import { openLibraryEnrichWorkerTask } from "./openlibrary-enrich-worker";
+} from "./utils";
+import { openLibraryEnrichWorkerTask } from "./enrich-worker";
 import { DuckDBInstance } from "@duckdb/node-api";
 import * as fs from "fs";
 import { env } from "@/env";
-import { batchTriggerAndWait } from "./utils";
-import { ResourceMonitor } from "./resourceMonitor";
+import { batchTriggerAndWait } from "../utils";
+import { ResourceMonitor } from "../resourceMonitor";
 import { tasks } from "@trigger.dev/sdk/v3";
 
 tasks.middleware("resource-monitor", async ({ ctx, next }) => {

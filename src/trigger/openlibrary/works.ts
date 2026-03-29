@@ -8,12 +8,12 @@ import {
   worksMetadataKey,
   enrichedMetadataKey,
   worksDumpUrl,
-} from "./openlibrary-utils";
+} from "./utils";
 import { DuckDBInstance } from "@duckdb/node-api";
 import * as fs from "fs";
 import { env } from "@/env";
-import { ResourceMonitor } from "./resourceMonitor";
-import { olQueue } from "./openlibrary-etl";
+import { ResourceMonitor } from "../resourceMonitor";
+import { olQueue } from "./etl";
 
 tasks.middleware("resource-monitor", async ({ ctx, next }) => {
   const resourceMonitor = new ResourceMonitor({ ctx });

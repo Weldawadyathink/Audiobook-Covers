@@ -6,27 +6,23 @@ import {
   callOpenRouter,
   ensureEnrichedWorksParquetCached,
   searchOpenLibraryByTitle,
-  phase3SystemPrompt,
-  validateOpenLibraryTool,
+  phase2SystemPrompt,
+  searchOpenLibraryTool,
   type OpenRouterMessage,
   type PhaseUsage,
-} from "./extract-olid-utils";
+} from "./utils";
 
-const Phase3Payload = z.object({
+const Phase2Payload = z.object({
   imageUrl: z.string(),
   ocrText: z.string(),
-  phase2Messages: z.array(z.any()),
-  phase2FinalContent: z.string(),
   model: z.string(),
 });
 
-export const extractOlidPhase3Task = schemaTask({
-  id: "extract-olid-phase3",
-  schema: Phase3Payload,
+export const extractOlidPhase2Task = schemaTask({
+  id: "extract-olid-phase2",
+  schema: Phase2Payload,
   machine: "small-2x",
-  run: async ({ phase2Messages: rawPhase2Messages, phase2FinalContent, model }) => {
-    const phase2Messages = rawPhase2Messages as OpenRouterMessage[];
-
+  run: async ({ imageUrl, ocrText, model }) => {
     const tmpDir = "/tmp/extract-olid";
     fs.mkdirSync(`${tmpDir}/home`, { recursive: true });
     fs.mkdirSync(`${tmpDir}/temp`, { recursive: true });
@@ -39,19 +35,24 @@ export const extractOlidPhase3Task = schemaTask({
       await con.run(`SET home_directory='${tmpDir}/home'`);
       await con.run(`SET temp_directory='${tmpDir}/temp'`);
 
-      // Build phase 3 messages: system prompt + phase 2 messages (minus user message) + phase 2 final + analysis request
-      const phase3Messages: OpenRouterMessage[] = [
-        { role: "system", content: phase3SystemPrompt },
-        ...phase2Messages.slice(1),
-        { role: "assistant", content: phase2FinalContent },
+      const phase2Messages: OpenRouterMessage[] = [
+        { role: "system", content: phase2SystemPrompt },
         {
           role: "user",
-          content:
-            "Based on the research above, please analyze the candidates and select the best match. Discuss the strengths and weaknesses of this identification, your confidence level, and provide all available metadata for the selected book.",
+          content: [
+            {
+              type: "image_url",
+              image_url: { url: imageUrl },
+            },
+            {
+              type: "text",
+              text: `Here is the audiobook cover image. The OCR text extracted from it is:\n\n${ocrText}\n\nPlease search OpenLibrary to find the correct book entry for this audiobook cover.`,
+            },
+          ],
         },
       ];
 
-      let phase3FinalContent = "";
+      let phase2FinalContent = "";
       const usage: PhaseUsage = {
         promptTokens: 0,
         completionTokens: 0,
@@ -61,8 +62,8 @@ export const extractOlidPhase3Task = schemaTask({
       let parquetReady = false;
 
       while (true) {
-        const response = await callOpenRouter(phase3Messages, model, [
-          validateOpenLibraryTool,
+        const response = await callOpenRouter(phase2Messages, model, [
+          searchOpenLibraryTool,
         ]);
         usage.promptTokens += response.usage?.prompt_tokens ?? 0;
         usage.completionTokens += response.usage?.completion_tokens ?? 0;
@@ -74,11 +75,11 @@ export const extractOlidPhase3Task = schemaTask({
         const toolCalls = message.tool_calls;
 
         if (!toolCalls || toolCalls.length === 0) {
-          phase3FinalContent = message.content ?? "";
+          phase2FinalContent = message.content ?? "";
           break;
         }
 
-        phase3Messages.push({
+        phase2Messages.push({
           role: "assistant",
           content: message.content ?? "",
           tool_calls: toolCalls,
@@ -102,7 +103,7 @@ export const extractOlidPhase3Task = schemaTask({
 
           const searchResultJson = await searchOpenLibraryByTitle(con, query);
 
-          phase3Messages.push({
+          phase2Messages.push({
             role: "tool",
             tool_call_id: toolCall.id,
             content: searchResultJson,
@@ -111,10 +112,10 @@ export const extractOlidPhase3Task = schemaTask({
       }
 
       console.log(
-        `Phase 3 cost: $${usage.cost.toFixed(8)} | tokens in: ${usage.promptTokens.toLocaleString()} out: ${usage.completionTokens.toLocaleString()}`,
+        `Phase 2 cost: $${usage.cost.toFixed(8)} | tokens in: ${usage.promptTokens.toLocaleString()} out: ${usage.completionTokens.toLocaleString()}`,
       );
 
-      return { phase3FinalContent, usage };
+      return { phase2Messages, phase2FinalContent, usage };
     } finally {
       con.closeSync();
       db.closeSync();

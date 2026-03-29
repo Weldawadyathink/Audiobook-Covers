@@ -11,12 +11,12 @@ import {
   worksMetadataKey,
   enrichedMetadataKey,
   enrichTmpChunkPrefix,
-} from "./openlibrary-utils";
-import { openLibraryWorksTask } from "./openlibrary-works";
-import { openLibraryAuthorsTask } from "./openlibrary-authors";
-import { openLibraryEnrichTask } from "./openlibrary-enrich";
-import { openLibraryEnrichCombineTask } from "./openlibrary-enrich-combine";
-import { triggerAndWait, batchTriggerAndWait } from "./utils";
+} from "./utils";
+import { openLibraryWorksTask } from "./works";
+import { openLibraryAuthorsTask } from "./authors";
+import { openLibraryEnrichTask } from "./enrich";
+import { openLibraryEnrichCombineTask } from "./enrich-combine";
+import { triggerAndWait, batchTriggerAndWait } from "../utils";
 
 export const olQueue = queue({
   name: "OpenLibrary Queue",
