@@ -242,12 +242,13 @@ export async function searchOpenLibraryByTitle(
   const result = await con.run(`
     SELECT
       e.olid, e.title, e.subtitle,
-      list(DISTINCT e.name) FILTER (WHERE e.name IS NOT NULL) AS author_names,
-      list_distinct(flatten(list(coalesce(e.alternate_names, []::VARCHAR[])))) AS author_alternate_names,
-      e.subjects, e.description, e.first_publish_date, e.other_titles
+      e.author_names,
+      e.author_alternate_names,
+      e.subjects, e.description, e.first_publish_date, e.other_titles,
+      e.edition_count
     FROM read_parquet('${LOCAL_PARQUET_PATH}') e
     WHERE e.title ILIKE '%${escapedQuery}%'
-    GROUP BY e.olid, e.title, e.subtitle, e.subjects, e.description, e.first_publish_date, e.other_titles
+    ORDER BY e.edition_count DESC NULLS LAST
     LIMIT 10
   `);
 
@@ -262,6 +263,7 @@ export async function searchOpenLibraryByTitle(
     "description",
     "first_publish_date",
     "other_titles",
+    "edition_count",
   ];
 
   const results = rows.map((row) => {

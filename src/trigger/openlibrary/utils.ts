@@ -17,9 +17,12 @@ export const worksDumpUrl =
   "https://openlibrary.org/data/ol_dump_works_latest.txt.gz";
 export const authorsDumpUrl =
   "https://openlibrary.org/data/ol_dump_authors_latest.txt.gz";
+export const editionsDumpUrl =
+  "https://openlibrary.org/data/ol_dump_editions_latest.txt.gz";
 
 export const worksParquetFile = `s3://${env.S3_BUCKET}/openlibrary/works.parquet`;
 export const authorsParquetFile = `s3://${env.S3_BUCKET}/openlibrary/authors.parquet`;
+export const editionCountsParquetFile = `s3://${env.S3_BUCKET}/openlibrary/edition_counts.parquet`;
 export const enrichedWorksParquetFile = `s3://${env.S3_BUCKET}/openlibrary/enriched_works.parquet`;
 
 export const enrichTmpChunkPrefix = "openlibrary/tmp/";
@@ -27,6 +30,7 @@ export const enrichTmpChunkPrefix = "openlibrary/tmp/";
 export const etlMetadataKey = "openlibrary/etl-metadata.json";
 export const worksMetadataKey = "openlibrary/works-metadata.json";
 export const authorsMetadataKey = "openlibrary/authors-metadata.json";
+export const editionsMetadataKey = "openlibrary/editions-metadata.json";
 export const enrichedMetadataKey = "openlibrary/enriched-metadata.json";
 
 export interface TaskMetadata {

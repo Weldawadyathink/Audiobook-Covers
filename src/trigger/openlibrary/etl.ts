@@ -3,17 +3,19 @@ import {
   makeS3Client,
   getStoredMetadata,
   putMetadata,
-  resolveDumpDate,
   deleteS3Prefix,
+  resolveDumpDate,
   worksDumpUrl,
   etlMetadataKey,
   authorsMetadataKey,
   worksMetadataKey,
+  editionsMetadataKey,
   enrichedMetadataKey,
   enrichTmpChunkPrefix,
 } from "./utils";
 import { openLibraryWorksTask } from "./works";
 import { openLibraryAuthorsTask } from "./authors";
+import { openLibraryEditionsTask } from "./editions";
 import { openLibraryEnrichTask } from "./enrich";
 import { openLibraryEnrichCombineTask } from "./enrich-combine";
 import { triggerAndWait, batchTriggerAndWait } from "../utils";
@@ -42,22 +44,25 @@ export const openLibraryEtlTask = schedules.task({
 
     // Fast-exit: check each step's own metadata so that manually deleting any
     // one of them causes only that step (and its dependents) to re-run.
-    const [authorsState, worksState, enrichedState] = await Promise.all([
-      getStoredMetadata(s3, authorsMetadataKey),
-      getStoredMetadata(s3, worksMetadataKey),
-      getStoredMetadata(s3, enrichedMetadataKey),
-    ]);
+    const [authorsState, worksState, editionsState, enrichedState] =
+      await Promise.all([
+        getStoredMetadata(s3, authorsMetadataKey),
+        getStoredMetadata(s3, worksMetadataKey),
+        getStoredMetadata(s3, editionsMetadataKey),
+        getStoredMetadata(s3, enrichedMetadataKey),
+      ]);
 
     if (
       authorsState?.dump_date === dumpDate &&
       worksState?.dump_date === dumpDate &&
+      editionsState?.dump_date === dumpDate &&
       enrichedState?.dump_date === dumpDate
     ) {
       console.log(`All steps already complete for ${dumpDate}. Skipping.`);
       return;
     }
 
-    console.log("Triggering works and authors tasks");
+    console.log("Triggering works, authors, and editions tasks");
     await batchTriggerAndWait([
       {
         task: openLibraryWorksTask,
@@ -65,6 +70,10 @@ export const openLibraryEtlTask = schedules.task({
       },
       {
         task: openLibraryAuthorsTask,
+        payload: { dumpDate },
+      },
+      {
+        task: openLibraryEditionsTask,
         payload: { dumpDate },
       },
     ]);

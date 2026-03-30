@@ -13,7 +13,6 @@ import { DuckDBInstance } from "@duckdb/node-api";
 import * as fs from "fs";
 import { env } from "@/env";
 import { ResourceMonitor } from "../resourceMonitor";
-import { olQueue } from "./etl";
 
 tasks.middleware("resource-monitor", async ({ ctx, next }) => {
   const resourceMonitor = new ResourceMonitor({ ctx });
@@ -28,7 +27,6 @@ export const openLibraryAuthorsTask = task({
   retry: {
     maxAttempts: 1,
   },
-  queue: olQueue,
   run: async ({ dumpDate }: { dumpDate: string }) => {
     const s3 = makeS3Client();
 
