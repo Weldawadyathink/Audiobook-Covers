@@ -1,6 +1,7 @@
 import { schemaTask } from "@trigger.dev/sdk/v3";
 import { z } from "zod";
-import { getDbWriteConnection } from "@/server/db";
+import { getDbWriteConnection } from "@/db";
+import { env } from "@/env";
 import { triggerAndWait } from "../utils";
 import { extractOlidPhase1Task } from "./phase1";
 import { extractOlidPhase2Task } from "./phase2";
@@ -65,7 +66,7 @@ export const extractOlidTask = schemaTask({
     console.log(`Total cost: $${totalCost.toFixed(8)}`);
 
     if (save && result) {
-      const { sql, sqlTools } = getDbWriteConnection();
+      const { sql, sqlTools } = getDbWriteConnection(env);
       try {
         await sqlTools.query`
           UPDATE image
