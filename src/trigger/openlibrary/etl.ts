@@ -1,29 +1,7 @@
-import { schedules, queue } from "@trigger.dev/sdk/v3";
-import {
-  makeS3Client,
-  getStoredMetadata,
-  putMetadata,
-  deleteS3Prefix,
-  resolveDumpDate,
-  worksDumpUrl,
-  etlMetadataKey,
-  authorsMetadataKey,
-  worksMetadataKey,
-  editionsMetadataKey,
-  enrichedMetadataKey,
-  enrichTmpChunkPrefix,
-} from "./utils";
-import { openLibraryWorksTask } from "./works";
-import { openLibraryAuthorsTask } from "./authors";
-import { openLibraryEditionsTask } from "./editions";
-import { openLibraryEnrichTask } from "./enrich";
-import { openLibraryEnrichCombineTask } from "./enrich-combine";
-import { triggerAndWait, batchTriggerAndWait } from "../utils";
-
-export const olQueue = queue({
-  name: "OpenLibrary Queue",
-  concurrencyLimit: 1,
-});
+import { schedules } from "@trigger.dev/sdk/v3";
+import { resolveDumpDate, worksDumpUrl } from "./utils";
+import { openLibraryCsvToParquetTask } from "./csv-to-parquet";
+import { batchTriggerAndWait } from "../utils";
 
 export const openLibraryEtlTask = schedules.task({
   id: "openlibrary-etl",
@@ -36,61 +14,47 @@ export const openLibraryEtlTask = schedules.task({
     concurrencyLimit: 1,
   },
   run: async () => {
-    const s3 = makeS3Client();
-
     console.log("Resolving latest dump date from OpenLibrary...");
     const dumpDate = await resolveDumpDate(worksDumpUrl);
     console.log(`Latest dump date: ${dumpDate}`);
+    console.log(`Spawning csv to parquet tasks`);
 
-    // Fast-exit: check each step's own metadata so that manually deleting any
-    // one of them causes only that step (and its dependents) to re-run.
-    const [authorsState, worksState, editionsState, enrichedState] =
-      await Promise.all([
-        getStoredMetadata(s3, authorsMetadataKey),
-        getStoredMetadata(s3, worksMetadataKey),
-        getStoredMetadata(s3, editionsMetadataKey),
-        getStoredMetadata(s3, enrichedMetadataKey),
-      ]);
-
-    if (
-      authorsState?.dump_date === dumpDate &&
-      worksState?.dump_date === dumpDate &&
-      editionsState?.dump_date === dumpDate &&
-      enrichedState?.dump_date === dumpDate
-    ) {
-      console.log(`All steps already complete for ${dumpDate}. Skipping.`);
-      return;
-    }
-
-    console.log("Triggering works, authors, and editions tasks");
     await batchTriggerAndWait([
       {
-        task: openLibraryWorksTask,
-        payload: { dumpDate },
+        task: openLibraryCsvToParquetTask,
+        payload: {
+          source: "https://openlibrary.org/data/ol_dump_works_latest.txt.gz",
+          target: "openlibrary/works",
+          dumpDate,
+        },
+        options: {
+          machine: "medium-2x",
+        },
       },
       {
-        task: openLibraryAuthorsTask,
-        payload: { dumpDate },
+        task: openLibraryCsvToParquetTask,
+        payload: {
+          source: "https://openlibrary.org/data/ol_dump_authors_latest.txt.gz",
+          target: "openlibrary/authors",
+          dumpDate,
+        },
+        options: {
+          machine: "micro",
+        },
       },
       {
-        task: openLibraryEditionsTask,
-        payload: { dumpDate },
+        task: openLibraryCsvToParquetTask,
+        payload: {
+          source: "https://openlibrary.org/data/ol_dump_editions_latest.txt.gz",
+          target: "openlibrary/editions",
+          dumpDate,
+        },
+        options: {
+          machine: "medium-2x",
+        },
       },
     ]);
 
-    console.log("Clearing enrich tmp chunks...");
-    await deleteS3Prefix(s3, enrichTmpChunkPrefix);
-
-    console.log("Triggering enrichment...");
-    await triggerAndWait(openLibraryEnrichTask, { dumpDate });
-
-    console.log("Triggering enrich combine...");
-    await triggerAndWait(openLibraryEnrichCombineTask, { dumpDate });
-
-    await putMetadata(s3, etlMetadataKey, {
-      dump_date: dumpDate,
-      updated_at: new Date().toISOString(),
-    });
-    console.log(`ETL metadata written for dump ${dumpDate}`);
+    console.log(`ETL workflow completed for ${dumpDate}`);
   },
 });

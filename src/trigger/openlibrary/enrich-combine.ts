@@ -10,7 +10,6 @@ import {
 import { DuckDBInstance } from "@duckdb/node-api";
 import * as fs from "fs";
 import { env } from "@/env";
-import { olQueue } from "./etl";
 
 export const openLibraryEnrichCombineTask = task({
   id: "openlibrary-enrich-combine",
@@ -18,7 +17,6 @@ export const openLibraryEnrichCombineTask = task({
   retry: {
     maxAttempts: 1,
   },
-  queue: olQueue,
   run: async ({ dumpDate }: { dumpDate: string }) => {
     const s3 = makeS3Client();
 
