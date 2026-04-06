@@ -16,6 +16,10 @@ import pLimit from "p-limit";
 import { DuckDBInstance } from "@duckdb/node-api";
 import * as fs from "fs";
 import * as https from "https";
+import {
+  buildOpenLibrarySearchSql,
+  shapeOpenLibrarySearchRows,
+} from "@/lib/openlibrarySearch";
 
 // Suppress logs from other modules until we set the level from CLI flags
 systemLogger.setLogLevel("disabled");
@@ -266,22 +270,18 @@ async function callOpenRouter(
 // --- OpenLibrary parquet setup ---
 
 const olParquetUrl =
-  "https://images.audiobookcovers.com/openlibrary/works.parquet";
-const olAuthorsParquetUrl =
-  "https://images.audiobookcovers.com/openlibrary/authors.parquet";
+  "https://images.audiobookcovers.com/openlibrary/enriched_works.parquet";
 const olMetadataUrl =
-  "https://images.audiobookcovers.com/openlibrary/etl-metadata.json";
-const olParquetPath = "/tmp/ol_works.parquet";
-const olAuthorsParquetPath = "/tmp/ol_authors.parquet";
+  "https://images.audiobookcovers.com/openlibrary/enriched-metadata.json";
+const olParquetPath = "/tmp/ol_enriched_works.parquet";
 
 async function fetchEtlMetadata(): Promise<{
-  works_row_count?: number;
-  authors_row_count?: number;
+  row_count?: number;
 } | null> {
   try {
     return await ky
       .get(olMetadataUrl, { timeout: 15_000 })
-      .json<{ works_row_count?: number; authors_row_count?: number }>();
+      .json<{ row_count?: number }>();
   } catch {
     return null;
   }
@@ -350,21 +350,12 @@ if (!useRemote) {
   await ensureParquetCached(
     olParquetPath,
     olParquetUrl,
-    etlMeta?.works_row_count ?? null,
-    "works",
-  );
-  await ensureParquetCached(
-    olAuthorsParquetPath,
-    olAuthorsParquetUrl,
-    etlMeta?.authors_row_count ?? null,
-    "authors",
+    etlMeta?.row_count ?? null,
+    "enriched works",
   );
 }
 
 const parquetSource = useRemote ? olParquetUrl : olParquetPath;
-const authorsParquetSource = useRemote
-  ? olAuthorsParquetUrl
-  : olAuthorsParquetPath;
 
 const db = await DuckDBInstance.create(":memory:");
 const con = await db.connect();
@@ -378,69 +369,17 @@ if (useRemote) {
 async function searchOpenLibraryByTitle(query: string): Promise<string> {
   logger.debug(`  [tool] search_openlibrary: "${query}"`);
 
-  const escapedQuery = query.replace(/'/g, "''");
-  const result = await con.run(`
-    WITH works_match AS (
-      SELECT olid, title, subtitle, authors, subjects, description, first_publish_date, other_titles
-      FROM read_parquet('${parquetSource}')
-      WHERE title ILIKE '%${escapedQuery}%'
-      LIMIT 10
-    ),
-    author_olids AS (
-      SELECT
-        w.olid AS work_olid,
-        replace(author_key, '/authors/', '') AS author_olid
-      FROM works_match w,
-      UNNEST(
-        coalesce(
-          TRY_CAST(json_extract(w.authors::JSON, '$[*].author.key') AS VARCHAR[]),
-          []::VARCHAR[]
-        )
-      ) t(author_key)
-    )
-    SELECT
-      w.olid,
-      w.title,
-      w.subtitle,
-      list(DISTINCT a.name) FILTER (WHERE a.name IS NOT NULL) AS author_names,
-      list_distinct(flatten(list(coalesce(a.alternate_names, []::VARCHAR[])))) AS author_alternate_names,
-      w.subjects,
-      w.description,
-      w.first_publish_date,
-      w.other_titles
-    FROM works_match w
-    LEFT JOIN author_olids ao ON ao.work_olid = w.olid
-    LEFT JOIN read_parquet('${authorsParquetSource}') a ON a.olid = ao.author_olid
-    GROUP BY w.olid, w.title, w.subtitle, w.subjects, w.description, w.first_publish_date, w.other_titles
-  `);
+  const trimmedQuery = query.trim();
+  if (trimmedQuery.length === 0) {
+    return JSON.stringify({ totalItems: 0, results: [] });
+  }
+
+  const result = await con.run(
+    buildOpenLibrarySearchSql(parquetSource, trimmedQuery),
+  );
 
   const rows = await result.getRows();
-  const columns = [
-    "olid",
-    "title",
-    "subtitle",
-    "author_names",
-    "author_alternate_names",
-    "subjects",
-    "description",
-    "first_publish_date",
-    "other_titles",
-  ];
-
-  const results = rows.map((row) => {
-    const obj: Record<string, unknown> = {};
-    columns.forEach((col, i) => {
-      obj[col] = row[i];
-    });
-    // Omit empty alternate names to keep results concise
-    if (
-      Array.isArray(obj.author_alternate_names) &&
-      (obj.author_alternate_names as unknown[]).length === 0
-    ) {
-      delete obj.author_alternate_names;
-    }
-    return obj;
-  });
+  const results = shapeOpenLibrarySearchRows(rows);
 
   logger.info(`  [extractOLID] found ${results.length} results`);
   const output = JSON.stringify({ totalItems: results.length, results });
@@ -453,14 +392,14 @@ const searchOpenLibraryTool = {
   function: {
     name: "search_openlibrary",
     description:
-      "Search the OpenLibrary works database for book metadata. Use this to look up potential matches by title. Results include resolved author names. Searches must be title-based — author name search is not supported.",
+      "Search the enriched OpenLibrary works database for book metadata. Use this to look up candidate works by title, subtitle, series text, or author text. Results include author names, title aliases, publisher/language hints, edition counts, and the OpenLibrary work ID.",
     parameters: {
       type: "object",
       properties: {
         query: {
           type: "string",
           description:
-            "Title search string (e.g. 'The Name of the Wind'). Only title-based search is supported.",
+            "Book search string (for example a title, title plus author, or series phrase).",
         },
       },
       required: ["query"],
@@ -473,7 +412,7 @@ const validateOpenLibraryTool = {
   function: {
     name: "search_openlibrary",
     description:
-      "Look up a specific book in the OpenLibrary database to validate or confirm an existing candidate. Use this ONLY to verify metadata (work ID, publication date, subjects, author names) for a candidate already identified in the previous search phase — not to find new candidates.",
+      "Look up a specific book in the enriched OpenLibrary works database to validate or confirm an existing candidate. Use this ONLY to verify metadata for a candidate already identified in the previous search phase — not to find new candidates.",
     parameters: searchOpenLibraryTool.function.parameters,
   },
 };
@@ -488,10 +427,10 @@ Your task:
 1. Analyze the cover image and OCR text to identify the book title, series, and any other identifying information
 2. Brainstorm multiple possible search queries to find the correct book
 3. Use the search_openlibrary tool multiple times to gather metadata for candidate matches
-4. For each search, you will receive book metadata including title, subtitle, author names, subjects, description, and OpenLibrary work IDs. Use this metadata for identification.
+4. For each search, you will receive work-level metadata enriched with edition-derived signals including title aliases, author names, publishers, languages, publication years, edition counts, and OpenLibrary work IDs. Use this metadata for identification and to avoid sparse duplicate records.
 5. Collect all relevant metadata found across your searches, including OpenLibrary work IDs (olid)
 
-Important: OpenLibrary only supports title-based search. You cannot search by author name — use title variations only.
+Important: The search tool is work-centric. It can match title, series, subtitle, and author text, but the returned identifier is always an OpenLibrary work ID.
 
 Your goal is to find candidate books. The initial image is for an audiobook, but that is irrelevant to your task. You do not need to find an audiobook edition, a standard edition will do.
 
@@ -504,13 +443,13 @@ You will receive:
 3. The full research session from an agentic search for candidates: all OpenLibrary searches performed and their results
 
 Your task:
-1. Review the candidates found in Phase 2 and determine the single best match for this audiobook cover. Prefer the primary edition or earliest printing.
-2. If you need to confirm metadata for a specific candidate (e.g. verify a work ID or publication date), you may use the search_openlibrary tool — but only to validate an existing candidate, NOT to explore new ones
+1. Review the candidates found in Phase 2 and determine the single best work-level match for this audiobook cover. Prefer the canonical work record rather than a sparse duplicate or adaptation.
+2. If you need to confirm metadata for a specific candidate (e.g. verify a work ID, publication window, or author), you may use the search_openlibrary tool — but only to validate an existing candidate, NOT to explore new ones
 3. Write a thorough analysis that includes:
    - Why this candidate is the best match (evidence from the cover image, OCR text, and search results)
    - Any weaknesses or uncertainties in the match (ambiguous text, multiple editions, common titles, etc.)
    - The evidence classification (see below) and the reasoning behind it
-   - All known metadata for the selected book: title, subjects, OpenLibrary work ID, publication date, description
+   - All known metadata for the selected book: title, subjects, OpenLibrary work ID, publication date or publication window, description, and any alias or author evidence that helped disambiguate duplicate records
 4. Be honest about uncertainty — if no good match was found, say so clearly
 
 Note: Author names are available in search results and may be used to confirm a match.

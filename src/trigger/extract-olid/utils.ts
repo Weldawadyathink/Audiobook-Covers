@@ -5,6 +5,10 @@ import ky from "ky";
 import * as fs from "fs";
 import { env } from "@/env";
 import { makeS3Client, headS3Object, downloadS3File } from "../openlibrary/utils";
+import {
+  buildOpenLibrarySearchSql,
+  shapeOpenLibrarySearchRows,
+} from "@/lib/openlibrarySearch";
 
 // --- Types ---
 
@@ -238,47 +242,17 @@ export async function searchOpenLibraryByTitle(
 ): Promise<string> {
   console.log(`  [tool] search_openlibrary: "${query}"`);
 
-  const escapedQuery = query.replace(/'/g, "''");
-  const result = await con.run(`
-    SELECT
-      e.olid, e.title, e.subtitle,
-      e.author_names,
-      e.author_alternate_names,
-      e.subjects, e.description, e.first_publish_date, e.other_titles,
-      e.edition_count
-    FROM read_parquet('${LOCAL_PARQUET_PATH}') e
-    WHERE e.title ILIKE '%${escapedQuery}%'
-    ORDER BY e.edition_count DESC NULLS LAST
-    LIMIT 10
-  `);
+  const trimmedQuery = query.trim();
+  if (trimmedQuery.length === 0) {
+    return JSON.stringify({ totalItems: 0, results: [] });
+  }
+
+  const result = await con.run(
+    buildOpenLibrarySearchSql(LOCAL_PARQUET_PATH, trimmedQuery),
+  );
 
   const rows = await result.getRows();
-  const columns = [
-    "olid",
-    "title",
-    "subtitle",
-    "author_names",
-    "author_alternate_names",
-    "subjects",
-    "description",
-    "first_publish_date",
-    "other_titles",
-    "edition_count",
-  ];
-
-  const results = rows.map((row) => {
-    const obj: Record<string, unknown> = {};
-    columns.forEach((col, i) => {
-      obj[col] = row[i];
-    });
-    if (
-      Array.isArray(obj.author_alternate_names) &&
-      (obj.author_alternate_names as unknown[]).length === 0
-    ) {
-      delete obj.author_alternate_names;
-    }
-    return obj;
-  });
+  const results = shapeOpenLibrarySearchRows(rows);
 
   console.log(`  [extractOLID] found ${results.length} results`);
   return JSON.stringify({ totalItems: results.length, results });
@@ -296,10 +270,10 @@ Your task:
 1. Analyze the cover image and OCR text to identify the book title, series, and any other identifying information
 2. Brainstorm multiple possible search queries to find the correct book
 3. Use the search_openlibrary tool multiple times to gather metadata for candidate matches
-4. For each search, you will receive book metadata including title, subtitle, author names, subjects, description, and OpenLibrary work IDs. Use this metadata for identification.
+4. For each search, you will receive work-level metadata enriched with edition-derived signals including title aliases, author names, publishers, languages, publication years, edition counts, and OpenLibrary work IDs. Use this metadata for identification and to avoid sparse duplicate records.
 5. Collect all relevant metadata found across your searches, including OpenLibrary work IDs (olid)
 
-Important: OpenLibrary only supports title-based search. You cannot search by author name — use title variations only.
+Important: The search tool is work-centric. It can match title, series, subtitle, and author text, but the returned identifier is always an OpenLibrary work ID.
 
 Your goal is to find candidate books. The initial image is for an audiobook, but that is irrelevant to your task. You do not need to find an audiobook edition, a standard edition will do.
 
@@ -312,13 +286,13 @@ You will receive:
 3. The full research session from an agentic search for candidates: all OpenLibrary searches performed and their results
 
 Your task:
-1. Review the candidates found in Phase 2 and determine the single best match for this audiobook cover. Prefer the primary edition or earliest printing.
-2. If you need to confirm metadata for a specific candidate (e.g. verify a work ID or publication date), you may use the search_openlibrary tool — but only to validate an existing candidate, NOT to explore new ones
+1. Review the candidates found in Phase 2 and determine the single best work-level match for this audiobook cover. Prefer the canonical work record rather than a sparse duplicate or adaptation.
+2. If you need to confirm metadata for a specific candidate (e.g. verify a work ID, publication window, or author), you may use the search_openlibrary tool — but only to validate an existing candidate, NOT to explore new ones
 3. Write a thorough analysis that includes:
    - Why this candidate is the best match (evidence from the cover image, OCR text, and search results)
    - Any weaknesses or uncertainties in the match (ambiguous text, multiple editions, common titles, etc.)
    - The evidence classification (see below) and the reasoning behind it
-   - All known metadata for the selected book: title, subjects, OpenLibrary work ID, publication date, description
+   - All known metadata for the selected book: title, subjects, OpenLibrary work ID, publication date or publication window, description, and any alias or author evidence that helped disambiguate duplicate records
 4. Be honest about uncertainty — if no good match was found, say so clearly
 
 Note: Author names are available in search results and may be used to confirm a match.
@@ -344,14 +318,14 @@ export const searchOpenLibraryTool = {
   function: {
     name: "search_openlibrary",
     description:
-      "Search the OpenLibrary works database for book metadata. Use this to look up potential matches by title. Results include resolved author names. Searches must be title-based — author name search is not supported.",
+      "Search the enriched OpenLibrary works database for book metadata. Use this to look up candidate works by title, subtitle, series text, or author text. Results include author names, title aliases, publisher/language hints, edition counts, and the OpenLibrary work ID.",
     parameters: {
       type: "object",
       properties: {
         query: {
           type: "string",
           description:
-            "Title search string (e.g. 'The Name of the Wind'). Only title-based search is supported.",
+            "Book search string (for example a title, title plus author, or series phrase).",
         },
       },
       required: ["query"],
@@ -364,7 +338,7 @@ export const validateOpenLibraryTool = {
   function: {
     name: "search_openlibrary",
     description:
-      "Look up a specific book in the OpenLibrary database to validate or confirm an existing candidate. Use this ONLY to verify metadata (work ID, publication date, subjects, author names) for a candidate already identified in the previous search phase — not to find new candidates.",
+      "Look up a specific book in the enriched OpenLibrary works database to validate or confirm an existing candidate. Use this ONLY to verify metadata for a candidate already identified in the previous search phase — not to find new candidates.",
     parameters: searchOpenLibraryTool.function.parameters,
   },
 };

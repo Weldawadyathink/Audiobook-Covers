@@ -22,7 +22,7 @@ export const editionsDumpUrl =
 
 export const worksParquetFile = `s3://${env.S3_BUCKET}/openlibrary/works.parquet`;
 export const authorsParquetFile = `s3://${env.S3_BUCKET}/openlibrary/authors.parquet`;
-export const editionCountsParquetFile = `s3://${env.S3_BUCKET}/openlibrary/edition_counts.parquet`;
+export const editionAggregatesParquetFile = `s3://${env.S3_BUCKET}/openlibrary/edition_aggregates.parquet`;
 export const enrichedWorksParquetFile = `s3://${env.S3_BUCKET}/openlibrary/enriched_works.parquet`;
 
 export const enrichTmpChunkPrefix = "openlibrary/tmp/";

@@ -16,7 +16,9 @@ import { ResourceMonitor } from "../resourceMonitor";
 
 tasks.middleware("resource-monitor", async ({ ctx, next }) => {
   const resourceMonitor = new ResourceMonitor({ ctx });
-  resourceMonitor.startMonitoring(10_000);
+  if (process.env.RESOURCE_MONITOR_ENABLED === "1") {
+    resourceMonitor.startMonitoring(10_000);
+  }
   await next();
   resourceMonitor.stopMonitoring();
 });
@@ -52,8 +54,8 @@ export const openLibraryWorksTask = task({
     try {
       await con.run(`SET home_directory='${tmpDir}/home'`);
       await con.run(`SET temp_directory='${tmpDir}/temp'`);
-      await con.run("SET max_temp_directory_size = '6GB'");
-      await con.run("SET memory_limit = '700MB'");
+      // await con.run("SET max_temp_directory_size = '6GB'");
+      // await con.run("SET memory_limit = '700MB'");
 
       await con.run("INSTALL httpfs");
       await con.run("LOAD httpfs");

@@ -15,7 +15,9 @@ import { tasks } from "@trigger.dev/sdk/v3";
 
 tasks.middleware("resource-monitor", async ({ ctx, next }) => {
   const resourceMonitor = new ResourceMonitor({ ctx });
-  resourceMonitor.startMonitoring(10_000);
+  if (process.env.RESOURCE_MONITOR_ENABLED === "1") {
+    resourceMonitor.startMonitoring(10_000);
+  }
   await next();
   resourceMonitor.stopMonitoring();
 });
@@ -76,7 +78,12 @@ export const openLibraryEnrichTask = task({
       await batchTriggerAndWait(
         Array.from({ length: numChunks }, (_, i) => ({
           task: openLibraryEnrichWorkerTask,
-          payload: { dumpDate, chunkIndex: i, totalChunks: numChunks, chunkSize: CHUNK_SIZE },
+          payload: {
+            dumpDate,
+            chunkIndex: i,
+            totalChunks: numChunks,
+            chunkSize: CHUNK_SIZE,
+          },
         })),
       );
 
