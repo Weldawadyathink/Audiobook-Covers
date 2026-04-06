@@ -28,7 +28,8 @@ export const openLibraryEtlTask = schedules.task({
           dumpDate,
         },
         options: {
-          machine: "medium-2x",
+          // works sometimes with small-1x
+          machine: "small-2x",
         },
       },
       {
@@ -39,7 +40,8 @@ export const openLibraryEtlTask = schedules.task({
           dumpDate,
         },
         options: {
-          machine: "micro",
+          // works with small-1x, fails with micro
+          machine: "small-2x",
         },
       },
       {
@@ -50,7 +52,8 @@ export const openLibraryEtlTask = schedules.task({
           dumpDate,
         },
         options: {
-          machine: "medium-2x",
+          // Works with medium-2x, fails with small-1x
+          machine: "small-2x",
         },
       },
     ]);

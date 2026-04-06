@@ -75,7 +75,7 @@ export class s3Client {
     );
   }
 
-  async getObject(key: string) {
+  async getRawObject(key: string) {
     return await this.s3Client.send(
       new GetObjectCommand({
         Bucket: this.bucket,
@@ -86,7 +86,9 @@ export class s3Client {
 
   async safeGetObject(key: string) {
     try {
-      return await this.getObject(key);
+      const result = await this.getRawObject(key);
+      const resultBody = result?.Body;
+      return resultBody || null;
     } catch (error) {
       if (error instanceof Error && error.name === "NoSuchKey") {
         return null;

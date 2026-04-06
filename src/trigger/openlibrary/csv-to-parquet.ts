@@ -44,18 +44,24 @@ export const openLibraryCsvToParquetTask = schemaTask({
     const targetMetadata = `${target}.metadata`;
     const s3 = new s3Client();
 
+    const existingMetadataRaw = await s3.safeGetObject(targetMetadata);
+    const existingMetadataText = await existingMetadataRaw?.transformToString();
+    const existingMetadataJson = existingMetadataText
+      ? JSON.parse(existingMetadataText)
+      : {};
     const existingMetadata = csvToParquetMetadataSchema.safeParse(
-      await s3.safeGetObject(targetMetadata),
+      existingMetadataJson,
     );
-    if (
-      existingMetadata.success &&
-      existingMetadata.data.status !== "success" &&
-      existingMetadata.data.dumpDate === dumpDate
-    ) {
-      console.log(
-        `Skipping ${target} as it was already processed for ${dumpDate} on ${existingMetadata.data.exportedAt}`,
-      );
-      return;
+    if (existingMetadata.success) {
+      if (
+        existingMetadata.data.status !== "success" &&
+        existingMetadata.data.dumpDate === dumpDate
+      ) {
+        console.log(
+          `Skipping ${target} as it was already processed for ${dumpDate} on ${existingMetadata.data.exportedAt}`,
+        );
+        return;
+      }
     }
 
     await s3.safeDeleteObject([targetParquet, targetMetadata]);
@@ -129,7 +135,6 @@ export const openLibraryCsvToParquetTask = schemaTask({
         `Copied ${rowCount} rows from ${source} to ${targetParquet}. Cleaning up.`,
       );
 
-      await s3.safeDeleteObject(targetParquet);
       await s3.createJson(
         targetMetadata,
         csvToParquetMetadataSchema.parse({
