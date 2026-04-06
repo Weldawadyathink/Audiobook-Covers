@@ -49,12 +49,12 @@ export const openLibraryCsvToParquetTask = schemaTask({
     const existingMetadataJson = existingMetadataText
       ? JSON.parse(existingMetadataText)
       : {};
-    const existingMetadata = csvToParquetMetadataSchema.safeParse(
-      existingMetadataJson,
-    );
+    const existingMetadata =
+      csvToParquetMetadataSchema.safeParse(existingMetadataJson);
+    console.log(existingMetadata);
     if (existingMetadata.success) {
       if (
-        existingMetadata.data.status !== "success" &&
+        existingMetadata.data.status === "success" &&
         existingMetadata.data.dumpDate === dumpDate
       ) {
         console.log(
