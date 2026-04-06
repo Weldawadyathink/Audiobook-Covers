@@ -5,7 +5,7 @@ import {
   worksParquetFile,
   enrichedMetadataKey,
 } from "./utils";
-import { openLibraryEnrichWorkerTask } from "./enrich-worker";
+import { openLibraryEnrichWorkerTask } from "./old-enrich-worker";
 import { DuckDBInstance } from "@duckdb/node-api";
 import * as fs from "fs";
 import { env } from "@/env";

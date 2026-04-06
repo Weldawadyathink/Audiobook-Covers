@@ -1,5 +1,5 @@
 import {
-  S3Client,
+  S3Client as defaultS3Client,
   GetObjectCommand,
   PutObjectCommand,
   DeleteObjectCommand,
@@ -9,13 +9,14 @@ import {
   NoSuchKey,
 } from "@aws-sdk/client-s3";
 import { env } from "@/env";
+import { z } from "zod/v4";
 
-export class s3Client {
-  s3Client: S3Client;
+export class S3Client {
+  s3Client: defaultS3Client;
   bucket: string;
 
   constructor() {
-    this.s3Client = new S3Client({
+    this.s3Client = new defaultS3Client({
       region: env.S3_REGION,
       ...(env.S3_ENDPOINT ? { endpoint: env.S3_ENDPOINT } : {}),
       credentials: {
@@ -24,6 +25,48 @@ export class s3Client {
       },
     });
     this.bucket = env.S3_BUCKET;
+  }
+
+  async clearDirectory(prefix: string) {
+    let continuationToken: string | undefined;
+    do {
+      const listRes = await this.s3Client.send(
+        new ListObjectsV2Command({
+          Bucket: this.bucket,
+          Prefix: prefix,
+          ContinuationToken: continuationToken,
+        }),
+      );
+      const objects = listRes.Contents ?? [];
+      if (objects.length > 0) {
+        await this.s3Client.send(
+          new DeleteObjectsCommand({
+            Bucket: this.bucket,
+            Delete: {
+              Objects: objects.map((o) => ({ Key: o.Key! })),
+              Quiet: true,
+            },
+          }),
+        );
+      }
+      continuationToken = listRes.NextContinuationToken;
+    } while (continuationToken);
+  }
+
+  async getMetadata<T extends z.ZodTypeAny>(key: string, zodParser: T) {
+    const rawMetadata = await this.safeGetObject(key);
+    const metadataText = await rawMetadata?.transformToString();
+    const metadataJson = metadataText ? JSON.parse(metadataText) : {};
+    return zodParser.safeParse(metadataJson);
+  }
+
+  async setMetadata<T extends z.ZodObject<any>>(
+    key: string,
+    zodParser: T,
+    data: z.input<T>,
+  ) {
+    const metadataJson = zodParser.parse(data);
+    await this.createJson(key, metadataJson);
   }
 
   async deleteObject(key: string | string[]) {

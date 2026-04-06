@@ -1,53 +1,58 @@
-import {
-  S3Client,
-  GetObjectCommand,
-  PutObjectCommand,
-  DeleteObjectCommand,
-  ListObjectsV2Command,
-  DeleteObjectsCommand,
-  HeadObjectCommand,
-  NoSuchKey,
-} from "@aws-sdk/client-s3";
 import * as https from "https";
 import * as fs from "fs";
-import { pipeline } from "stream/promises";
+import * as path from "path";
+import { DuckDBInstance } from "@duckdb/node-api";
 import { env } from "@/env";
 
-export const worksDumpUrl =
-  "https://openlibrary.org/data/ol_dump_works_latest.txt.gz";
-export const authorsDumpUrl =
-  "https://openlibrary.org/data/ol_dump_authors_latest.txt.gz";
-export const editionsDumpUrl =
-  "https://openlibrary.org/data/ol_dump_editions_latest.txt.gz";
-
-export const worksParquetFile = `s3://${env.S3_BUCKET}/openlibrary/works.parquet`;
-export const authorsParquetFile = `s3://${env.S3_BUCKET}/openlibrary/authors.parquet`;
-export const editionAggregatesParquetFile = `s3://${env.S3_BUCKET}/openlibrary/edition_aggregates.parquet`;
-export const enrichedWorksParquetFile = `s3://${env.S3_BUCKET}/openlibrary/enriched_works.parquet`;
-
-export const enrichTmpChunkPrefix = "openlibrary/tmp/";
-
-export const etlMetadataKey = "openlibrary/etl-metadata.json";
-export const worksMetadataKey = "openlibrary/works-metadata.json";
-export const authorsMetadataKey = "openlibrary/authors-metadata.json";
-export const editionsMetadataKey = "openlibrary/editions-metadata.json";
-export const enrichedMetadataKey = "openlibrary/enriched-metadata.json";
-
-export interface TaskMetadata {
-  dump_date: string;
-  row_count?: number;
-  updated_at: string;
+export function getFileNames(prefix: string) {
+  const parquet = `${prefix}.parquet`;
+  const metadata = `${prefix}.metadata`;
+  return Object.assign([parquet, metadata] as const, { parquet, metadata });
 }
 
-export function makeS3Client(): S3Client {
-  return new S3Client({
-    region: env.S3_REGION,
-    ...(env.S3_ENDPOINT ? { endpoint: env.S3_ENDPOINT } : {}),
-    credentials: {
-      accessKeyId: env.S3_ACCESS_KEY_ID,
-      secretAccessKey: env.S3_SECRET_ACCESS_KEY,
-    },
-  });
+export async function setupDuckDB(tempDirectorySize?: number) {
+  fs.mkdirSync(`/tmp/duckdb/home`, { recursive: true });
+  fs.mkdirSync(`/tmp/duckdb/temp`, { recursive: true });
+
+  let db = await DuckDBInstance.create();
+  let con = await db.connect();
+
+  await con.run(`SET home_directory='/tmp/duckdb/home'`);
+  await con.run(`SET temp_directory='/tmp/duckdb/temp'`);
+  // Default to 9GB if not specified, since trigger.dev instances have 10GB available
+  await con.run(`SET max_temp_directory_size = '${tempDirectorySize ?? 9}GB'`);
+
+  await con.run(`
+    CREATE OR REPLACE SECRET secret (
+      type s3,
+      endpoint '${env.S3_ENDPOINT.replace("https://", "")}',
+      region '${env.S3_REGION}',
+      key_id '${env.S3_ACCESS_KEY_ID}',
+      secret '${env.S3_SECRET_ACCESS_KEY}'
+    );
+  `);
+
+  let disposed = false;
+  const dispose = async () => {
+    if (disposed) return;
+    disposed = true;
+    con.closeSync();
+  };
+
+  return Object.assign(con, { [Symbol.asyncDispose]: dispose });
+}
+
+export async function getParquetRowCount(
+  key: string,
+  db?: Awaited<ReturnType<typeof setupDuckDB>>,
+) {
+  db = db ?? (await setupDuckDB());
+  const result = await db.run(
+    `SELECT COUNT(*) FROM read_parquet('s3://${env.S3_BUCKET}/${key}')`,
+  );
+  const rows = await result.getRows();
+  const rowCount = Number(rows[0][0]);
+  return rowCount;
 }
 
 // Follows the "latest" redirect to extract the dump date from the resolved URL.
@@ -88,103 +93,13 @@ export async function resolveDumpDate(url: string): Promise<string> {
   throw new Error("Too many redirects resolving dump URL");
 }
 
-export async function getStoredMetadata(
-  s3: S3Client,
-  key: string,
-): Promise<TaskMetadata | null> {
+export async function clearDirectory(dirPath: string) {
+  // Clear directory without removing the directory itself
   try {
-    const res = await s3.send(
-      new GetObjectCommand({ Bucket: env.S3_BUCKET, Key: key }),
-    );
-    const body = await res.Body?.transformToString();
-    if (!body) return null;
-    return JSON.parse(body) as TaskMetadata;
-  } catch (err) {
-    if (err instanceof NoSuchKey) return null;
-    throw err;
-  }
-}
-
-export async function putMetadata(
-  s3: S3Client,
-  key: string,
-  data: TaskMetadata,
-): Promise<void> {
-  await s3.send(
-    new PutObjectCommand({
-      Bucket: env.S3_BUCKET,
-      Key: key,
-      Body: JSON.stringify(data, null, 2),
-      ContentType: "application/json",
-    }),
-  );
-}
-
-export async function deleteMetadata(
-  s3: S3Client,
-  key: string,
-): Promise<void> {
-  await s3.send(
-    new DeleteObjectCommand({ Bucket: env.S3_BUCKET, Key: key }),
-  );
-}
-
-export async function headS3Object(
-  s3: S3Client,
-  key: string,
-): Promise<{ etag: string; contentLength: number } | null> {
-  try {
-    const res = await s3.send(
-      new HeadObjectCommand({ Bucket: env.S3_BUCKET, Key: key }),
-    );
-    return {
-      etag: res.ETag ?? "",
-      contentLength: res.ContentLength ?? 0,
-    };
-  } catch (err) {
-    if (err instanceof NoSuchKey) return null;
-    throw err;
-  }
-}
-
-export async function downloadS3File(
-  s3: S3Client,
-  key: string,
-  localPath: string,
-): Promise<void> {
-  const res = await s3.send(
-    new GetObjectCommand({ Bucket: env.S3_BUCKET, Key: key }),
-  );
-  if (!res.Body) throw new Error(`Empty body for S3 key: ${key}`);
-  const writeStream = fs.createWriteStream(localPath);
-  await pipeline(res.Body as NodeJS.ReadableStream, writeStream);
-}
-
-export async function deleteS3Prefix(
-  s3: S3Client,
-  prefix: string,
-): Promise<void> {
-  let continuationToken: string | undefined;
-  do {
-    const listRes = await s3.send(
-      new ListObjectsV2Command({
-        Bucket: env.S3_BUCKET,
-        Prefix: prefix,
-        ContinuationToken: continuationToken,
-      }),
-    );
-    const objects = listRes.Contents ?? [];
-    if (objects.length > 0) {
-      await s3.send(
-        new DeleteObjectsCommand({
-          Bucket: env.S3_BUCKET,
-          Delete: {
-            Objects: objects.map((o) => ({ Key: o.Key! })),
-            Quiet: true,
-          },
-        }),
-      );
+    for (const entry of fs.readdirSync(dirPath)) {
+      fs.rmSync(path.join(dirPath, entry), { recursive: true, force: true });
     }
-    continuationToken = listRes.NextContinuationToken;
-  } while (continuationToken);
+  } catch (error) {
+    // Possible permissions error, ignore
+  }
 }

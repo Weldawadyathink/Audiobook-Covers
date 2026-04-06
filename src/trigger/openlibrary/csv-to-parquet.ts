@@ -2,10 +2,15 @@ import { schemaTask, tasks } from "@trigger.dev/sdk/v3";
 import { ResourceMonitor } from "@/trigger/resourceMonitor";
 import { env } from "@/env";
 import { z } from "zod/v4";
-import { s3Client } from "@/trigger/openlibrary/s3";
+import { S3Client } from "@/trigger/openlibrary/s3";
+import {
+  clearDirectory,
+  getFileNames,
+  setupDuckDB,
+  getParquetRowCount,
+} from "@/trigger/openlibrary/utils";
 import * as fs from "fs";
 import { DuckDBInstance } from "@duckdb/node-api";
-import * as path from "path";
 
 tasks.middleware("resource-monitor", async ({ ctx, next }) => {
   const resourceMonitor = new ResourceMonitor({ ctx });
@@ -40,18 +45,13 @@ export const openLibraryCsvToParquetTask = schemaTask({
     dumpDate: z.string(),
   }),
   run: async ({ source, target, dumpDate }) => {
-    const targetParquet = `${target}.parquet`;
-    const targetMetadata = `${target}.metadata`;
-    const s3 = new s3Client();
+    const [targetParquet, targetMetadata] = getFileNames(target);
+    const s3 = new S3Client();
 
-    const existingMetadataRaw = await s3.safeGetObject(targetMetadata);
-    const existingMetadataText = await existingMetadataRaw?.transformToString();
-    const existingMetadataJson = existingMetadataText
-      ? JSON.parse(existingMetadataText)
-      : {};
-    const existingMetadata =
-      csvToParquetMetadataSchema.safeParse(existingMetadataJson);
-    console.log(existingMetadata);
+    const existingMetadata = await s3.getMetadata(
+      targetMetadata,
+      csvToParquetMetadataSchema,
+    );
     if (existingMetadata.success) {
       if (
         existingMetadata.data.status === "success" &&
@@ -66,52 +66,20 @@ export const openLibraryCsvToParquetTask = schemaTask({
 
     await s3.safeDeleteObject([targetParquet, targetMetadata]);
 
-    await s3.createJson(
-      targetMetadata,
-      csvToParquetMetadataSchema.parse({
-        rows: 0,
-        dumpDate,
-        source,
-        exportedAt: new Date().toISOString(),
-        status: "in-progress",
-      } as CsvToParquetMetadataType),
-    );
+    await s3.setMetadata(targetMetadata, csvToParquetMetadataSchema, {
+      rows: 0,
+      dumpDate,
+      source,
+      exportedAt: new Date().toISOString(),
+      status: "in-progress",
+    });
 
-    const db = await DuckDBInstance.create();
-    const con = await db.connect();
+    clearDirectory("/tmp");
 
     try {
-      const tmpDir = "/tmp";
-      // Clear directory without removing the directory itself
-      try {
-        for (const entry of fs.readdirSync(tmpDir)) {
-          fs.rmSync(path.join(tmpDir, entry), { recursive: true, force: true });
-        }
-      } catch (error) {
-        // Possible permissions error, ignore
-      }
-      fs.mkdirSync(`${tmpDir}/home`, { recursive: true });
-      fs.mkdirSync(`${tmpDir}/temp`, { recursive: true });
-
-      await con.run(`SET home_directory='/tmp/home'`);
-      await con.run(`SET temp_directory='/tmp/temp'`);
-      await con.run("SET max_temp_directory_size = '9GB'");
-
-      await con.run("INSTALL httpfs");
-      await con.run("LOAD httpfs");
-
-      await con.run(`
-        CREATE OR REPLACE SECRET secret (
-          type s3,
-          endpoint '${env.S3_ENDPOINT.replace("https://", "")}',
-          region '${env.S3_REGION}',
-          key_id '${env.S3_ACCESS_KEY_ID}',
-          secret '${env.S3_SECRET_ACCESS_KEY}'
-        );
-      `);
-
+      await using db = await setupDuckDB();
       console.log(`Copying ${source} to ${targetParquet}`);
-      await con.run(`
+      await db.run(`
         COPY (SELECT * FROM read_csv(
           '${source}',
           sep           = '\t',
@@ -125,40 +93,30 @@ export const openLibraryCsvToParquetTask = schemaTask({
         WITH (FORMAT PARQUET, COMPRESSION ZSTD);
       `);
 
-      const result = await con.run(
-        `SELECT count(*) FROM read_parquet('s3://${env.S3_BUCKET}/${targetParquet}')`,
-      );
-      const rows = await result.getRows();
-      const rowCount = Number(rows[0][0]);
+      const rowCount = await getParquetRowCount(targetParquet, db);
 
       console.log(
         `Copied ${rowCount} rows from ${source} to ${targetParquet}. Cleaning up.`,
       );
 
-      await s3.createJson(
-        targetMetadata,
-        csvToParquetMetadataSchema.parse({
-          rows: rowCount,
-          dumpDate,
-          source,
-          exportedAt: new Date().toISOString(),
-          status: "success",
-        } as CsvToParquetMetadataType),
-      );
+      await s3.setMetadata(targetMetadata, csvToParquetMetadataSchema, {
+        rows: rowCount,
+        dumpDate,
+        source,
+        exportedAt: new Date().toISOString(),
+        status: "success",
+      });
+
       console.log(`Created metadata for ${targetParquet}.`);
     } catch (error) {
       console.log(`Failed to copy ${source} to ${targetParquet}.`);
-      con.closeSync();
-      await s3.createJson(
-        targetMetadata,
-        csvToParquetMetadataSchema.parse({
-          rows: 0,
-          dumpDate,
-          source,
-          exportedAt: new Date().toISOString(),
-          status: "failed",
-        } as CsvToParquetMetadataType),
-      );
+      await s3.setMetadata(targetMetadata, csvToParquetMetadataSchema, {
+        rows: 0,
+        dumpDate,
+        source,
+        exportedAt: new Date().toISOString(),
+        status: "failed",
+      });
       throw error;
     }
   },

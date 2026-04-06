@@ -1,5 +1,5 @@
 import { schedules } from "@trigger.dev/sdk/v3";
-import { resolveDumpDate, worksDumpUrl } from "./utils";
+import { resolveDumpDate } from "./utils";
 import { openLibraryCsvToParquetTask } from "./csv-to-parquet";
 import { batchTriggerAndWait } from "../utils";
 
@@ -15,7 +15,9 @@ export const openLibraryEtlTask = schedules.task({
   },
   run: async () => {
     console.log("Resolving latest dump date from OpenLibrary...");
-    const dumpDate = await resolveDumpDate(worksDumpUrl);
+    const dumpDate = await resolveDumpDate(
+      "https://openlibrary.org/data/ol_dump_latest.txt.gz",
+    );
     console.log(`Latest dump date: ${dumpDate}`);
     console.log(`Spawning csv to parquet tasks`);
 
@@ -28,7 +30,6 @@ export const openLibraryEtlTask = schedules.task({
           dumpDate,
         },
         options: {
-          // works sometimes with small-1x
           machine: "small-2x",
         },
       },
@@ -40,7 +41,6 @@ export const openLibraryEtlTask = schedules.task({
           dumpDate,
         },
         options: {
-          // works with small-1x, fails with micro
           machine: "small-2x",
         },
       },
@@ -52,7 +52,6 @@ export const openLibraryEtlTask = schedules.task({
           dumpDate,
         },
         options: {
-          // Works with medium-2x, fails with small-1x
           machine: "small-2x",
         },
       },
