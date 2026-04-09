@@ -1,7 +1,8 @@
 import { schedules } from "@trigger.dev/sdk/v3";
-import { resolveDumpDate } from "./utils";
-import { openLibraryCsvToParquetTask } from "./csv-to-parquet";
-import { batchTriggerAndWait } from "../utils";
+import { resolveDumpDate } from "@/trigger/openlibrary/utils";
+import { openLibraryCsvToParquetTask } from "@/trigger/openlibrary/csv-to-parquet";
+import { openLibraryNormalizeTask } from "@/trigger/openlibrary/normalize";
+import { batchTriggerAndWait } from "@/trigger/utils";
 
 export const openLibraryEtlTask = schedules.task({
   id: "openlibrary-etl",
@@ -53,6 +54,48 @@ export const openLibraryEtlTask = schedules.task({
         },
         options: {
           machine: "small-2x",
+        },
+      },
+    ]);
+
+    console.log(`Spawning normalization tasks`);
+    await batchTriggerAndWait([
+      {
+        task: openLibraryNormalizeTask,
+        payload: {
+          source: "openlibrary/works",
+          target: "openlibrary/works_normalized",
+          dumpDate,
+          queryToUse: "works",
+        },
+        options: {
+          // Works with medium-2x
+          machine: "medium-2x",
+        },
+      },
+      {
+        task: openLibraryNormalizeTask,
+        payload: {
+          source: "openlibrary/authors",
+          target: "openlibrary/authors_normalized",
+          dumpDate,
+          queryToUse: "authors",
+        },
+        options: {
+          // Fine with small-2x, also small-1x with set memory limits
+          machine: "small-1x",
+        },
+      },
+      {
+        task: openLibraryNormalizeTask,
+        payload: {
+          source: "openlibrary/editions",
+          target: "openlibrary/editions_normalized",
+          dumpDate,
+          queryToUse: "editions",
+        },
+        options: {
+          machine: "medium-2x",
         },
       },
     ]);

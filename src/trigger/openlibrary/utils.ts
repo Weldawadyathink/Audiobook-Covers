@@ -1,8 +1,13 @@
 import * as https from "https";
 import * as fs from "fs";
 import * as path from "path";
+import os from "node:os";
+import type { Context } from "@trigger.dev/sdk/v3";
 import { DuckDBInstance } from "@duckdb/node-api";
 import { env } from "@/env";
+
+const AUTO_MEMORY_LIMIT_RATIO = 0.8;
+const FALLBACK_MEMORY_LIMIT_GB = 0.5;
 
 export function getFileNames(prefix: string) {
   const parquet = `${prefix}.parquet`;
@@ -10,7 +15,7 @@ export function getFileNames(prefix: string) {
   return Object.assign([parquet, metadata] as const, { parquet, metadata });
 }
 
-export async function setupDuckDB(tempDirectorySize?: number) {
+export async function setupDuckDB(ctx: Context) {
   fs.mkdirSync(`/tmp/duckdb/home`, { recursive: true });
   fs.mkdirSync(`/tmp/duckdb/temp`, { recursive: true });
 
@@ -19,8 +24,26 @@ export async function setupDuckDB(tempDirectorySize?: number) {
 
   await con.run(`SET home_directory='/tmp/duckdb/home'`);
   await con.run(`SET temp_directory='/tmp/duckdb/temp'`);
-  // Default to 9GB if not specified, since trigger.dev instances have 10GB available
-  await con.run(`SET max_temp_directory_size = '${tempDirectorySize ?? 9}GB'`);
+  // Default to 9GB, since trigger.dev instances have 10GB available
+  await con.run(`SET max_temp_directory_size = '9GB'`);
+  await con.run(`SET threads = 1`);
+  const derivedMemoryLimitGb =
+    ctx.machine?.memory && ctx.machine.memory > 0
+      ? ctx.machine.memory * AUTO_MEMORY_LIMIT_RATIO
+      : (() => {
+          const totalMemoryBytes = os.totalmem();
+          return totalMemoryBytes > 0
+            ? (totalMemoryBytes * AUTO_MEMORY_LIMIT_RATIO) /
+                (1024 * 1024 * 1024)
+            : FALLBACK_MEMORY_LIMIT_GB;
+        })();
+  console.log(
+    `Starting duckDB with memory limit: ${derivedMemoryLimitGb.toFixed(2)}GB`,
+  );
+  await con.run(`SET memory_limit = '${derivedMemoryLimitGb.toFixed(2)}GB'`);
+
+  await con.run("INSTALL httpfs");
+  await con.run("LOAD httpfs");
 
   await con.run(`
     CREATE OR REPLACE SECRET secret (
@@ -45,14 +68,33 @@ export async function setupDuckDB(tempDirectorySize?: number) {
 export async function getParquetRowCount(
   key: string,
   db?: Awaited<ReturnType<typeof setupDuckDB>>,
+  ctx?: Context,
 ) {
-  db = db ?? (await setupDuckDB());
-  const result = await db.run(
-    `SELECT COUNT(*) FROM read_parquet('s3://${env.S3_BUCKET}/${key}')`,
-  );
-  const rows = await result.getRows();
-  const rowCount = Number(rows[0][0]);
-  return rowCount;
+  if (!db) {
+    if (!ctx) {
+      throw new Error("ctx is required when getParquetRowCount creates DuckDB");
+    }
+    await using db = await setupDuckDB(ctx);
+    // Keep the `await using` scope alive until the recursive count query finishes.
+    return await getParquetRowCount(key, db, ctx);
+  }
+  try {
+    const result = await db.run(
+      `SELECT COUNT(*) FROM read_parquet('s3://${env.S3_BUCKET}/${key}')`,
+    );
+    const rows = await result.getRows();
+    const rowCount = Number(rows[0][0]);
+    return rowCount;
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    if (
+      message.includes("HTTP 404 Not Found") ||
+      message.includes("HTTP GET error reading")
+    ) {
+      return 0;
+    }
+    throw e;
+  }
 }
 
 // Follows the "latest" redirect to extract the dump date from the resolved URL.

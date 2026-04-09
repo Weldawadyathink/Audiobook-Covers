@@ -44,7 +44,7 @@ export const openLibraryCsvToParquetTask = schemaTask({
     target: z.string(),
     dumpDate: z.string(),
   }),
-  run: async ({ source, target, dumpDate }) => {
+  run: async ({ source, target, dumpDate }, { ctx }) => {
     const [targetParquet, targetMetadata] = getFileNames(target);
     const s3 = new S3Client();
 
@@ -77,7 +77,7 @@ export const openLibraryCsvToParquetTask = schemaTask({
     clearDirectory("/tmp");
 
     try {
-      await using db = await setupDuckDB();
+      await using db = await setupDuckDB(ctx);
       console.log(`Copying ${source} to ${targetParquet}`);
       await db.run(`
         COPY (SELECT * FROM read_csv(
