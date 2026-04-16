@@ -26,11 +26,21 @@ export async function batchTriggerAndWait<T extends readonly AnyBatchItem[]>(
   // BatchByTaskAndWaitItem is not publicly exported, so we cast to any here.
   // The runtime shape matches: { task, payload, options? }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { runs } = await batch.triggerByTaskAndWait(items as any);
-  return runs.map((run) => {
-    if (!run.ok) throw run.error;
-    return run.output;
-  }) as BatchOutputs<T>;
+  let unfinishedItems: readonly AnyBatchItem[] = items;
+  const finishedItems: unknown[] = [];
+  const batchSizeLimit = 1000;
+  while (unfinishedItems.length > 0) {
+    const batchItems = unfinishedItems.slice(0, batchSizeLimit);
+    unfinishedItems = unfinishedItems.slice(batchSizeLimit);
+    const { runs } = await batch.triggerByTaskAndWait(batchItems as any);
+    finishedItems.push(
+      ...runs.map((run) => {
+        if (!run.ok) throw run.error;
+        return run.output;
+      }),
+    );
+  }
+  return finishedItems as BatchOutputs<T>;
 }
 
 export async function triggerAndWait<TTask extends AnyTask>(

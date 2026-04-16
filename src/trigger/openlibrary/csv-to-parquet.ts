@@ -12,15 +12,6 @@ import {
 import * as fs from "fs";
 import { DuckDBInstance } from "@duckdb/node-api";
 
-tasks.middleware("resource-monitor", async ({ ctx, next }) => {
-  const resourceMonitor = new ResourceMonitor({ ctx });
-  if (process.env.RESOURCE_MONITOR_ENABLED === "1") {
-    resourceMonitor.startMonitoring(10_000);
-  }
-  await next();
-  resourceMonitor.stopMonitoring();
-});
-
 export const csvToParquetMetadataSchema = z.object({
   dumpDate: z.string(),
   source: z.url(),

@@ -53,6 +53,36 @@ export class S3Client {
     } while (continuationToken);
   }
 
+  async deleteObjectsByWildcard(pattern: string) {
+    const prefix = getPrefixBeforeWildcard(pattern);
+    const matcher = wildcardToRegExp(pattern);
+    let continuationToken: string | undefined;
+    do {
+      const listRes = await this.s3Client.send(
+        new ListObjectsV2Command({
+          Bucket: this.bucket,
+          Prefix: prefix,
+          ContinuationToken: continuationToken,
+        }),
+      );
+      const objects = (listRes.Contents ?? [])
+        .map((object) => object.Key)
+        .filter((key): key is string => !!key && matcher.test(key));
+      if (objects.length > 0) {
+        await this.s3Client.send(
+          new DeleteObjectsCommand({
+            Bucket: this.bucket,
+            Delete: {
+              Objects: objects.map((key) => ({ Key: key })),
+              Quiet: true,
+            },
+          }),
+        );
+      }
+      continuationToken = listRes.NextContinuationToken;
+    } while (continuationToken);
+  }
+
   async getMetadata<T extends z.ZodTypeAny>(key: string, zodParser: T) {
     const rawMetadata = await this.safeGetObject(key);
     const metadataText = await rawMetadata?.transformToString();
@@ -139,4 +169,15 @@ export class S3Client {
       throw error;
     }
   }
+}
+
+function getPrefixBeforeWildcard(pattern: string) {
+  const wildcardIndex = pattern.search(/[*?]/);
+  return wildcardIndex === -1 ? pattern : pattern.slice(0, wildcardIndex);
+}
+
+function wildcardToRegExp(pattern: string) {
+  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+  const regexSource = escaped.replace(/\*/g, ".*").replace(/\?/g, ".");
+  return new RegExp(`^${regexSource}$`);
 }
