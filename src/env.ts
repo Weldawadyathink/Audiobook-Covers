@@ -17,6 +17,11 @@ const envSchema = z.object({
   S3_BUCKET: z.string(),
   S3_REGION: z.string(),
   S3_ENDPOINT: z.string(),
+  ETL_S3_ACCESS_KEY_ID: z.string(),
+  ETL_S3_SECRET_ACCESS_KEY: z.string(),
+  ETL_S3_BUCKET: z.string(),
+  ETL_S3_REGION: z.string(),
+  ETL_S3_ENDPOINT: z.string(),
   GOOGLE_BOOKS_API_KEY: z.string(),
 });
 

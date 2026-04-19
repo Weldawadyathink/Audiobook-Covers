@@ -8,23 +8,38 @@ import {
   HeadObjectCommand,
   NoSuchKey,
 } from "@aws-sdk/client-s3";
-import { env } from "@/env";
+import { Upload } from "@aws-sdk/lib-storage";
 import { z } from "zod/v4";
+import type { Readable } from "node:stream";
+import { env } from "@/env";
 
 export class S3Client {
   s3Client: defaultS3Client;
   bucket: string;
 
-  constructor() {
-    this.s3Client = new defaultS3Client({
-      region: env.S3_REGION,
-      ...(env.S3_ENDPOINT ? { endpoint: env.S3_ENDPOINT } : {}),
-      credentials: {
-        accessKeyId: env.S3_ACCESS_KEY_ID,
-        secretAccessKey: env.S3_SECRET_ACCESS_KEY,
-      },
-    });
-    this.bucket = env.S3_BUCKET;
+  constructor(target: "default" | "etl" = "default") {
+    if (target === "default") {
+      this.s3Client = new defaultS3Client({
+        region: env.S3_REGION,
+        endpoint: env.S3_ENDPOINT,
+        credentials: {
+          accessKeyId: env.S3_ACCESS_KEY_ID,
+          secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+        },
+      });
+      this.bucket = env.S3_BUCKET;
+    }
+    if (target === "etl") {
+      this.s3Client = new defaultS3Client({
+        region: env.ETL_S3_REGION,
+        endpoint: env.ETL_S3_ENDPOINT,
+        credentials: {
+          accessKeyId: env.ETL_S3_ACCESS_KEY_ID,
+          secretAccessKey: env.ETL_S3_SECRET_ACCESS_KEY,
+        },
+      });
+      this.bucket = env.ETL_S3_BUCKET;
+    }
   }
 
   async clearDirectory(prefix: string) {
@@ -135,6 +150,32 @@ export class S3Client {
         ContentType: contentType,
       }),
     );
+  }
+
+  async uploadStream(
+    key: string,
+    body: Readable,
+    options: {
+      contentEncoding?: string;
+      contentLength?: number;
+      contentType?: string;
+    } = {},
+  ) {
+    const upload = new Upload({
+      client: this.s3Client,
+      params: {
+        Bucket: this.bucket,
+        Key: key,
+        Body: body,
+        ContentEncoding: options.contentEncoding,
+        ContentLength: options.contentLength,
+        ContentType: options.contentType,
+      },
+      leavePartsOnError: false,
+      partSize: 16 * 1024 * 1024,
+    });
+
+    return await upload.done();
   }
 
   async createJson(key: string, data: object) {
