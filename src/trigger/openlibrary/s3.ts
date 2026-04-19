@@ -180,7 +180,7 @@ export class S3Client {
     key: string,
     uploadId: string,
     partNumber: number,
-    body: Readable,
+    body: Readable | Uint8Array,
     contentLength: number,
   ) {
     const result = await this.s3Client.send(
