@@ -1,14 +1,16 @@
 import {
   S3Client as defaultS3Client,
+  AbortMultipartUploadCommand,
+  CompleteMultipartUploadCommand,
+  CreateMultipartUploadCommand,
   GetObjectCommand,
-  PutObjectCommand,
   DeleteObjectCommand,
   ListObjectsV2Command,
   DeleteObjectsCommand,
-  HeadObjectCommand,
   NoSuchKey,
+  PutObjectCommand,
+  UploadPartCommand,
 } from "@aws-sdk/client-s3";
-import { Upload } from "@aws-sdk/lib-storage";
 import { z } from "zod/v4";
 import type { Readable } from "node:stream";
 import { env } from "@/env";
@@ -33,6 +35,9 @@ export class S3Client {
       this.s3Client = new defaultS3Client({
         region: env.ETL_S3_REGION,
         endpoint: env.ETL_S3_ENDPOINT,
+        forcePathStyle: true,
+        requestChecksumCalculation: "WHEN_REQUIRED",
+        responseChecksumValidation: "WHEN_REQUIRED",
         credentials: {
           accessKeyId: env.ETL_S3_ACCESS_KEY_ID,
           secretAccessKey: env.ETL_S3_SECRET_ACCESS_KEY,
@@ -152,30 +157,75 @@ export class S3Client {
     );
   }
 
-  async uploadStream(
+  async createMultipartUpload(
     key: string,
-    body: Readable,
     options: {
-      contentEncoding?: string;
-      contentLength?: number;
       contentType?: string;
     } = {},
   ) {
-    const upload = new Upload({
-      client: this.s3Client,
-      params: {
+    const result = await this.s3Client.send(
+      new CreateMultipartUploadCommand({
         Bucket: this.bucket,
         Key: key,
-        Body: body,
-        ContentEncoding: options.contentEncoding,
-        ContentLength: options.contentLength,
         ContentType: options.contentType,
-      },
-      leavePartsOnError: false,
-      partSize: 16 * 1024 * 1024,
-    });
+      }),
+    );
+    if (!result.UploadId) {
+      throw new Error(`Failed to create multipart upload for ${key}`);
+    }
+    return result.UploadId;
+  }
 
-    return await upload.done();
+  async uploadPart(
+    key: string,
+    uploadId: string,
+    partNumber: number,
+    body: Readable,
+    contentLength: number,
+  ) {
+    const result = await this.s3Client.send(
+      new UploadPartCommand({
+        Bucket: this.bucket,
+        Key: key,
+        UploadId: uploadId,
+        PartNumber: partNumber,
+        Body: body,
+        ContentLength: contentLength,
+      }),
+    );
+    if (!result.ETag) {
+      throw new Error(
+        `Failed to upload part ${partNumber} for ${key}: missing ETag`,
+      );
+    }
+    return result.ETag;
+  }
+
+  async completeMultipartUpload(
+    key: string,
+    uploadId: string,
+    parts: Array<{ ETag: string; PartNumber: number }>,
+  ) {
+    return await this.s3Client.send(
+      new CompleteMultipartUploadCommand({
+        Bucket: this.bucket,
+        Key: key,
+        UploadId: uploadId,
+        MultipartUpload: {
+          Parts: parts,
+        },
+      }),
+    );
+  }
+
+  async abortMultipartUpload(key: string, uploadId: string) {
+    return await this.s3Client.send(
+      new AbortMultipartUploadCommand({
+        Bucket: this.bucket,
+        Key: key,
+        UploadId: uploadId,
+      }),
+    );
   }
 
   async createJson(key: string, data: object) {
