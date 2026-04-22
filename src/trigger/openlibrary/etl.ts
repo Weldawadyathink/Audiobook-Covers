@@ -1,13 +1,17 @@
 import { schedules } from "@trigger.dev/sdk/v3";
 import { resolveDumpDate } from "@/trigger/openlibrary/utils";
-import { openLibraryCsvToParquetTask } from "@/trigger/openlibrary/csv-to-parquet";
-import { openLibraryNormalizeTask } from "@/trigger/openlibrary/normalize";
-import { batchTriggerAndWait } from "@/trigger/utils";
+import { S3Client } from "./s3";
+import { BigQuery } from "@google-cloud/bigquery";
+import { getQueryForTarget, queries } from "./queries";
+import { getBigQueryCredentials } from "@/env";
+
+const BIGQUERY_LOCATION = "us-west1";
+const TARGET_QUERY = "works_search";
 
 export const openLibraryEtlTask = schedules.task({
-  id: "openlibrary-etl-old",
+  id: "openlibrary-etl",
   cron: "0 9 * * *",
-  machine: "micro",
+  machine: "small-1x",
   retry: {
     maxAttempts: 1,
   },
@@ -20,79 +24,63 @@ export const openLibraryEtlTask = schedules.task({
       "https://openlibrary.org/data/ol_dump_latest.txt.gz",
     );
     console.log(`Latest dump date: ${dumpDate}`);
-    console.log(`Spawning csv to parquet tasks`);
+    console.log(`Downloading complete dump to google storage`);
 
-    await batchTriggerAndWait([
-      {
-        task: openLibraryCsvToParquetTask,
-        payload: {
-          source: "https://openlibrary.org/data/ol_dump_works_latest.txt.gz",
-          target: "openlibrary/works/raw",
-          dumpDate,
-        },
-        options: {
-          machine: "small-2x",
-        },
-      },
-      {
-        task: openLibraryCsvToParquetTask,
-        payload: {
-          source: "https://openlibrary.org/data/ol_dump_authors_latest.txt.gz",
-          target: "openlibrary/authors/raw",
-          dumpDate,
-        },
-        options: {
-          machine: "small-2x",
-        },
-      },
-      {
-        task: openLibraryCsvToParquetTask,
-        payload: {
-          source: "https://openlibrary.org/data/ol_dump_editions_latest.txt.gz",
-          target: "openlibrary/editions/raw",
-          dumpDate,
-        },
-        options: {
-          machine: "small-2x",
-        },
-      },
-    ]);
+    const csvKey = `openlibrary/all.csv`;
+    const s3 = new S3Client("etl");
 
-    console.log(`Spawning normalization tasks`);
-    await batchTriggerAndWait([
-      {
-        task: openLibraryNormalizeTask,
-        payload: {
-          source: "openlibrary/works/raw",
-          target: "openlibrary/works/normalized/data",
-          dumpDate,
-          queryToUse: "works",
-          rowsPerBatch: 250_000,
-        },
-      },
-      {
-        task: openLibraryNormalizeTask,
-        payload: {
-          source: "openlibrary/authors/raw",
-          target: "openlibrary/authors/normalized/data",
-          dumpDate,
-          queryToUse: "authors",
-          rowsPerBatch: 250_000,
-        },
-      },
-      {
-        task: openLibraryNormalizeTask,
-        payload: {
-          source: "openlibrary/editions/raw",
-          target: "openlibrary/editions/normalized/data",
-          dumpDate,
-          queryToUse: "editions",
-          rowsPerBatch: 50_000,
-          machineSize: "medium-1x",
-        },
-      },
-    ]);
+    try {
+      // Skip download for now for testing
+      // await triggerAndWait({
+      //   task: openLibraryDownloadToS3Task,
+      //   payload: {
+      //     destinationKey: csvKey,
+      //     sourceUrl: `https://openlibrary.org/data/ol_dump_latest.txt.gz`,
+      //   },
+      //   options: {
+      //     machine: "medium-1x",
+      //   },
+      // });
 
-    console.log(`ETL workflow completed for ${dumpDate}`);
+      console.log(`Downloaded complete dump to google storage`);
+
+      const credentials = getBigQueryCredentials();
+      const bigQuery = new BigQuery({
+        location: BIGQUERY_LOCATION,
+        ...(credentials
+          ? {
+              credentials,
+              projectId: credentials.project_id,
+            }
+          : {}),
+      });
+
+      for (const runnableQueries of getQueryForTarget(queries, TARGET_QUERY)) {
+        console.log(
+          `Running BigQuery batch in ${BIGQUERY_LOCATION}: ${runnableQueries
+            .map((query) => query.name)
+            .join(", ")}`,
+        );
+
+        await Promise.all(
+          runnableQueries.map(async (query) => {
+            console.log(`Starting BigQuery query: ${query.name}`);
+
+            const [job] = await bigQuery.createQueryJob({
+              query: query.query,
+              location: BIGQUERY_LOCATION,
+            });
+
+            await job.getQueryResults();
+            console.log(`Completed BigQuery query: ${query.name} (${job.id})`);
+          }),
+        );
+      }
+
+      console.log(`Completed BigQuery search table build: ${TARGET_QUERY}`);
+    } finally {
+      console.log(`Deleting ${csvKey} to save cloud storage costs`);
+      // await s3.deleteObject(csvKey); // Since the file takes a long time, leave it there while testing. Remove this comment before production.
+    }
   },
 });
