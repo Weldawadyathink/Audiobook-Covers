@@ -1,7 +1,6 @@
 type QueryDefinition = {
   readonly name: string;
   readonly query: string;
-  readonly provides?: unknown;
   readonly requires?: readonly string[];
 };
 
@@ -9,6 +8,11 @@ type QueryName<TQuery extends QueryDefinition> = TQuery["name"];
 
 type QueryNames<TQueries extends readonly QueryDefinition[]> =
   TQueries[number]["name"];
+
+type QueryByName<
+  TQueries extends readonly QueryDefinition[],
+  TName extends QueryNames<TQueries>,
+> = Extract<TQueries[number], { readonly name: TName }>;
 
 type QueryRequires<TQuery extends QueryDefinition> =
   TQuery["requires"] extends readonly string[]
@@ -66,10 +70,51 @@ type DuplicateNameErrors<TQueries extends readonly QueryDefinition[]> =
       : `Duplicate query name "${TDuplicate}"`
     : never;
 
+type HasDependencyCycle<
+  TQueries extends readonly QueryDefinition[],
+  TName extends QueryNames<TQueries>,
+  TPath extends string = never,
+> = TName extends TPath
+  ? true
+  : HasDependencyCycleInNames<
+      TQueries,
+      QueryRequires<QueryByName<TQueries, TName>>,
+      TPath | TName
+    >;
+
+type HasDependencyCycleInNames<
+  TQueries extends readonly QueryDefinition[],
+  TNames extends string,
+  TPath extends string,
+> = [TNames] extends [never]
+  ? false
+  : Extract<
+        {
+          [TName in Extract<TNames, QueryNames<TQueries>>]: HasDependencyCycle<
+            TQueries,
+            TName,
+            TPath
+          >;
+        }[Extract<TNames, QueryNames<TQueries>>],
+        true
+      > extends never
+    ? false
+    : true;
+
+type CyclicDependencyErrors<TQueries extends readonly QueryDefinition[]> = {
+  [TIndex in keyof TQueries]: TQueries[TIndex] extends infer TQuery extends
+    QueryDefinition
+    ? HasDependencyCycle<TQueries, QueryName<TQuery>> extends true
+      ? `Query "${QueryName<TQuery>}" is part of a dependency cycle`
+      : never
+    : never;
+}[number];
+
 type QueryDependencyErrors<TQueries extends readonly QueryDefinition[]> =
   | DuplicateNameErrors<TQueries>
   | MissingDependencyErrors<TQueries>
-  | SelfDependencyErrors<TQueries>;
+  | SelfDependencyErrors<TQueries>
+  | CyclicDependencyErrors<TQueries>;
 
 type AssertValidQueries<TQueries extends readonly QueryDefinition[]> =
   QueryDependencyErrors<TQueries> extends never
@@ -789,3 +834,98 @@ export const queries = defineQueries([
     `,
   },
 ]);
+
+function buildQueryMap<const TQueries extends readonly QueryDefinition[]>(
+  queries: TQueries,
+) {
+  return new Map<QueryNames<TQueries>, TQueries[number]>(
+    queries.map((query) => [query.name, query]),
+  );
+}
+
+export function isQueryName<const TQueries extends readonly QueryDefinition[]>(
+  queries: TQueries,
+  value: string,
+): value is QueryNames<TQueries> {
+  return buildQueryMap(queries).has(value as QueryNames<TQueries>);
+}
+
+function getRequires<const TQueries extends readonly QueryDefinition[]>(
+  query: TQueries[number],
+): readonly QueryNames<TQueries>[] {
+  return (query.requires ?? []) as readonly QueryNames<TQueries>[];
+}
+
+function getRequiredQueryNames<const TQueries extends readonly QueryDefinition[]>(
+  queries: TQueries,
+  target: QueryNames<TQueries>,
+) {
+  const queriesByName = buildQueryMap(queries);
+  const requiredNames = new Set<QueryNames<TQueries>>();
+  const stack: QueryNames<TQueries>[] = [target];
+
+  while (stack.length > 0) {
+    const name = stack.pop();
+
+    if (!name || requiredNames.has(name)) continue;
+
+    const query = queriesByName.get(name);
+
+    if (!query) {
+      throw new Error(`Unknown query "${name}"`);
+    }
+
+    requiredNames.add(name);
+
+    for (const dependency of getRequires<TQueries>(query)) {
+      stack.push(dependency);
+    }
+  }
+
+  return requiredNames;
+}
+
+export function* getQueryForTarget<
+  const TQueries extends readonly QueryDefinition[],
+  const TTarget extends QueryNames<TQueries>,
+>(
+  queries: TQueries,
+  target: TTarget,
+): Generator<readonly TQueries[number][], void> {
+  const remaining = getRequiredQueryNames(queries, target);
+  const completed = new Set<QueryNames<TQueries>>();
+
+  while (remaining.size > 0) {
+    const runnable: TQueries[number][] = [];
+
+    for (const query of queries) {
+      if (!remaining.has(query.name)) continue;
+      if (
+        !getRequires<TQueries>(query).every((dependency) =>
+          completed.has(dependency),
+        )
+      ) {
+        continue;
+      }
+
+      runnable.push(query);
+    }
+
+    if (runnable.length === 0) {
+      const blockedQueries = queries
+        .filter((query) => remaining.has(query.name))
+        .map((query) => query.name);
+
+      throw new Error(
+        `Could not resolve runnable queries for target "${target}". Blocked queries: ${blockedQueries.join(", ")}`,
+      );
+    }
+
+    yield runnable;
+
+    for (const query of runnable) {
+      remaining.delete(query.name);
+      completed.add(query.name);
+    }
+  }
+}
