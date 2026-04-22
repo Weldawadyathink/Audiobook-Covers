@@ -1,6 +1,6 @@
 import postgres from "postgres";
 import { z } from "zod/v4";
-import { logger } from "@/server/logger";
+import { logger } from "@/logger";
 import type { parseEnv } from "@/env";
 
 type TaggedQuery<T> = (
@@ -15,7 +15,9 @@ type PostgresTag = (
   ...values: unknown[]
 ) => PromiseLike<Row[]>;
 
-export function getDbWriteConnection(env: Pick<ReturnType<typeof parseEnv>, "DATABASE_WRITE_URL">) {
+export function getDbWriteConnection(
+  env: Pick<ReturnType<typeof parseEnv>, "DATABASE_WRITE_URL">,
+) {
   logger.info("Creating new db write connection");
   const sql = postgres(env.DATABASE_WRITE_URL, {
     max: 2,
@@ -26,7 +28,9 @@ export function getDbWriteConnection(env: Pick<ReturnType<typeof parseEnv>, "DAT
   return { sql, sqlTools };
 }
 
-export function getDbReadConnection(env: Pick<ReturnType<typeof parseEnv>, "DATABASE_READ_URL">) {
+export function getDbReadConnection(
+  env: Pick<ReturnType<typeof parseEnv>, "DATABASE_READ_URL">,
+) {
   logger.info("Creating new db read connection");
   const sql = postgres(env.DATABASE_READ_URL, {
     max: 2,

@@ -8,7 +8,7 @@ import {
 import { env } from "@/env";
 import ky from "ky";
 import "dotenv/config";
-import { logger } from "@/server/logger";
+import { logger } from "@/logger";
 import { z } from "zod";
 import zodToJsonSchema from "zod-to-json-schema";
 import { jsonrepair } from "jsonrepair";

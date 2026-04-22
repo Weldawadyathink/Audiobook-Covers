@@ -3,7 +3,7 @@ import { resolveDumpDate } from "@/trigger/openlibrary/utils";
 import { S3Client } from "./s3";
 import { BigQuery } from "@google-cloud/bigquery";
 import { getQueryForTarget, queries } from "./queries";
-import { getBigQueryCredentials } from "@/env";
+import { env } from "@/env";
 
 const BIGQUERY_LOCATION = "us-west1";
 const BIGQUERY_DATASET = "openlibrary";
@@ -28,7 +28,7 @@ async function runQuery(
 }
 
 function createBigQueryClient() {
-  const credentials = getBigQueryCredentials();
+  const credentials = env.BIGQUERY_CREDENTIALS_JSON;
   return new BigQuery({
     location: BIGQUERY_LOCATION,
     ...(credentials

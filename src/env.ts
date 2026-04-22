@@ -1,5 +1,6 @@
 import { z } from "zod/v4";
 import "dotenv/config";
+import { logger } from "@/logger";
 
 type BigQueryCredentials = {
   client_email: string;
@@ -29,57 +30,28 @@ const envSchema = z.object({
   ETL_S3_REGION: z.string(),
   ETL_S3_ENDPOINT: z.string(),
   GOOGLE_BOOKS_API_KEY: z.string(),
-  BIGQUERY_CREDENTIALS_JSON: z.string().optional(),
+  BIGQUERY_CREDENTIALS_JSON: z.object({
+    type: z.string(),
+    project_id: z.string(),
+    private_key_id: z.string(),
+    private_key: z.string(),
+    client_email: z.string(),
+    client_id: z.string(),
+    auth_uri: z.string(),
+    token_uri: z.string(),
+    auth_provider_x509_cert_url: z.string(),
+    client_x509_cert_url: z.string(),
+    universe_domain: z.string(),
+  }),
 });
 
 // Allows the user to inject environment variables at runtime
+// Returns a proxy object so that missing environment variables are thrown when accessed, not at startup
 export function parseEnv(inject: Record<string, string> = {}) {
   return envSchema.parse({
     ...process.env,
     ...inject,
   });
-}
-
-export function getBigQueryCredentials(
-  rawCredentials = env.BIGQUERY_CREDENTIALS_JSON,
-): BigQueryCredentials | undefined {
-  if (!rawCredentials) {
-    return undefined;
-  }
-
-  let parsedCredentials: unknown;
-  try {
-    parsedCredentials = JSON.parse(rawCredentials);
-  } catch (error) {
-    throw new Error("BIGQUERY_CREDENTIALS_JSON must be valid JSON", {
-      cause: error,
-    });
-  }
-
-  if (!parsedCredentials || typeof parsedCredentials !== "object") {
-    throw new Error("BIGQUERY_CREDENTIALS_JSON must contain a JSON object");
-  }
-
-  const credentials = parsedCredentials as Record<string, unknown>;
-
-  if (
-    typeof credentials.client_email !== "string" ||
-    typeof credentials.private_key !== "string"
-  ) {
-    throw new Error(
-      "BIGQUERY_CREDENTIALS_JSON must include client_email and private_key",
-    );
-  }
-
-  return {
-    ...credentials,
-    client_email: credentials.client_email,
-    private_key: credentials.private_key.replace(/\\n/g, "\n"),
-    project_id:
-      typeof credentials.project_id === "string"
-        ? credentials.project_id
-        : undefined,
-  };
 }
 
 export const env = parseEnv();
