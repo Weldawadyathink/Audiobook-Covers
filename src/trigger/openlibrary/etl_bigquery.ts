@@ -1,7 +1,5 @@
 import { schedules } from "@trigger.dev/sdk/v3";
 import { resolveDumpDate } from "@/trigger/openlibrary/utils";
-import { openLibraryDownloadToS3Task } from "./download-to-s3";
-import { triggerAndWait } from "@/trigger/utils";
 import { S3Client } from "./s3";
 import { BigQuery } from "@google-cloud/bigquery";
 import { getQueryForTarget, queries } from "./queries";
@@ -80,11 +78,9 @@ export const openLibraryEtlTask = schedules.task({
       }
 
       console.log(`Completed BigQuery search table build: ${TARGET_QUERY}`);
-    } catch (error) {
-      console.log(`Deleting ${csvKey} due to error`);
+    } finally {
+      console.log(`Deleting ${csvKey} to save cloud storage costs`);
       // await s3.deleteObject(csvKey); // Since the file takes a long time, leave it there while testing. Remove this comment before production.
-      console.error(error);
-      throw error;
     }
   },
 });
