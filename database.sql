@@ -1,6 +1,42 @@
+-- Audiobookcovers user
+
+GRANT USAGE ON SCHEMA public TO audiobookcovers;
+GRANT SELECT, UPDATE, INSERT, DELETE ON ALL TABLES IN SCHEMA public TO audiobookcovers;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, UPDATE, INSERT, DELETE ON TABLES TO audiobookcovers;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO audiobookcovers;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO audiobookcovers;
+
+GRANT USAGE ON SCHEMA audiobookcovers TO audiobookcovers;
+GRANT SELECT, UPDATE, INSERT, DELETE ON ALL TABLES IN SCHEMA audiobookcovers TO audiobookcovers;
+ALTER DEFAULT PRIVILEGES IN SCHEMA audiobookcovers GRANT SELECT, UPDATE, INSERT, DELETE ON TABLES TO audiobookcovers;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA audiobookcovers TO audiobookcovers;
+ALTER DEFAULT PRIVILEGES IN SCHEMA audiobookcovers GRANT USAGE, SELECT ON SEQUENCES TO audiobookcovers;
+
+ALTER USER audiobookcovers SET SEARCH_PATH TO audiobookcovers, public;
+
+-- Audiobookcovers_dev user
+
+GRANT USAGE ON SCHEMA public TO audiobookcovers_dev;
+GRANT SELECT, UPDATE, INSERT, DELETE ON ALL TABLES IN SCHEMA public TO audiobookcovers_dev;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, UPDATE, INSERT, DELETE ON TABLES TO audiobookcovers_dev;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO audiobookcovers_dev;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO audiobookcovers_dev;
+
+GRANT USAGE ON SCHEMA audiobookcovers_dev TO audiobookcovers_dev;
+GRANT SELECT, UPDATE, INSERT, DELETE ON ALL TABLES IN SCHEMA audiobookcovers_dev TO audiobookcovers_dev;
+ALTER DEFAULT PRIVILEGES IN SCHEMA audiobookcovers_dev GRANT SELECT, UPDATE, INSERT, DELETE ON TABLES TO audiobookcovers_dev;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA audiobookcovers_dev TO audiobookcovers_dev;
+ALTER DEFAULT PRIVILEGES IN SCHEMA audiobookcovers_dev GRANT USAGE, SELECT ON SEQUENCES TO audiobookcovers_dev;
+
+ALTER USER audiobookcovers_dev SET SEARCH_PATH TO audiobookcovers_dev, public;
+
+
+
 CREATE TABLE image (
-    id                 UUID NOT NULL,
+    id                 UUID NOT NULL PRIMARY KEY,
     source             TEXT,
+    reddit_post_id     TEXT,
+    reddit_comment_id  UUID,
     extension          TEXT,
     old_hash           TEXT,
     searchable         BOOLEAN DEFAULT TRUE,
@@ -24,9 +60,6 @@ CREATE TABLE image (
     embedding_google_multimodalembedding_001   VECTOR(768)
 );
 
-ALTER TABLE ONLY image
-    ADD CONSTRAINT idx_image_pkey PRIMARY KEY (id);
-
 CREATE INDEX idx_image_hash ON image USING btree (hash);
 CREATE INDEX idx_image_searchable ON image USING btree (searchable);
 
@@ -43,3 +76,24 @@ CREATE TABLE session (
 );
 
 CREATE INDEX idx_sessions_user_id ON session (user_id);
+
+CREATE TABLE reddit_post (
+    id TEXT NOT NULL PRIMARY KEY,
+    status TEXT NOT NULL,
+    title TEXT,
+    body TEXT,
+    author TEXT,
+    flair TEXT
+);
+
+CREATE INDEX idx_reddit_post_status ON reddit_post (status);
+
+CREATE TABLE reddit_comment (
+    id UUID NOT NULL PRIMARY KEY,
+    post_id TEXT NOT NULL REFERENCES reddit_post (id) ON DELETE CASCADE,
+    parent_comment_id UUID REFERENCES reddit_comment (id) ON DELETE CASCADE,
+    content TEXT
+);
+
+ALTER TABLE image ADD CONSTRAINT fk_image_reddit_post_id    FOREIGN KEY (reddit_post_id)    REFERENCES reddit_post (id)    ON DELETE SET NULL;
+ALTER TABLE image ADD CONSTRAINT fk_image_reddit_comment_id FOREIGN KEY (reddit_comment_id) REFERENCES reddit_comment (id) ON DELETE SET NULL;
