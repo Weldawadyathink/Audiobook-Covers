@@ -60,45 +60,29 @@ const envSchema = z.object({
   BIGQUERY_CREDENTIALS_JSON: bigQueryCredentialsSchema,
 });
 
-type Env = z.output<typeof envSchema>;
-type EnvKey = keyof Env & string;
-
-const envShape = envSchema.shape;
-const envKeys = Object.keys(envShape) as EnvKey[];
-
 // Allows the user to inject environment variables at runtime
 // Returns a proxy object so that missing environment variables are thrown when accessed, not at startup
 // Logs missing environment variables at startup
-export function parseEnv(
-  inject: Partial<Record<EnvKey, string | undefined>> = {},
-) {
+export function parseEnv(inject: Record<string, unknown> = {}) {
   const rawEnv = {
     ...process.env,
     ...inject,
-  } as Record<string, unknown>;
-  const missingKeys = new Set<EnvKey>();
-  const parsedEnv = {} as Record<EnvKey, Env[EnvKey] | undefined>;
+  };
+  const parsedEnv = envSchema.partial().parse(rawEnv);
 
-  for (const key of envKeys) {
-    const value = rawEnv[key];
-
-    if (value === undefined) {
-      missingKeys.add(key);
-      parsedEnv[key] = undefined;
+  for (const key of Object.keys(envSchema.shape)) {
+    if (parsedEnv[key] === undefined) {
       logger.warn(`Missing environment variable: ${key}`);
-      continue;
     }
-
-    parsedEnv[key] = envShape[key].parse(value) as Env[typeof key];
   }
 
-  return new Proxy(parsedEnv as Env, {
+  return new Proxy(parsedEnv as z.infer<typeof envSchema>, {
     get(target, prop, receiver) {
-      if (typeof prop === "string" && missingKeys.has(prop as EnvKey)) {
-        throw new Error(`Missing environment variable: ${prop}`);
+      const value = Reflect.get(target, prop, receiver);
+      if (value === undefined) {
+        throw new Error(`Missing environment variable: ${String(prop)}`);
       }
-
-      return Reflect.get(target, prop, receiver);
+      return value;
     },
   });
 }
