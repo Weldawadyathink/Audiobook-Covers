@@ -6,7 +6,146 @@ import { getQueryForTarget, queries } from "./queries";
 import { getBigQueryCredentials } from "@/env";
 
 const BIGQUERY_LOCATION = "us-west1";
+const BIGQUERY_DATASET = "openlibrary";
+const ETL_STATE_TABLE = `${BIGQUERY_DATASET}.etl_state`;
 const TARGET_QUERY = "works_search";
+const ETL_PIPELINE = `openlibrary:${TARGET_QUERY}`;
+
+async function runQuery(
+  bigQuery: BigQuery,
+  query: string,
+  params?: Record<string, unknown>,
+) {
+  const [job] = await bigQuery.createQueryJob({
+    query,
+    params,
+    location: BIGQUERY_LOCATION,
+    useLegacySql: false,
+  });
+
+  const [rows] = await job.getQueryResults();
+  return { job, rows };
+}
+
+function createBigQueryClient() {
+  const credentials = getBigQueryCredentials();
+  return new BigQuery({
+    location: BIGQUERY_LOCATION,
+    ...(credentials
+      ? {
+          credentials,
+          projectId: credentials.project_id,
+        }
+      : {}),
+  });
+}
+
+async function ensureEtlStateTable(bigQuery: BigQuery) {
+  await runQuery(
+    bigQuery,
+    `
+      CREATE TABLE IF NOT EXISTS \`${ETL_STATE_TABLE}\` (
+        pipeline STRING NOT NULL,
+        dump_date STRING,
+        status STRING NOT NULL,
+        started_at TIMESTAMP,
+        completed_at TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL
+      )
+      CLUSTER BY pipeline;
+    `,
+  );
+}
+
+async function getLastSuccessfulDumpDate(bigQuery: BigQuery) {
+  const { rows } = await runQuery(
+    bigQuery,
+    `
+      SELECT dump_date
+      FROM \`${ETL_STATE_TABLE}\`
+      WHERE pipeline = @pipeline
+        AND status = 'success'
+      LIMIT 1;
+    `,
+    {
+      pipeline: ETL_PIPELINE,
+    },
+  );
+
+  const dumpDate = rows[0]?.dump_date;
+  return typeof dumpDate === "string" ? dumpDate : null;
+}
+
+async function markDumpInProgress(bigQuery: BigQuery, dumpDate: string) {
+  await runQuery(
+    bigQuery,
+    `
+      MERGE \`${ETL_STATE_TABLE}\` AS target
+      USING (
+        SELECT
+          @pipeline AS pipeline,
+          @dumpDate AS dump_date
+      ) AS source
+      ON target.pipeline = source.pipeline
+      WHEN MATCHED THEN
+        UPDATE SET
+          dump_date = source.dump_date,
+          status = 'in_progress',
+          started_at = CURRENT_TIMESTAMP(),
+          completed_at = NULL,
+          updated_at = CURRENT_TIMESTAMP()
+      WHEN NOT MATCHED THEN
+        INSERT (pipeline, dump_date, status, started_at, completed_at, updated_at)
+        VALUES (
+          source.pipeline,
+          source.dump_date,
+          'in_progress',
+          CURRENT_TIMESTAMP(),
+          NULL,
+          CURRENT_TIMESTAMP()
+        );
+    `,
+    {
+      pipeline: ETL_PIPELINE,
+      dumpDate,
+    },
+  );
+}
+
+async function markDumpSuccessful(bigQuery: BigQuery, dumpDate: string) {
+  await runQuery(
+    bigQuery,
+    `
+      MERGE \`${ETL_STATE_TABLE}\` AS target
+      USING (
+        SELECT
+          @pipeline AS pipeline,
+          @dumpDate AS dump_date
+      ) AS source
+      ON target.pipeline = source.pipeline
+      WHEN MATCHED THEN
+        UPDATE SET
+          dump_date = source.dump_date,
+          status = 'success',
+          completed_at = CURRENT_TIMESTAMP(),
+          updated_at = CURRENT_TIMESTAMP()
+      WHEN NOT MATCHED THEN
+        INSERT (pipeline, dump_date, status, started_at, completed_at, updated_at)
+        VALUES (
+          source.pipeline,
+          source.dump_date,
+          'success',
+          NULL,
+          CURRENT_TIMESTAMP(),
+          CURRENT_TIMESTAMP()
+        );
+    `,
+    {
+      pipeline: ETL_PIPELINE,
+      dumpDate,
+    },
+  );
+}
 
 export const openLibraryEtlTask = schedules.task({
   id: "openlibrary-etl",
@@ -24,6 +163,20 @@ export const openLibraryEtlTask = schedules.task({
       "https://openlibrary.org/data/ol_dump_latest.txt.gz",
     );
     console.log(`Latest dump date: ${dumpDate}`);
+
+    const bigQuery = createBigQueryClient();
+    await ensureEtlStateTable(bigQuery);
+
+    const lastSuccessfulDumpDate = await getLastSuccessfulDumpDate(bigQuery);
+    if (lastSuccessfulDumpDate === dumpDate) {
+      console.log(
+        `Skipping OpenLibrary ETL because dump ${dumpDate} already completed successfully`,
+      );
+      return;
+    }
+
+    await markDumpInProgress(bigQuery, dumpDate);
+    console.log(`Marked OpenLibrary ETL as in progress for dump ${dumpDate}`);
     console.log(`Downloading complete dump to google storage`);
 
     const csvKey = `openlibrary/all.csv`;
@@ -43,17 +196,6 @@ export const openLibraryEtlTask = schedules.task({
       // });
 
       console.log(`Downloaded complete dump to google storage`);
-
-      const credentials = getBigQueryCredentials();
-      const bigQuery = new BigQuery({
-        location: BIGQUERY_LOCATION,
-        ...(credentials
-          ? {
-              credentials,
-              projectId: credentials.project_id,
-            }
-          : {}),
-      });
 
       for (const runnableQueries of getQueryForTarget(queries, TARGET_QUERY)) {
         console.log(
@@ -77,6 +219,8 @@ export const openLibraryEtlTask = schedules.task({
         );
       }
 
+      await markDumpSuccessful(bigQuery, dumpDate);
+      console.log(`Recorded successful OpenLibrary dump ${dumpDate}`);
       console.log(`Completed BigQuery search table build: ${TARGET_QUERY}`);
     } finally {
       console.log(`Deleting ${csvKey} to save cloud storage costs`);
