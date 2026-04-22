@@ -144,7 +144,7 @@ export const queries = defineQueries([
       CLUSTER BY type
       FROM FILES (
         format = 'CSV',
-        uris = ['gs://audiobookcovers/openlibrary/all_types.csv'],
+        uris = ['gs://audiobookcovers/openlibrary/all.csv'],
         field_delimiter = '\t',
         quote = '',
         skip_leading_rows = 0
@@ -856,10 +856,9 @@ function getRequires<const TQueries extends readonly QueryDefinition[]>(
   return (query.requires ?? []) as readonly QueryNames<TQueries>[];
 }
 
-function getRequiredQueryNames<const TQueries extends readonly QueryDefinition[]>(
-  queries: TQueries,
-  target: QueryNames<TQueries>,
-) {
+function getRequiredQueryNames<
+  const TQueries extends readonly QueryDefinition[],
+>(queries: TQueries, target: QueryNames<TQueries>) {
   const queriesByName = buildQueryMap(queries);
   const requiredNames = new Set<QueryNames<TQueries>>();
   const stack: QueryNames<TQueries>[] = [target];

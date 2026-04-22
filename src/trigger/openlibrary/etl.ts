@@ -5,7 +5,7 @@ import { openLibraryNormalizeTask } from "@/trigger/openlibrary/normalize";
 import { batchTriggerAndWait } from "@/trigger/utils";
 
 export const openLibraryEtlTask = schedules.task({
-  id: "openlibrary-etl",
+  id: "openlibrary-etl-old",
   cron: "0 9 * * *",
   machine: "micro",
   retry: {
