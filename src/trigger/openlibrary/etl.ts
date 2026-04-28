@@ -8,7 +8,7 @@ import { env } from "@/env";
 const BIGQUERY_LOCATION = "us-west1";
 const BIGQUERY_DATASET = "openlibrary";
 const ETL_STATE_TABLE = `${BIGQUERY_DATASET}.etl_state`;
-const TARGET_QUERY = "works_search";
+const TARGET_QUERY = "works_search_ready";
 const ETL_PIPELINE = `openlibrary:${TARGET_QUERY}`;
 
 async function runQuery(

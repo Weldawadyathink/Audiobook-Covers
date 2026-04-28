@@ -614,43 +614,6 @@ export const queries = defineQueries([
         s.edition_author_ids,
         s.edition_publish_years,
         s.by_statements,
-        LOWER(
-          TRIM(
-            REGEXP_REPLACE(
-              ARRAY_TO_STRING(
-                ARRAY(
-                  SELECT normalized_part
-                  FROM UNNEST(s.title_aliases) AS x,
-                  UNNEST([REGEXP_REPLACE(LOWER(TRIM(x)), r'[^[:alnum:]\s]+', ' ')]) AS normalized_part
-                  WHERE normalized_part IS NOT NULL AND normalized_part != ''
-                ),
-                ' '
-              ),
-              r'\s+',
-              ' '
-            )
-          )
-        ) AS title_search_text,
-        LOWER(
-          TRIM(
-            REGEXP_REPLACE(
-              ARRAY_TO_STRING(
-                ARRAY(
-                  SELECT normalized_part
-                  FROM UNNEST(ARRAY_CONCAT(
-                    IFNULL(s.author_names, CAST([] AS ARRAY<STRING>)),
-                    IFNULL(s.author_alternate_names, CAST([] AS ARRAY<STRING>))
-                  )) AS x,
-                  UNNEST([REGEXP_REPLACE(LOWER(TRIM(x)), r'[^[:alnum:]\s]+', ' ')]) AS normalized_part
-                  WHERE normalized_part IS NOT NULL AND normalized_part != ''
-                ),
-                ' '
-              ),
-              r'\s+',
-              ' '
-            )
-          )
-        ) AS author_search_text,
         (
           LEAST(s.edition_count, 250) * 4 +
           CASE WHEN ARRAY_LENGTH(s.author_names) > 0 THEN 60 ELSE 0 END +
@@ -660,6 +623,71 @@ export const queries = defineQueries([
           CASE WHEN ARRAY_LENGTH(s.edition_titles) > 1 THEN 10 ELSE 0 END
         ) AS canonical_score
       FROM search_source s;
+    `,
+  },
+  {
+    name: "works_title_search",
+    requires: ["works_search"],
+    query: `
+      CREATE OR REPLACE TABLE \`audiobookcovers-487104.openlibrary.works_title_search\`
+      CLUSTER BY olid AS
+      SELECT
+        ws.olid,
+        ws.canonical_score,
+        ARRAY_TO_STRING(
+          ARRAY(
+            SELECT DISTINCT word
+            FROM UNNEST(ws.title_aliases) AS alias,
+            UNNEST(
+              SPLIT(
+                REGEXP_REPLACE(LOWER(alias), r'[^[:alnum:]\s]+', ' '),
+                ' '
+              )
+            ) AS word
+            WHERE word != ''
+          ),
+          ' '
+        ) AS title_search_text
+      FROM \`audiobookcovers-487104.openlibrary.works_search\` ws;
+    `,
+  },
+  {
+    name: "works_author_search",
+    requires: ["works_search"],
+    query: `
+      CREATE OR REPLACE TABLE \`audiobookcovers-487104.openlibrary.works_author_search\`
+      CLUSTER BY olid AS
+      SELECT
+        ws.olid,
+        ws.canonical_score,
+        ARRAY_TO_STRING(
+          ARRAY(
+            SELECT DISTINCT word
+            FROM UNNEST(
+              ARRAY_CONCAT(
+                IFNULL(ws.author_names, CAST([] AS ARRAY<STRING>)),
+                IFNULL(ws.author_alternate_names, CAST([] AS ARRAY<STRING>))
+              )
+            ) AS name_part,
+            UNNEST(
+              SPLIT(
+                REGEXP_REPLACE(LOWER(name_part), r'[^[:alnum:]\s]+', ' '),
+                ' '
+              )
+            ) AS word
+            WHERE word != ''
+          ),
+          ' '
+        ) AS author_search_text
+      FROM \`audiobookcovers-487104.openlibrary.works_search\` ws;
+    `,
+  },
+  {
+    name: "works_search_ready",
+    // End target. Make all desired tables required by this target.
+    requires: ["works_title_search", "works_author_search"],
+    query: `
+      SELECT 1;
     `,
   },
   {
