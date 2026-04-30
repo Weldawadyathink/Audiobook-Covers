@@ -2,13 +2,11 @@ import * as https from "https";
 import * as fs from "fs";
 import * as path from "path";
 import os from "node:os";
-import { pipeline } from "node:stream/promises";
 import type { Context } from "@trigger.dev/sdk/v3";
 import { DuckDBInstance } from "@duckdb/node-api";
-import { BigQuery } from "@google-cloud/bigquery";
 import postgres from "postgres";
 import { env } from "@/env";
-import { Readable, Writable, Transform } from "node:stream";
+import { Transform } from "node:stream";
 
 const AUTO_MEMORY_LIMIT_RATIO = 0.8;
 const FALLBACK_MEMORY_LIMIT_GB = 0.5;
@@ -157,14 +155,22 @@ export function streamTracker(
   callback: (rowCount: number) => unknown,
 ) {
   let rowCount = 0;
+  let lastReported = 0;
   return new Transform({
     objectMode: true,
     transform(chunk, _, done) {
       rowCount++;
       if (rowCount % runEvery === 0) {
+        lastReported = rowCount;
         callback(rowCount);
       }
       return done(null, chunk);
+    },
+    flush(done) {
+      if (rowCount !== lastReported) {
+        callback(rowCount);
+      }
+      done();
     },
   });
 }

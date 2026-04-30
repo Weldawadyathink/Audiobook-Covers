@@ -6,14 +6,12 @@ import { getDbWriteConnection } from "@/db";
 import { env } from "@/env";
 import { pipeline } from "node:stream/promises";
 
-const OpenLibrarySyncPayload = z.object({
-  dumpDate: z.string(),
-});
-
 export const openLibrarySyncAuthorSearchTask = schemaTask({
   id: "openlibrary-sync-author-search",
-  schema: OpenLibrarySyncPayload,
-  machine: "small-1x",
+  schema: z.object({
+    dumpDate: z.string(),
+  }),
+  machine: "micro",
   retry: {
     maxAttempts: 1,
   },
@@ -24,10 +22,12 @@ export const openLibrarySyncAuthorSearchTask = schemaTask({
     console.log(`Syncing author search rows for dump ${dumpDate}`);
     const { sql } = getDbWriteConnection(env);
     const bq = new BQClient();
+    let insertedCount = 0;
 
     try {
       await sql`TRUNCATE TABLE openlibrary_work_author_search`;
-      await sql`DELETE INDEX IF EXISTS idx_openlibrary_work_author_search_tsv`;
+      await sql`DROP INDEX IF EXISTS idx_openlibrary_work_author_search_tsv`;
+      await sql`ALTER TABLE openlibrary_work_author_search SET UNLOGGED`;
 
       const bqStream = bq.queryStream(
         `
@@ -36,8 +36,6 @@ export const openLibrarySyncAuthorSearchTask = schemaTask({
           canonical_score,
           author_search_text
         FROM \`${bq.projectId}.openlibrary.works_author_search\`
-        WHERE dump_date = '${dumpDate}'
-        ORDER BY olid
       `,
       );
       const pgStream = await sql`
@@ -48,16 +46,30 @@ export const openLibrarySyncAuthorSearchTask = schemaTask({
 
       await pipeline(
         bqStream,
-        streamTracker(100_000, (n) => console.log(`Processed ${n}`)),
+        streamTracker(100_000, (n) => {
+          console.log(
+            `Completed batch ${Math.ceil(n / 100_000)} for openlibrary_work_author_search (${n} rows)`,
+          );
+        }),
         toPostgresCsvRow(["olid", "canonical_score", "author_search_text"]),
         pgStream,
       );
+      console.log(
+        `Synced ${insertedCount} author search rows for dump ${dumpDate}`,
+      );
 
+      console.log(`Creating index for openlibrary_work_author_search_tsv`);
       await sql`
         CREATE INDEX IF NOT EXISTS idx_openlibrary_work_author_search_tsv
         ON openlibrary_work_author_search
         USING gin (to_tsvector('simple', author_search_text))
       `;
+      console.log(`Index created for openlibrary_work_author_search_tsv`);
+
+      await sql`ALTER TABLE openlibrary_work_author_search SET LOGGED`;
+      console.log(`Table openlibrary_work_author_search set to logged`);
+
+      return { dumpDate, insertedCount };
     } finally {
       await sql.end();
     }

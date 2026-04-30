@@ -98,8 +98,48 @@ CREATE TABLE reddit_comment (
 ALTER TABLE image ADD CONSTRAINT fk_image_reddit_post_id    FOREIGN KEY (reddit_post_id)    REFERENCES reddit_post (id)    ON DELETE SET NULL;
 ALTER TABLE image ADD CONSTRAINT fk_image_reddit_comment_id FOREIGN KEY (reddit_comment_id) REFERENCES reddit_comment (id) ON DELETE SET NULL;
 
+
+-- OpenLibrary ETL State
+
+CREATE TABLE openlibrary_etl_state (
+  id boolean PRIMARY KEY DEFAULT true CHECK (id),
+  status TEXT -- Will be 'not_complete', 'in_progress', 'failed', or dumpDate
+);
+
+CREATE OR REPLACE FUNCTION openlibrary_etl_state()
+RETURNS TABLE (status text)
+LANGUAGE sql
+AS $$
+    WITH upsert AS (
+        INSERT INTO openlibrary_etl_state (id, status)
+        VALUES (true, 'not_complete')
+        ON CONFLICT (id) DO NOTHING
+    )
+    SELECT s.status
+    FROM openlibrary_etl_state s
+    WHERE id = true;
+$$;
+
+CREATE OR REPLACE FUNCTION openlibrary_etl_state(p_status text)
+RETURNS TABLE (status text)
+LANGUAGE sql
+AS $$
+    INSERT INTO openlibrary_etl_state (id, status)
+    VALUES (true, p_status)
+    ON CONFLICT (id)
+    DO UPDATE SET
+        status = EXCLUDED.status;
+    SELECT s.status
+    FROM openlibrary_etl_state s
+    WHERE id = true;
+$$;
+
+
+
+-- OpenLibrary Work Search
+
 CREATE TABLE openlibrary_work_search (
-    olid                      TEXT NOT NULL PRIMARY KEY,
+    olid                      TEXT NOT NULL,
     canonical_score           INTEGER NOT NULL,
     title                     TEXT NOT NULL,
     subtitle                  TEXT,
@@ -116,50 +156,32 @@ CREATE TABLE openlibrary_work_search (
     language_ids              TEXT[] NOT NULL DEFAULT '{}'
 );
 
+CREATE INDEX idx_openlibrary_work_search_olid
+    ON openlibrary_work_search
+    USING btree (olid);
+
+
+-- OpenLibrary Work Title Search
+
 CREATE TABLE openlibrary_work_title_search (
-    olid               TEXT NOT NULL PRIMARY KEY,
+    olid               TEXT NOT NULL, -- Uniqueness is guaranteed within BigQuery, having this be a prmary key slows inserts
     canonical_score    INTEGER NOT NULL,
     title_search_text  TEXT NOT NULL
-);
-
-CREATE TABLE openlibrary_work_author_search (
-    olid                TEXT NOT NULL PRIMARY KEY,
-    canonical_score     INTEGER NOT NULL,
-    author_search_text  TEXT NOT NULL
 );
 
 CREATE INDEX idx_openlibrary_work_title_search_tsv
     ON openlibrary_work_title_search
     USING gin (to_tsvector('simple', title_search_text));
 
+
+-- OpenLibrary Work Author Search
+
+CREATE TABLE openlibrary_work_author_search (
+    olid                TEXT NOT NULL, -- Uniqueness is guaranteed within BigQuery, having this be a prmary key slows inserts
+    canonical_score     INTEGER NOT NULL,
+    author_search_text  TEXT NOT NULL
+);
+
 CREATE INDEX idx_openlibrary_work_author_search_tsv
     ON openlibrary_work_author_search
     USING gin (to_tsvector('simple', author_search_text));
-
-CREATE OR REPLACE FUNCTION openlibrary_sync_status()
-RETURNS TABLE (
-    sync_ready BOOLEAN,
-    work_count BIGINT,
-    title_count BIGINT,
-    author_count BIGINT
-)
-LANGUAGE sql
-STABLE
-AS $$
-    WITH counts AS (
-        SELECT
-            (SELECT COUNT(*) FROM openlibrary_work_search) AS work_count,
-            (SELECT COUNT(*) FROM openlibrary_work_title_search) AS title_count,
-            (SELECT COUNT(*) FROM openlibrary_work_author_search) AS author_count
-    )
-    SELECT
-        work_count > 0
-        AND title_count > 0
-        AND author_count > 0
-        AND work_count = title_count
-        AND work_count = author_count AS sync_ready,
-        work_count,
-        title_count,
-        author_count
-    FROM counts;
-$$;
