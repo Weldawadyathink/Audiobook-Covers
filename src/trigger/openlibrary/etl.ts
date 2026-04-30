@@ -114,10 +114,11 @@ export const openLibraryEtlTask = schedules.task({
       await sql`SELECT openlibrary_etl_state(${dumpDate})`;
       console.log(`Recorded successful OpenLibrary dump ${dumpDate}`);
       console.log(`Completed BigQuery search table build: ${TARGET_QUERY}`);
+    } catch (e) {
+      await sql`SELECT openlibrary_etl_state(${"not_complete"})`;
     } finally {
       console.log(`Deleting ${csvKey} to save cloud storage costs`);
       await s3.deleteObject(csvKey);
-      await sql`SELECT openlibrary_etl_state(${"not_complete"})`;
       await sql.end();
     }
   },

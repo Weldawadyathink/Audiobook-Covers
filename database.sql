@@ -1,14 +1,14 @@
 -- Audiobookcovers user
 
 GRANT USAGE ON SCHEMA public TO audiobookcovers;
-GRANT SELECT, UPDATE, INSERT, DELETE ON ALL TABLES IN SCHEMA public TO audiobookcovers;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, UPDATE, INSERT, DELETE ON TABLES TO audiobookcovers;
+GRANT SELECT, UPDATE, INSERT, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA public TO audiobookcovers;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, UPDATE, INSERT, DELETE, TRUNCATE ON TABLES TO audiobookcovers;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO audiobookcovers;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO audiobookcovers;
 
 GRANT USAGE ON SCHEMA audiobookcovers TO audiobookcovers;
-GRANT SELECT, UPDATE, INSERT, DELETE ON ALL TABLES IN SCHEMA audiobookcovers TO audiobookcovers;
-ALTER DEFAULT PRIVILEGES IN SCHEMA audiobookcovers GRANT SELECT, UPDATE, INSERT, DELETE ON TABLES TO audiobookcovers;
+GRANT SELECT, UPDATE, INSERT, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA audiobookcovers TO audiobookcovers;
+ALTER DEFAULT PRIVILEGES IN SCHEMA audiobookcovers GRANT SELECT, UPDATE, INSERT, DELETE, TRUNCATE ON TABLES TO audiobookcovers;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA audiobookcovers TO audiobookcovers;
 ALTER DEFAULT PRIVILEGES IN SCHEMA audiobookcovers GRANT USAGE, SELECT ON SEQUENCES TO audiobookcovers;
 
@@ -17,14 +17,14 @@ ALTER USER audiobookcovers SET SEARCH_PATH TO audiobookcovers, public;
 -- Audiobookcovers_dev user
 
 GRANT USAGE ON SCHEMA public TO audiobookcovers_dev;
-GRANT SELECT, UPDATE, INSERT, DELETE ON ALL TABLES IN SCHEMA public TO audiobookcovers_dev;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, UPDATE, INSERT, DELETE ON TABLES TO audiobookcovers_dev;
+GRANT SELECT, UPDATE, INSERT, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA public TO audiobookcovers_dev;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, UPDATE, INSERT, DELETE, TRUNCATE ON TABLES TO audiobookcovers_dev;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO audiobookcovers_dev;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO audiobookcovers_dev;
 
 GRANT USAGE ON SCHEMA audiobookcovers_dev TO audiobookcovers_dev;
-GRANT SELECT, UPDATE, INSERT, DELETE ON ALL TABLES IN SCHEMA audiobookcovers_dev TO audiobookcovers_dev;
-ALTER DEFAULT PRIVILEGES IN SCHEMA audiobookcovers_dev GRANT SELECT, UPDATE, INSERT, DELETE ON TABLES TO audiobookcovers_dev;
+GRANT SELECT, UPDATE, INSERT, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA audiobookcovers_dev TO audiobookcovers_dev;
+ALTER DEFAULT PRIVILEGES IN SCHEMA audiobookcovers_dev GRANT SELECT, UPDATE, INSERT, DELETE, TRUNCATE ON TABLES TO audiobookcovers_dev;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA audiobookcovers_dev TO audiobookcovers_dev;
 ALTER DEFAULT PRIVILEGES IN SCHEMA audiobookcovers_dev GRANT USAGE, SELECT ON SEQUENCES TO audiobookcovers_dev;
 
@@ -160,6 +160,30 @@ CREATE INDEX idx_openlibrary_work_search_olid
     ON openlibrary_work_search
     USING btree (olid);
 
+CREATE OR REPLACE FUNCTION openlibrary_work_search_set_indexed(indexed boolean)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    IF indexed THEN
+        EXECUTE 'ALTER TABLE audiobookcovers.openlibrary_work_search SET LOGGED';
+        EXECUTE '
+            CREATE INDEX IF NOT EXISTS idx_openlibrary_work_search_olid
+            ON audiobookcovers.openlibrary_work_search
+            USING btree (olid)
+        ';
+    ELSE
+        EXECUTE 'DROP INDEX IF EXISTS audiobookcovers.idx_openlibrary_work_search_olid';
+        EXECUTE 'ALTER TABLE audiobookcovers.openlibrary_work_search SET UNLOGGED';
+    END IF;
+END
+$$;
+
+REVOKE ALL ON FUNCTION openlibrary_work_search_set_indexed(boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION openlibrary_work_search_set_indexed(boolean) TO audiobookcovers;
+GRANT EXECUTE ON FUNCTION openlibrary_work_search_set_indexed(boolean) TO audiobookcovers_dev;
+
 
 -- OpenLibrary Work Title Search
 
@@ -173,6 +197,30 @@ CREATE INDEX idx_openlibrary_work_title_search_tsv
     ON openlibrary_work_title_search
     USING gin (to_tsvector('simple', title_search_text));
 
+CREATE OR REPLACE FUNCTION openlibrary_work_title_search_set_indexed(indexed boolean)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    IF indexed THEN
+        EXECUTE 'ALTER TABLE audiobookcovers.openlibrary_work_title_search SET LOGGED';
+        EXECUTE '
+            CREATE INDEX IF NOT EXISTS idx_openlibrary_work_title_search_tsv
+            ON audiobookcovers.openlibrary_work_title_search
+            USING gin (to_tsvector(''simple'', title_search_text))
+        ';
+    ELSE
+        EXECUTE 'DROP INDEX IF EXISTS audiobookcovers.idx_openlibrary_work_title_search_tsv';
+        EXECUTE 'ALTER TABLE audiobookcovers.openlibrary_work_title_search SET UNLOGGED';
+    END IF;
+END
+$$;
+
+REVOKE ALL ON FUNCTION openlibrary_work_title_search_set_indexed(boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION openlibrary_work_title_search_set_indexed(boolean) TO audiobookcovers;
+GRANT EXECUTE ON FUNCTION openlibrary_work_title_search_set_indexed(boolean) TO audiobookcovers_dev;
+
 
 -- OpenLibrary Work Author Search
 
@@ -185,3 +233,27 @@ CREATE TABLE openlibrary_work_author_search (
 CREATE INDEX idx_openlibrary_work_author_search_tsv
     ON openlibrary_work_author_search
     USING gin (to_tsvector('simple', author_search_text));
+
+CREATE OR REPLACE FUNCTION openlibrary_work_author_search_set_indexed(indexed boolean)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    IF indexed THEN
+        EXECUTE 'ALTER TABLE audiobookcovers.openlibrary_work_author_search SET LOGGED';
+        EXECUTE '
+            CREATE INDEX IF NOT EXISTS idx_openlibrary_work_author_search_tsv
+            ON audiobookcovers.openlibrary_work_author_search
+            USING gin (to_tsvector(''simple'', author_search_text))
+        ';
+    ELSE
+        EXECUTE 'DROP INDEX IF EXISTS audiobookcovers.idx_openlibrary_work_author_search_tsv';
+        EXECUTE 'ALTER TABLE audiobookcovers.openlibrary_work_author_search SET UNLOGGED';
+    END IF;
+END
+$$;
+
+REVOKE ALL ON FUNCTION openlibrary_work_author_search_set_indexed(boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION openlibrary_work_author_search_set_indexed(boolean) TO audiobookcovers;
+GRANT EXECUTE ON FUNCTION openlibrary_work_author_search_set_indexed(boolean) TO audiobookcovers_dev;

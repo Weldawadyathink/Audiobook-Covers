@@ -26,8 +26,7 @@ export const openLibrarySyncTitleSearchTask = schemaTask({
 
     try {
       await sql`TRUNCATE TABLE openlibrary_work_title_search`;
-      await sql`DROP INDEX IF EXISTS idx_openlibrary_work_title_search_tsv`;
-      await sql`ALTER TABLE openlibrary_work_title_search SET UNLOGGED`;
+      await sql`SELECT openlibrary_work_title_search_set_indexed(false)`;
 
       const bqStream = bq.queryStream(
         `
@@ -60,16 +59,9 @@ export const openLibrarySyncTitleSearchTask = schemaTask({
         `Synced ${insertedCount} title search rows for dump ${dumpDate}`,
       );
 
-      console.log(`Creating index for openlibrary_work_title_search_tsv`);
-      await sql`
-        CREATE INDEX IF NOT EXISTS idx_openlibrary_work_title_search_tsv
-        ON openlibrary_work_title_search
-        USING gin (to_tsvector('simple', title_search_text))
-      `;
-      console.log(`Index created for openlibrary_work_title_search_tsv`);
-
-      await sql`ALTER TABLE openlibrary_work_title_search SET LOGGED`;
-      console.log(`Table openlibrary_work_title_search set to logged`);
+      console.log(`Restoring indexed/logged state for openlibrary_work_title_search`);
+      await sql`SELECT openlibrary_work_title_search_set_indexed(true)`;
+      console.log(`Restored indexed/logged state for openlibrary_work_title_search`);
 
       return { dumpDate, insertedCount };
     } finally {

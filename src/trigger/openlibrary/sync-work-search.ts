@@ -26,8 +26,7 @@ export const openLibrarySyncWorkSearchTask = schemaTask({
 
     try {
       await sql`TRUNCATE TABLE openlibrary_work_search`;
-      await sql`DROP INDEX IF EXISTS idx_openlibrary_work_search_olid`;
-      await sql`ALTER TABLE openlibrary_work_search SET UNLOGGED`;
+      await sql`SELECT openlibrary_work_search_set_indexed(false)`;
 
       const bqStream = bq.queryStream(
         `
@@ -75,6 +74,7 @@ export const openLibrarySyncWorkSearchTask = schemaTask({
       await pipeline(
         bqStream,
         streamTracker(100_000, (n) => {
+          insertedCount = n;
           console.log(
             `Completed batch ${Math.ceil(n / 100_000)} for openlibrary_work_search (${n} rows)`,
           );
@@ -98,20 +98,11 @@ export const openLibrarySyncWorkSearchTask = schemaTask({
         ]),
         pgStream,
       );
-      console.log(
-        `Synced ${insertedCount} author search rows for dump ${dumpDate}`,
-      );
+      console.log(`Synced ${insertedCount} works rows for dump ${dumpDate}`);
 
-      console.log(`Creating index for openlibrary_work_author_search_tsv`);
-      await sql`
-        CREATE INDEX IF NOT EXISTS idx_openlibrary_work_search_olid
-        ON openlibrary_work_search
-        USING btree (olid);
-      `;
-      console.log(`Index created for openlibrary_work_author_search_tsv`);
-
-      await sql`ALTER TABLE openlibrary_work_search SET LOGGED`;
-      console.log(`Table openlibrary_work_search set to logged`);
+      console.log(`Restoring indexed/logged state for openlibrary_work_search`);
+      await sql`SELECT openlibrary_work_search_set_indexed(true)`;
+      console.log(`Restored indexed/logged state for openlibrary_work_search`);
 
       return { dumpDate, insertedCount };
     } finally {
