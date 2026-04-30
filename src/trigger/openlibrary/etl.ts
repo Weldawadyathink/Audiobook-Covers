@@ -1,9 +1,17 @@
 import { schedules } from "@trigger.dev/sdk/v3";
-import { resolveDumpDate } from "@/trigger/openlibrary/utils";
+import {
+  createBigQueryClient,
+  createPostgresClient,
+  resolveDumpDate,
+} from "@/trigger/openlibrary/utils";
 import { S3Client } from "./s3";
 import { BigQuery } from "@google-cloud/bigquery";
 import { getQueryForTarget, queries } from "./queries";
-import { env } from "@/env";
+import { batchTriggerAndWait, triggerAndWait } from "../utils";
+import { openLibraryRebuildSearchIndexesTask } from "./rebuild-search-indexes";
+import { openLibrarySyncAuthorSearchTask } from "./sync-author-search";
+import { openLibrarySyncTitleSearchTask } from "./sync-title-search";
+import { openLibrarySyncWorkSearchTask } from "./sync-work-search";
 
 const BIGQUERY_LOCATION = "us-west1";
 const BIGQUERY_DATASET = "openlibrary";
@@ -27,17 +35,78 @@ async function runQuery(
   return { job, rows };
 }
 
-function createBigQueryClient() {
-  const credentials = env.BIGQUERY_CREDENTIALS_JSON;
-  return new BigQuery({
-    location: BIGQUERY_LOCATION,
-    ...(credentials
-      ? {
-          credentials,
-          projectId: credentials.project_id,
-        }
-      : {}),
-  });
+async function clearOpenLibrarySyncTables() {
+  const sql = createPostgresClient();
+  try {
+    await sql`TRUNCATE TABLE openlibrary_work_title_search, openlibrary_work_author_search, openlibrary_work_search`;
+  } finally {
+    await sql.end();
+  }
+}
+
+async function dropOpenLibrarySyncIndexes() {
+  const sql = createPostgresClient();
+  try {
+    await sql`DROP INDEX IF EXISTS idx_openlibrary_work_title_search_tsv`;
+    await sql`DROP INDEX IF EXISTS idx_openlibrary_work_author_search_tsv`;
+  } finally {
+    await sql.end();
+  }
+}
+
+async function setOpenLibrarySyncTablesUnlogged() {
+  const sql = createPostgresClient();
+  try {
+    await sql`ALTER TABLE openlibrary_work_search SET UNLOGGED`;
+    await sql`ALTER TABLE openlibrary_work_title_search SET UNLOGGED`;
+    await sql`ALTER TABLE openlibrary_work_author_search SET UNLOGGED`;
+  } finally {
+    await sql.end();
+  }
+}
+
+async function setOpenLibrarySyncTablesLogged() {
+  const sql = createPostgresClient();
+  try {
+    await sql`ALTER TABLE openlibrary_work_search SET LOGGED`;
+    await sql`ALTER TABLE openlibrary_work_title_search SET LOGGED`;
+    await sql`ALTER TABLE openlibrary_work_author_search SET LOGGED`;
+  } finally {
+    await sql.end();
+  }
+}
+
+async function countOpenLibrarySyncTables() {
+  const sql = createPostgresClient();
+  try {
+    const rows = await sql`
+      SELECT 'openlibrary_work_search' AS table_name, COUNT(*)::bigint AS row_count
+      FROM openlibrary_work_search
+      UNION ALL
+      SELECT 'openlibrary_work_title_search' AS table_name, COUNT(*)::bigint AS row_count
+      FROM openlibrary_work_title_search
+      UNION ALL
+      SELECT 'openlibrary_work_author_search' AS table_name, COUNT(*)::bigint AS row_count
+      FROM openlibrary_work_author_search
+    `;
+
+    return {
+      workCount: Number(
+        rows.find((row) => row.table_name === "openlibrary_work_search")
+          ?.row_count ?? 0,
+      ),
+      titleCount: Number(
+        rows.find((row) => row.table_name === "openlibrary_work_title_search")
+          ?.row_count ?? 0,
+      ),
+      authorCount: Number(
+        rows.find((row) => row.table_name === "openlibrary_work_author_search")
+          ?.row_count ?? 0,
+      ),
+    };
+  } finally {
+    await sql.end();
+  }
 }
 
 async function ensureEtlStateTable(bigQuery: BigQuery) {
@@ -181,6 +250,7 @@ export const openLibraryEtlTask = schedules.task({
 
     const csvKey = `openlibrary/all.csv`;
     const s3 = new S3Client("etl");
+    let tablesSetUnlogged = false;
 
     try {
       // Skip download for now for testing
@@ -219,10 +289,92 @@ export const openLibraryEtlTask = schedules.task({
         );
       }
 
+      console.log(`Dropping Postgres OpenLibrary search indexes`);
+      await dropOpenLibrarySyncIndexes();
+      console.log(`Dropped Postgres OpenLibrary search indexes`);
+
+      console.log(`Setting Postgres OpenLibrary sync tables UNLOGGED`);
+      await setOpenLibrarySyncTablesUnlogged();
+      tablesSetUnlogged = true;
+      console.log(`Set Postgres OpenLibrary sync tables UNLOGGED`);
+
+      console.log(`Clearing Postgres OpenLibrary sync tables`);
+      await clearOpenLibrarySyncTables();
+      console.log(`Cleared Postgres OpenLibrary sync tables`);
+
+      const syncOutputs = await batchTriggerAndWait([
+        {
+          task: openLibrarySyncWorkSearchTask,
+          payload: { dumpDate },
+        },
+        {
+          task: openLibrarySyncTitleSearchTask,
+          payload: { dumpDate },
+        },
+        {
+          task: openLibrarySyncAuthorSearchTask,
+          payload: { dumpDate },
+        },
+      ]);
+
+      const counts = await countOpenLibrarySyncTables();
+      console.log(
+        `Postgres OpenLibrary counts: works=${counts.workCount}, titles=${counts.titleCount}, authors=${counts.authorCount}`,
+      );
+
+      if (
+        counts.workCount === 0 ||
+        counts.titleCount === 0 ||
+        counts.authorCount === 0
+      ) {
+        throw new Error(
+          `OpenLibrary Postgres sync produced an empty table: ${JSON.stringify(counts)}`,
+        );
+      }
+
+      if (
+        counts.workCount !== counts.titleCount ||
+        counts.workCount !== counts.authorCount
+      ) {
+        throw new Error(
+          `OpenLibrary Postgres sync row counts do not match: ${JSON.stringify(counts)}`,
+        );
+      }
+
+      const insertedCounts = syncOutputs.map((output) => output.insertedCount);
+      if (
+        insertedCounts[0] !== counts.workCount ||
+        insertedCounts[1] !== counts.titleCount ||
+        insertedCounts[2] !== counts.authorCount
+      ) {
+        throw new Error(
+          `OpenLibrary Postgres sync inserted counts do not match table counts: ${JSON.stringify({
+            counts,
+            insertedCounts,
+          })}`,
+        );
+      }
+
+      console.log(`Setting Postgres OpenLibrary sync tables LOGGED`);
+      await setOpenLibrarySyncTablesLogged();
+      tablesSetUnlogged = false;
+      console.log(`Set Postgres OpenLibrary sync tables LOGGED`);
+
+      await triggerAndWait({
+        task: openLibraryRebuildSearchIndexesTask,
+        payload: { dumpDate },
+      });
+
       await markDumpSuccessful(bigQuery, dumpDate);
       console.log(`Recorded successful OpenLibrary dump ${dumpDate}`);
       console.log(`Completed BigQuery search table build: ${TARGET_QUERY}`);
     } finally {
+      if (tablesSetUnlogged) {
+        console.log(
+          `Restoring Postgres OpenLibrary sync tables to LOGGED after interrupted sync`,
+        );
+        await setOpenLibrarySyncTablesLogged();
+      }
       console.log(`Deleting ${csvKey} to save cloud storage costs`);
       // await s3.deleteObject(csvKey); // Since the file takes a long time, leave it there while testing. Remove this comment before production.
     }

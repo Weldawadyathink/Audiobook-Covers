@@ -2,12 +2,18 @@ import * as https from "https";
 import * as fs from "fs";
 import * as path from "path";
 import os from "node:os";
+import { pipeline } from "node:stream/promises";
 import type { Context } from "@trigger.dev/sdk/v3";
 import { DuckDBInstance } from "@duckdb/node-api";
+import { BigQuery } from "@google-cloud/bigquery";
+import postgres from "postgres";
 import { env } from "@/env";
+import { Readable, Writable, Transform } from "node:stream";
 
 const AUTO_MEMORY_LIMIT_RATIO = 0.8;
 const FALLBACK_MEMORY_LIMIT_GB = 0.5;
+const BIGQUERY_LOCATION = "us-west1";
+const BIGQUERY_PAGE_SIZE = 100_000;
 
 export function getFileNames(prefix: string) {
   const parquet = `${prefix}.parquet`;
@@ -144,4 +150,61 @@ export async function clearDirectory(dirPath: string) {
   } catch (error) {
     // Possible permissions error, ignore
   }
+}
+
+export function streamTracker(
+  runEvery: number,
+  callback: (rowCount: number) => unknown,
+) {
+  let rowCount = 0;
+  return new Transform({
+    objectMode: true,
+    transform(chunk, _, done) {
+      rowCount++;
+      if (rowCount % runEvery === 0) {
+        callback(rowCount);
+      }
+      return done(null, chunk);
+    },
+  });
+}
+
+export function toPostgresCsvRow(columns: string[]) {
+  // Must use WITH (FORMAT csv, NULL '\N');
+
+  function toPostgresTextArrayLiteral(values: string[]) {
+    return `{${values
+      .map((value) => `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`)
+      .join(",")}}`;
+  }
+
+  function toCopyField(value: unknown) {
+    if (value === null || value === undefined) {
+      return "\\N";
+    }
+
+    let raw: string;
+    if (Array.isArray(value)) {
+      raw = toPostgresTextArrayLiteral(value.map((item) => String(item)));
+    } else {
+      raw = String(value);
+    }
+    return `"${raw.replace(/"/g, '""')}"`;
+  }
+
+  return new Transform({
+    writableObjectMode: true,
+    readableObjectMode: false,
+
+    transform(chunk: Record<string, unknown>, _encoding, done) {
+      try {
+        const line =
+          columns.map((column) => toCopyField(chunk[column])).join(",") + "\n";
+
+        done(null, line);
+      } catch (err) {
+        done(err as Error);
+      }
+    },
+  });
 }
