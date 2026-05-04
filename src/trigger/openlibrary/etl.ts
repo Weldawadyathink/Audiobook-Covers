@@ -15,7 +15,7 @@ const TARGET_QUERY = "works_search_ready";
 
 export const openLibraryEtlTask = schedules.task({
   id: "openlibrary-etl",
-  cron: "0 9 * * *",
+  cron: "0 0 1 1 *", // Once a year to "disable" it
   machine: "small-1x",
   retry: {
     maxAttempts: 1,

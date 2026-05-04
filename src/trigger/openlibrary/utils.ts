@@ -152,23 +152,26 @@ export async function clearDirectory(dirPath: string) {
 
 export function streamTracker(
   runEvery: number,
-  callback: (rowCount: number) => unknown,
+  callback: (rowCount: number, time: number) => unknown,
 ) {
   let rowCount = 0;
   let lastReported = 0;
+  let lastTime: number | undefined = undefined;
   return new Transform({
     objectMode: true,
     transform(chunk, _, done) {
+      if (lastTime === undefined) lastTime = performance.now();
       rowCount++;
       if (rowCount % runEvery === 0) {
         lastReported = rowCount;
-        callback(rowCount);
+        callback(rowCount, performance.now() - lastTime);
+        lastTime = performance.now();
       }
       return done(null, chunk);
     },
     flush(done) {
       if (rowCount !== lastReported) {
-        callback(rowCount);
+        callback(rowCount, performance.now() - lastTime!);
       }
       done();
     },

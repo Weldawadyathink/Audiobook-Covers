@@ -1,4 +1,6 @@
 import { defineConfig } from "@trigger.dev/sdk/v3";
+import { syncEnvVars } from "@trigger.dev/build/extensions/core";
+import { env } from "./src/env";
 
 export default defineConfig({
   project: "proj_ysabtzlyltotwctspqpi",
@@ -22,5 +24,13 @@ export default defineConfig({
   build: {
     // duckdb is a native addon — exclude from bundle and deploy as a package
     external: ["@duckdb/node-api", "@duckdb/node-bindings"],
+    extensions: [
+      syncEnvVars(async (_) => {
+        return Object.entries(env).map(([name, value]) => ({
+          name,
+          value: typeof value === "string" ? value : JSON.stringify(value),
+        }));
+      }),
+    ],
   },
 });

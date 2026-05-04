@@ -1,10 +1,26 @@
-import { schemaTask } from "@trigger.dev/sdk/v3";
+import { schemaTask, tasks } from "@trigger.dev/sdk/v3";
 import { z } from "zod";
 import { BQClient } from "./bq";
 import { streamTracker, toPostgresCsvRow } from "./utils";
 import { getDbWriteConnection } from "@/db";
 import { env } from "@/env";
 import { pipeline } from "node:stream/promises";
+import prettyMilliseconds from "pretty-ms";
+import { ResourceMonitor } from "../resourceMonitor";
+import formatNumber from "format-number";
+
+const format = formatNumber({ round: 0 });
+
+tasks.middleware("resource-monitor", async ({ ctx, next }) => {
+  const resourceMonitor = new ResourceMonitor({
+    ctx,
+  });
+  resourceMonitor.startMonitoring(10_000);
+
+  await next();
+
+  resourceMonitor.stopMonitoring();
+});
 
 export const openLibrarySyncAuthorSearchTask = schemaTask({
   id: "openlibrary-sync-author-search",
@@ -45,9 +61,9 @@ export const openLibrarySyncAuthorSearchTask = schemaTask({
 
       await pipeline(
         bqStream,
-        streamTracker(100_000, (n) => {
+        streamTracker(100_000, (n, t) => {
           console.log(
-            `Completed batch ${Math.ceil(n / 100_000)} for openlibrary_work_author_search (${n} rows)`,
+            `Completed ${format(n)} rows in ${prettyMilliseconds(t)} (${format((n / t) * 1000)} rows/sec)`,
           );
         }),
         toPostgresCsvRow(["olid", "canonical_score", "author_search_text"]),
@@ -57,9 +73,13 @@ export const openLibrarySyncAuthorSearchTask = schemaTask({
         `Synced ${insertedCount} author search rows for dump ${dumpDate}`,
       );
 
-      console.log(`Restoring indexed/logged state for openlibrary_work_author_search`);
+      console.log(
+        `Restoring indexed/logged state for openlibrary_work_author_search`,
+      );
       await sql`SELECT openlibrary_work_author_search_set_indexed(true)`;
-      console.log(`Restored indexed/logged state for openlibrary_work_author_search`);
+      console.log(
+        `Restored indexed/logged state for openlibrary_work_author_search`,
+      );
 
       return { dumpDate, insertedCount };
     } finally {

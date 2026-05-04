@@ -6,13 +6,13 @@ tasks:
     env:
       APP_STAGE: local
     cmds:
-      - pnpm exec concurrently --raw --kill-others "pnpm exec vite dev" "pnpm dlx trigger.dev@latest dev --skip-update-check"
+      - op run --environment k36durot2n5dnzc6d56ziqibqm -- pnpm exec concurrently --raw --kill-others "pnpm exec vite dev" "pnpm dlx trigger.dev@latest dev --skip-update-check"
 
   build:
     desc: Build the app and check for type errors
     deps: [types]
     cmds:
-      - pnpm exec vite build
+      - op run --environment k36durot2n5dnzc6d56ziqibqm -- pnpm exec vite build
 
   types:
     desc: Regenerate Wrangler/Cloudflare Worker types
@@ -25,33 +25,33 @@ tasks:
     env:
       NODE_OPTIONS: "--import=./src/scripts/cloudflare-loader.mjs"
     cmds:
-      - pnpm tsx src/scripts/extractOLID.ts {{.CLI_ARGS}}
+      - op run --environment k36durot2n5dnzc6d56ziqibqm -- pnpm tsx src/scripts/extractOLID.ts {{.CLI_ARGS}}
 
   reindex_images:
     desc: Run the image reindex script (pass args after --, e.g. -- --tablesample 1 --threads 10 --model voyage-multimodal-3.5)
     env:
       NODE_OPTIONS: "--import=./src/scripts/cloudflare-loader.mjs"
     cmds:
-      - pnpm tsx src/scripts/reembedImages.ts {{.CLI_ARGS}}
+      - op run --environment k36durot2n5dnzc6d56ziqibqm -- pnpm tsx src/scripts/reembedImages.ts {{.CLI_ARGS}}
 
   test:search:
     desc: Run the search model test runner (pass args after --, e.g. -- --config test-runner.json --output results.csv)
     env:
       NODE_OPTIONS: "--import=./src/scripts/cloudflare-loader.mjs --import=./src/scripts/tanstack-start-loader.mjs"
     cmds:
-      - pnpm tsx src/scripts/testRunner.ts {{.CLI_ARGS}}
+      - op run --environment k36durot2n5dnzc6d56ziqibqm -- pnpm tsx src/scripts/testRunner.ts {{.CLI_ARGS}}
 
   trigger:dev:
     desc: Start the Trigger.dev local dev runner
     env:
       APP_STAGE: local
     cmds:
-      - pnpm dlx trigger.dev@latest dev
+      - op run --environment k36durot2n5dnzc6d56ziqibqm -- pnpm dlx trigger.dev@latest dev
 
   trigger:deploy:
     desc: Deploy Trigger.dev tasks to production
     cmds:
-      - pnpm dlx trigger.dev@latest deploy
+      - op run --environment k36durot2n5dnzc6d56ziqibqm -- pnpm dlx trigger.dev@latest deploy
 
   deploy:dev:
     desc: Build and deploy to Cloudflare (development env)
@@ -59,7 +59,7 @@ tasks:
     env:
       CLOUDFLARE_ENV: development
     cmds:
-      - pnpm exec wrangler deploy
+      - op run --environment k36durot2n5dnzc6d56ziqibqm -- pnpm exec wrangler deploy
 
   deploy:prod:
     desc: Build and deploy to Cloudflare (production)
@@ -67,7 +67,7 @@ tasks:
     env:
       CLOUDFLARE_ENV: production
     cmds:
-      - pnpm exec wrangler deploy
+      - op run --environment k36durot2n5dnzc6d56ziqibqm -- pnpm exec wrangler deploy
 
   db:migrate:
     desc: Apply database migrations (dev schema)

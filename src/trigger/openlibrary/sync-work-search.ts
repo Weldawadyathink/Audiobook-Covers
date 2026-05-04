@@ -1,10 +1,26 @@
-import { schemaTask } from "@trigger.dev/sdk/v3";
+import { schemaTask, tasks } from "@trigger.dev/sdk/v3";
 import { z } from "zod";
 import { BQClient } from "./bq";
 import { streamTracker, toPostgresCsvRow } from "./utils";
 import { getDbWriteConnection } from "@/db";
 import { env } from "@/env";
 import { pipeline } from "node:stream/promises";
+import prettyMilliseconds from "pretty-ms";
+import { ResourceMonitor } from "../resourceMonitor";
+import formatNumber from "format-number";
+
+const format = formatNumber({ round: 0 });
+
+tasks.middleware("resource-monitor", async ({ ctx, next }) => {
+  const resourceMonitor = new ResourceMonitor({
+    ctx,
+  });
+  resourceMonitor.startMonitoring(10_000);
+
+  await next();
+
+  resourceMonitor.stopMonitoring();
+});
 
 export const openLibrarySyncWorkSearchTask = schemaTask({
   id: "openlibrary-sync-work-search",
@@ -73,10 +89,10 @@ export const openLibrarySyncWorkSearchTask = schemaTask({
 
       await pipeline(
         bqStream,
-        streamTracker(100_000, (n) => {
+        streamTracker(100_000, (n, t) => {
           insertedCount = n;
           console.log(
-            `Completed batch ${Math.ceil(n / 100_000)} for openlibrary_work_search (${n} rows)`,
+            `Completed ${format(n)} rows in ${prettyMilliseconds(t)} (${format((n / t) * 1000)} rows/sec)`,
           );
         }),
         toPostgresCsvRow([

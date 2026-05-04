@@ -1,6 +1,5 @@
 import { z } from "zod/v4";
 import "dotenv/config";
-import { logger } from "@/logger";
 
 type BigQueryCredentials = {
   client_email: string;
@@ -56,7 +55,6 @@ const envSchema = z.object({
   ETL_S3_BUCKET: z.string(),
   ETL_S3_REGION: z.string(),
   ETL_S3_ENDPOINT: z.string(),
-  GOOGLE_BOOKS_API_KEY: z.string(),
   BIGQUERY_CREDENTIALS_JSON: bigQueryCredentialsSchema,
 });
 
@@ -72,7 +70,7 @@ export function parseEnv(inject: Record<string, unknown> = {}) {
 
   for (const key of Object.keys(envSchema.shape)) {
     if (parsedEnv[key] === undefined) {
-      logger.warn(`Missing environment variable: ${key}`);
+      console.warn(`Missing environment variable: ${key}`);
     }
   }
 
