@@ -20,7 +20,7 @@ export function getDbWriteConnection(
 ) {
   logger.info("Creating new db write connection");
   const sql = postgres(env.DATABASE_WRITE_URL, {
-    max: 2,
+    max: 1,
     fetch_types: false,
     prepare: true,
   });
