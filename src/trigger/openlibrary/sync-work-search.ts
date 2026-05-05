@@ -28,6 +28,7 @@ export const openLibrarySyncWorkSearchTask = schemaTask({
     dumpDate: z.string(),
   }),
   machine: "micro",
+  maxDuration: 86400,
   retry: {
     maxAttempts: 1,
   },
@@ -84,7 +85,7 @@ export const openLibrarySyncWorkSearchTask = schemaTask({
           language_ids
         )
         FROM STDIN
-        WITH (FORMAT csv, NULL '\N');
+        WITH (FORMAT csv, NULL '\\N');
       `.writable();
 
       await pipeline(

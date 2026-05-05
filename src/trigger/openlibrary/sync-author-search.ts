@@ -28,6 +28,7 @@ export const openLibrarySyncAuthorSearchTask = schemaTask({
     dumpDate: z.string(),
   }),
   machine: "micro",
+  maxDuration: 43200,
   retry: {
     maxAttempts: 1,
   },
@@ -56,7 +57,7 @@ export const openLibrarySyncAuthorSearchTask = schemaTask({
       const pgStream = await sql`
         COPY openlibrary_work_author_search (olid, canonical_score, author_search_text)
         FROM STDIN
-        WITH (FORMAT csv, NULL '\N');
+        WITH (FORMAT csv, NULL '\\N');
       `.writable();
 
       await pipeline(

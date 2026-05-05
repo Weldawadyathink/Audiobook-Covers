@@ -160,7 +160,10 @@ export function streamTracker(
   return new Transform({
     objectMode: true,
     transform(chunk, _, done) {
-      if (lastTime === undefined) lastTime = performance.now();
+      if (lastTime === undefined) {
+        lastTime = performance.now();
+        callback(rowCount, 0);
+      }
       rowCount++;
       if (rowCount % runEvery === 0) {
         lastReported = rowCount;
@@ -179,7 +182,7 @@ export function streamTracker(
 }
 
 export function toPostgresCsvRow(columns: string[]) {
-  // Must use WITH (FORMAT csv, NULL '\N');
+  // Must use WITH (FORMAT csv, NULL '\\N') in TypeScript template literals.
 
   function toPostgresTextArrayLiteral(values: string[]) {
     return `{${values

@@ -141,19 +141,19 @@ $$;
 CREATE TABLE openlibrary_work_search (
     olid                      TEXT NOT NULL,
     canonical_score           INTEGER NOT NULL,
-    title                     TEXT NOT NULL,
+    title                     TEXT,
     subtitle                  TEXT,
-    title_aliases             TEXT[] NOT NULL DEFAULT '{}',
-    author_names              TEXT[] NOT NULL DEFAULT '{}',
-    author_alternate_names    TEXT[] NOT NULL DEFAULT '{}',
+    title_aliases             TEXT[],
+    author_names              TEXT[],
+    author_alternate_names    TEXT[],
     first_publish_date        TEXT,
     first_edition_publish_year INTEGER,
     latest_edition_publish_year INTEGER,
     edition_count             INTEGER NOT NULL DEFAULT 0,
-    subjects                  TEXT[] NOT NULL DEFAULT '{}',
+    subjects                  TEXT[],
     description               TEXT,
-    publishers                TEXT[] NOT NULL DEFAULT '{}',
-    language_ids              TEXT[] NOT NULL DEFAULT '{}'
+    publishers                TEXT[],
+    language_ids              TEXT[]
 );
 
 CREATE INDEX idx_openlibrary_work_search_olid
