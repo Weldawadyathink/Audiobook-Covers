@@ -100,7 +100,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
         <PostHogProvider
           apiKey="phc_vpuqBfVxumO7RMULNnJJk1d7mkVBUotX72PrsO64avP"
           options={{
-            api_host: "https://us.i.posthog.com",
+            api_host: "https://x.audiobookcovers.com",
             defaults: "2026-01-30",
             capture_exceptions: true,
           }}
