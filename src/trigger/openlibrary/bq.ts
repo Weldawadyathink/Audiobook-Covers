@@ -28,4 +28,14 @@ export class BQClient {
       location: this.location,
     });
   }
+
+  async createQueryJob(query: string) {
+    // Must await job.promise() to wait for the job to complete
+    const [job] = await this.bq.createQueryJob({
+      location: this.location,
+      projectId: this.projectId,
+      query,
+    });
+    return job;
+  }
 }

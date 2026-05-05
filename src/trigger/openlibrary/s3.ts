@@ -7,12 +7,12 @@ import {
   DeleteObjectCommand,
   ListObjectsV2Command,
   DeleteObjectsCommand,
-  NoSuchKey,
   PutObjectCommand,
   UploadPartCommand,
 } from "@aws-sdk/client-s3";
 import { z } from "zod/v4";
-import type { Readable } from "node:stream";
+import { Readable } from "node:stream";
+import type { ReadableStream } from "node:stream/web";
 import { env } from "@/env";
 
 export class S3Client {
@@ -71,6 +71,33 @@ export class S3Client {
       }
       continuationToken = listRes.NextContinuationToken;
     } while (continuationToken);
+  }
+
+  async listObjects(prefix: string) {
+    const objects: Array<{ key: string; size: number | undefined }> = [];
+    let continuationToken: string | undefined;
+
+    do {
+      const listRes = await this.s3Client.send(
+        new ListObjectsV2Command({
+          Bucket: this.bucket,
+          Prefix: prefix,
+          ContinuationToken: continuationToken,
+        }),
+      );
+
+      objects.push(
+        ...(listRes.Contents ?? [])
+          .filter((object) => object.Key)
+          .map((object) => ({
+            key: object.Key!,
+            size: object.Size,
+          })),
+      );
+      continuationToken = listRes.NextContinuationToken;
+    } while (continuationToken);
+
+    return objects;
   }
 
   async deleteObjectsByWildcard(pattern: string) {
@@ -245,6 +272,32 @@ export class S3Client {
         Bucket: this.bucket,
         Key: key,
       }),
+    );
+  }
+
+  async getObjectStream(key: string) {
+    const result = await this.getRawObject(key);
+    const body = result.Body;
+    if (!body) {
+      throw new Error(`No object body returned for s3://${this.bucket}/${key}`);
+    }
+
+    if (body instanceof Readable) {
+      return body;
+    }
+
+    if (typeof body.transformToWebStream === "function") {
+      return Readable.fromWeb(
+        body.transformToWebStream() as ReadableStream<Uint8Array>,
+      );
+    }
+
+    if (Symbol.asyncIterator in body) {
+      return Readable.from(body as AsyncIterable<Uint8Array>);
+    }
+
+    throw new Error(
+      `Unsupported object body type for s3://${this.bucket}/${key}`,
     );
   }
 
