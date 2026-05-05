@@ -43,30 +43,46 @@ tasks.middleware("resource-monitor", async ({ ctx, next }) => {
 
 async function streamJsonRows(s3: S3Client, prefix: string) {
   const objects = await s3.listObjects(prefix);
+  let started = false;
+
   return new Readable({
     objectMode: true,
     async read() {
-      for (const object of objects) {
-        const source = await s3.getObjectStream(object.key);
-        const stream = source.pipe(createGunzip()).setEncoding("utf8");
-        let buffer = "";
+      if (started) {
+        return;
+      }
+      started = true;
 
-        for await (const chunk of stream) {
-          buffer += chunk;
+      try {
+        for (const object of objects) {
+          const source = await s3.getObjectStream(object.key);
+          const stream = source.pipe(createGunzip()).setEncoding("utf8");
+          let buffer = "";
 
-          for (;;) {
-            const newlineIndex = buffer.indexOf("\n");
-            if (newlineIndex === -1) {
-              break;
+          for await (const chunk of stream) {
+            buffer += chunk;
+
+            for (;;) {
+              const newlineIndex = buffer.indexOf("\n");
+              if (newlineIndex === -1) {
+                break;
+              }
+
+              const line = buffer.slice(0, newlineIndex);
+              buffer = buffer.slice(newlineIndex + 1);
+              this.push(JSON.parse(line));
             }
+          }
 
-            const line = buffer.slice(0, newlineIndex);
-            buffer = buffer.slice(newlineIndex + 1);
-            this.push(JSON.parse(line));
+          const finalLine = buffer.trim();
+          if (finalLine.length > 0) {
+            this.push(JSON.parse(finalLine));
           }
         }
-        const finalLine = buffer.trim();
-        this.push(JSON.parse(finalLine));
+
+        this.push(null);
+      } catch (error) {
+        this.destroy(error as Error);
       }
     },
   });
@@ -92,10 +108,10 @@ export const openLibrarySyncWorkSearchTask = schemaTask({
     const s3 = new S3Client("etl");
     let insertedCount = 0;
     let searchIndexDisabled = false;
-    const exportPrefix = `/exports/works/`;
+    const exportPrefix = `exports/works/`;
 
     try {
-      await s3.clearDirectory(`s3://${s3.bucket}/${exportPrefix}`);
+      await s3.clearDirectory(exportPrefix);
       console.log(`Exporting BigQuery works_search table`);
       const job = await bq.createQueryJob(`
         EXPORT DATA OPTIONS (
@@ -124,10 +140,7 @@ export const openLibrarySyncWorkSearchTask = schemaTask({
         WITH (FORMAT csv, NULL '\\N');
       `.writable();
 
-      const jsonStream = await streamJsonRows(
-        s3,
-        `${s3.bucket}/${exportPrefix}`,
-      );
+      const jsonStream = await streamJsonRows(s3, exportPrefix);
       await pipeline(
         jsonStream,
         streamTracker(100_000, (n, t) => {
@@ -166,7 +179,7 @@ export const openLibrarySyncWorkSearchTask = schemaTask({
         console.log(
           `Deleting exported work-search files from s3://${s3.bucket}/${exportPrefix}/`,
         );
-        await s3.clearDirectory(`s3://${s3.bucket}/${exportPrefix}`);
+        await s3.clearDirectory(exportPrefix);
       } catch (error) {
         console.error(
           `Failed to delete exported work-search files from s3://${s3.bucket}/${exportPrefix}/`,
