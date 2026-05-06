@@ -6,13 +6,13 @@ tasks:
     env:
       APP_STAGE: local
     cmds:
-      - op run --environment k36durot2n5dnzc6d56ziqibqm -- pnpm exec concurrently --raw --kill-others "pnpm exec vite dev" "pnpm dlx trigger.dev@latest dev --skip-update-check"
+      - pnpm exec concurrently --raw --kill-others "pnpm exec vite dev" "pnpm dlx trigger.dev@latest dev --skip-update-check"
 
   build:
     desc: Build the app and check for type errors
     deps: [types]
     cmds:
-      - op run --environment k36durot2n5dnzc6d56ziqibqm -- pnpm exec vite build
+      - pnpm exec vite build
 
   types:
     desc: Regenerate Wrangler/Cloudflare Worker types
@@ -25,26 +25,26 @@ tasks:
     env:
       NODE_OPTIONS: "--import=./src/scripts/cloudflare-loader.mjs"
     cmds:
-      - op run --environment k36durot2n5dnzc6d56ziqibqm -- pnpm tsx src/scripts/reembedImages.ts {{.CLI_ARGS}}
+      - pnpm tsx src/scripts/reembedImages.ts {{.CLI_ARGS}}
 
   test:search:
     desc: Run the search model test runner (pass args after --, e.g. -- --config test-runner.json --output results.csv)
     env:
       NODE_OPTIONS: "--import=./src/scripts/cloudflare-loader.mjs --import=./src/scripts/tanstack-start-loader.mjs"
     cmds:
-      - op run --environment k36durot2n5dnzc6d56ziqibqm -- pnpm tsx src/scripts/testRunner.ts {{.CLI_ARGS}}
+      - pnpm tsx src/scripts/testRunner.ts {{.CLI_ARGS}}
 
   trigger:dev:
     desc: Start the Trigger.dev local dev runner
     env:
       APP_STAGE: local
     cmds:
-      - op run --environment k36durot2n5dnzc6d56ziqibqm -- pnpm dlx trigger.dev@latest dev
+      - pnpm dlx trigger.dev@latest dev
 
   trigger:deploy:
     desc: Deploy Trigger.dev tasks to production
     cmds:
-      - op run --environment k36durot2n5dnzc6d56ziqibqm -- pnpm dlx trigger.dev@latest deploy
+      - pnpm dlx trigger.dev@latest deploy
 
   deploy:dev:
     desc: Build and deploy to Cloudflare (development env)
@@ -52,7 +52,7 @@ tasks:
     env:
       CLOUDFLARE_ENV: development
     cmds:
-      - op run --environment k36durot2n5dnzc6d56ziqibqm -- pnpm exec wrangler deploy
+      - pnpm exec wrangler deploy
 
   deploy:prod:
     desc: Build and deploy to Cloudflare (production)
@@ -60,7 +60,7 @@ tasks:
     env:
       CLOUDFLARE_ENV: production
     cmds:
-      - op run --environment k36durot2n5dnzc6d56ziqibqm -- pnpm exec wrangler deploy
+      - pnpm exec wrangler deploy
 
   db:migrate:
     desc: Apply database migrations (dev schema)
