@@ -1,7 +1,7 @@
 import { z } from "zod";
 import zodToJsonSchema from "zod-to-json-schema";
 import { jsonrepair } from "jsonrepair";
-import ky from "ky";
+import ky, { HTTPError } from "ky";
 import { env } from "@/env";
 import { Elastic } from "../elastic";
 
@@ -135,16 +135,38 @@ export async function callOpenRouter(
         status === 500 || status === 502 || status === 503 || status === 504;
 
       if (isRateLimited || isTransient) {
+        if (attempt >= 5) {
+          throw err;
+        }
         console.warn(
           `OpenRouter API ${status} — retrying (attempt ${attempt + 1})...`,
         );
         attempt++;
         continue;
       }
+      if (err instanceof HTTPError) {
+        const body = await err.response.text();
+        throw new Error(
+          `OpenRouter API ${status} ${err.response.statusText}: ${body}`,
+        );
+      }
       throw err;
     }
 
-    const choice = response.choices[0];
+    const choice = response.choices?.[0];
+    if (!choice) {
+      attempt++;
+      if (attempt > 5) {
+        throw new Error(
+          `OpenRouter returned no choices after ${attempt} attempts: ${JSON.stringify(response)}`,
+        );
+      }
+      console.warn(
+        `OpenRouter returned no choices — retrying (attempt ${attempt})...`,
+      );
+      continue;
+    }
+
     const finishReason = choice?.finish_reason;
     const nativeFinishReason = choice?.native_finish_reason;
 
@@ -288,9 +310,7 @@ export const searchOpenLibraryTool = {
             "Book search string (for example a title, title plus author, or series phrase).",
         },
         limit: {
-          type: "integer",
-          minimum: 1,
-          maximum: 25,
+          type: "number",
           description:
             "Maximum number of ranked results to return. Use 10 by default; use up to 25 for broad or ambiguous searches.",
         },

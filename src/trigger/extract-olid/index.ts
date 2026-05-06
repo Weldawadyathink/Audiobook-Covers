@@ -3,7 +3,7 @@ import { z } from "zod";
 import { z as zv4 } from "zod/v4";
 import { getDbWriteConnection } from "@/db";
 import { env } from "@/env";
-import { batchTriggerAndWait, triggerAndWait } from "../utils";
+import { batchTriggerAndWaitSettled, triggerAndWait } from "../utils";
 import { extractOlidPhase1Task } from "./phase1";
 import { extractOlidPhase2Task } from "./phase2";
 import { extractOlidPhase3Task } from "./phase3";
@@ -174,32 +174,61 @@ export const extractOlidBatchTask = schemaTask({
 
       console.log(`Found ${rows.length} images missing OpenLibrary work IDs`);
 
-      const outputs = await batchTriggerAndWait(
-        rows.map((row) => ({
-          task: extractOlidTask,
-          payload: {
-            imageId: row.id,
-            model,
-            models: configuredModels,
-            save,
+      const batchItems = rows.map((row) => ({
+        task: extractOlidTask,
+        payload: {
+          imageId: row.id,
+          model,
+          models: configuredModels,
+          save,
+        },
+      }));
+      const runs = await batchTriggerAndWaitSettled(batchItems);
+      const outputs = runs.flatMap((run) => {
+        if (run.ok) {
+          return [run.output];
+        }
+
+        return [];
+      });
+      const failed = runs.flatMap((run, index) => {
+        if (run.ok) {
+          return [];
+        }
+
+        const imageId = batchItems[index]?.payload.imageId ?? "unknown";
+        const message =
+          run.error instanceof Error ? run.error.message : String(run.error);
+
+        console.error(`Failed to extract OLID for ${imageId}: ${message}`);
+
+        return [
+          {
+            imageId,
+            error: message,
           },
-        })),
-      );
+        ];
+      });
       const totalCost = outputs.reduce((sum, output) => {
         return sum + output.cost;
       }, 0);
       const averageCostPerId =
         outputs.length === 0 ? 0 : totalCost / outputs.length;
+      const estimatedCostPer1000Ids = averageCostPerId * 1000;
 
       console.log(
-        `Total cost: $${totalCost.toFixed(8)} | average cost per id: $${averageCostPerId.toFixed(8)}`,
+        `Total cost: $${totalCost.toFixed(8)} | average cost per id: $${averageCostPerId.toFixed(8)} | estimated cost per 1k ids: $${estimatedCostPer1000Ids.toFixed(2)}`,
       );
 
       return {
         requestedCount: rows.length,
+        succeededCount: outputs.length,
         completedCount: outputs.length,
+        failedCount: failed.length,
         totalCost,
         averageCostPerId,
+        estimatedCostPer1000Ids,
+        failed,
         results: outputs,
       };
     } finally {
