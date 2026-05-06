@@ -129,7 +129,16 @@ export const extractOlidTask = schemaTask({
       }
     }
 
-    return { result };
+    return {
+      result,
+      cost: totalCost,
+      usage: {
+        phase1: usage1,
+        phase2: usage2,
+        phase3: usage3,
+        phase4: usage4,
+      },
+    };
   },
 });
 
@@ -176,10 +185,21 @@ export const extractOlidBatchTask = schemaTask({
           },
         })),
       );
+      const totalCost = outputs.reduce((sum, output) => {
+        return sum + output.cost;
+      }, 0);
+      const averageCostPerId =
+        outputs.length === 0 ? 0 : totalCost / outputs.length;
+
+      console.log(
+        `Total cost: $${totalCost.toFixed(8)} | average cost per id: $${averageCostPerId.toFixed(8)}`,
+      );
 
       return {
         requestedCount: rows.length,
         completedCount: outputs.length,
+        totalCost,
+        averageCostPerId,
         results: outputs,
       };
     } finally {
