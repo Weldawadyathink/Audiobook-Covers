@@ -116,7 +116,7 @@ export const openLibrarySyncWorkSearchTask = schemaTask({
       const job = await bq.createQueryJob(`
         EXPORT DATA OPTIONS (
           uri = 'gs://${s3.bucket}/${exportPrefix}/*.json.gz',
-          format = 'NEWLINE_DELIMITED_JSON',
+          format = 'JSON',
           compression = 'GZIP',
           overwrite = true
         ) AS
