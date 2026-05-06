@@ -11,7 +11,6 @@ import {
 } from "./utils";
 
 const Phase3Payload = z.object({
-  imageUrl: z.string(),
   ocrText: z.string(),
   phase2Messages: z.array(z.any()),
   phase2FinalContent: z.string(),
@@ -23,6 +22,7 @@ export const extractOlidPhase3Task = schemaTask({
   schema: Phase3Payload,
   machine: "small-2x",
   run: async ({
+    ocrText,
     phase2Messages: rawPhase2Messages,
     phase2FinalContent,
     model,
@@ -36,8 +36,7 @@ export const extractOlidPhase3Task = schemaTask({
       { role: "assistant", content: phase2FinalContent },
       {
         role: "user",
-        content:
-          "Based on the research above, please analyze the candidates and select the best match. Discuss the strengths and weaknesses of this identification, your confidence level, and provide all available metadata for the selected book.",
+        content: `The original cover OCR text was:\n\n${ocrText}\n\nBased on the research above, please analyze the candidates and select the best match. Discuss the strengths and weaknesses of this identification, your confidence level, and provide all available metadata for the selected book.`,
       },
     ];
 
@@ -87,8 +86,6 @@ export const extractOlidPhase3Task = schemaTask({
         });
       }
     }
-
-    console.log({ phase3Messages, phase3FinalContent });
 
     console.log(
       `Phase 3 cost: $${usage.cost.toFixed(8)} | tokens in: ${usage.promptTokens.toLocaleString()} out: ${usage.completionTokens.toLocaleString()}`,

@@ -11,7 +11,6 @@ import {
 } from "./utils";
 
 const Phase2Payload = z.object({
-  imageUrl: z.string(),
   ocrText: z.string(),
   model: z.string(),
 });
@@ -20,21 +19,12 @@ export const extractOlidPhase2Task = schemaTask({
   id: "extract-olid-phase2",
   schema: Phase2Payload,
   machine: "small-2x",
-  run: async ({ imageUrl, ocrText, model }) => {
+  run: async ({ ocrText, model }) => {
     const phase2Messages: OpenRouterMessage[] = [
       { role: "system", content: phase2SystemPrompt },
       {
         role: "user",
-        content: [
-          {
-            type: "image_url",
-            image_url: { url: imageUrl },
-          },
-          {
-            type: "text",
-            text: `Here is the audiobook cover image. The OCR text extracted from it is:\n\n${ocrText}\n\nPlease search OpenLibrary to find the correct book entry for this audiobook cover.`,
-          },
-        ],
+        content: `The OCR text extracted from the audiobook cover image is:\n\n${ocrText}\n\nPlease search OpenLibrary to find the correct book entry for this audiobook cover.`,
       },
     ];
 

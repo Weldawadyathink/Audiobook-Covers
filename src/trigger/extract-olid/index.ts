@@ -86,7 +86,6 @@ export const extractOlidTask = schemaTask({
       await triggerAndWait({
         task: extractOlidPhase2Task,
         payload: {
-          imageUrl,
           ocrText,
           model: models[1],
         },
@@ -95,7 +94,6 @@ export const extractOlidTask = schemaTask({
     const { phase3FinalContent, usage: usage3 } = await triggerAndWait({
       task: extractOlidPhase3Task,
       payload: {
-        imageUrl,
         ocrText,
         phase2Messages,
         phase2FinalContent,
