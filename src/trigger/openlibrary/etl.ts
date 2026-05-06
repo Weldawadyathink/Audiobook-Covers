@@ -3,9 +3,7 @@ import { resolveDumpDate } from "@/trigger/openlibrary/utils";
 import { S3Client } from "./s3";
 import { BQClient } from "./bq";
 import { getQueryForTarget, queries } from "./queries";
-import { batchTriggerAndWait } from "../utils";
-import { openLibrarySyncAuthorSearchTask } from "./sync-author-search";
-import { openLibrarySyncTitleSearchTask } from "./sync-title-search";
+import { triggerAndWait } from "../utils";
 import { openLibrarySyncWorkSearchTask } from "./sync-work-search";
 import { getDbWriteConnection } from "@/db";
 import { env } from "@/env";
@@ -96,20 +94,10 @@ export const openLibraryEtlTask = schedules.task({
         );
       }
 
-      const syncOutputs = await batchTriggerAndWait([
-        {
-          task: openLibrarySyncWorkSearchTask,
-          payload: { dumpDate },
-        },
-        {
-          task: openLibrarySyncTitleSearchTask,
-          payload: { dumpDate },
-        },
-        {
-          task: openLibrarySyncAuthorSearchTask,
-          payload: { dumpDate },
-        },
-      ]);
+      await triggerAndWait({
+        task: openLibrarySyncWorkSearchTask,
+        payload: { dumpDate },
+      });
 
       await sql`SELECT openlibrary_etl_state(${dumpDate})`;
       console.log(`Recorded successful OpenLibrary dump ${dumpDate}`);

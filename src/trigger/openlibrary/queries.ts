@@ -590,9 +590,42 @@ export const queries = defineQueries([
         s.author_ids,
         s.author_names,
         s.author_alternate_names,
+        ARRAY_TO_STRING(
+          ARRAY(
+            SELECT DISTINCT word
+            FROM UNNEST(
+              ARRAY_CONCAT(
+                IFNULL(s.author_names, CAST([] AS ARRAY<STRING>)),
+                IFNULL(s.author_alternate_names, CAST([] AS ARRAY<STRING>))
+              )
+            ) AS name_part,
+            UNNEST(
+              SPLIT(
+                REGEXP_REPLACE(LOWER(name_part), r'[^[:alnum:]\s]+', ' '),
+                ' '
+              )
+            ) AS word
+            WHERE word != ''
+          ),
+          ' '
+        ) AS author_search_text,
         s.other_titles,
         s.translated_titles,
         s.title_aliases,
+        ARRAY_TO_STRING(
+          ARRAY(
+            SELECT DISTINCT word
+            FROM UNNEST(s.title_aliases) AS alias,
+            UNNEST(
+              SPLIT(
+                REGEXP_REPLACE(LOWER(alias), r'[^[:alnum:]\s]+', ' '),
+                ' '
+              )
+            ) AS word
+            WHERE word != ''
+          ),
+          ' '
+        ) AS title_search_text,
         s.subjects,
         s.subject_places,
         s.subject_times,
@@ -626,66 +659,9 @@ export const queries = defineQueries([
     `,
   },
   {
-    name: "works_title_search",
-    requires: ["works_search"],
-    query: `
-      CREATE OR REPLACE TABLE \`audiobookcovers-487104.openlibrary.works_title_search\`
-      CLUSTER BY olid AS
-      SELECT
-        ws.olid,
-        ws.canonical_score,
-        ARRAY_TO_STRING(
-          ARRAY(
-            SELECT DISTINCT word
-            FROM UNNEST(ws.title_aliases) AS alias,
-            UNNEST(
-              SPLIT(
-                REGEXP_REPLACE(LOWER(alias), r'[^[:alnum:]\s]+', ' '),
-                ' '
-              )
-            ) AS word
-            WHERE word != ''
-          ),
-          ' '
-        ) AS title_search_text
-      FROM \`audiobookcovers-487104.openlibrary.works_search\` ws;
-    `,
-  },
-  {
-    name: "works_author_search",
-    requires: ["works_search"],
-    query: `
-      CREATE OR REPLACE TABLE \`audiobookcovers-487104.openlibrary.works_author_search\`
-      CLUSTER BY olid AS
-      SELECT
-        ws.olid,
-        ws.canonical_score,
-        ARRAY_TO_STRING(
-          ARRAY(
-            SELECT DISTINCT word
-            FROM UNNEST(
-              ARRAY_CONCAT(
-                IFNULL(ws.author_names, CAST([] AS ARRAY<STRING>)),
-                IFNULL(ws.author_alternate_names, CAST([] AS ARRAY<STRING>))
-              )
-            ) AS name_part,
-            UNNEST(
-              SPLIT(
-                REGEXP_REPLACE(LOWER(name_part), r'[^[:alnum:]\s]+', ' '),
-                ' '
-              )
-            ) AS word
-            WHERE word != ''
-          ),
-          ' '
-        ) AS author_search_text
-      FROM \`audiobookcovers-487104.openlibrary.works_search\` ws;
-    `,
-  },
-  {
     name: "works_search_ready",
     // End target. Make all desired tables required by this target.
-    requires: ["works_title_search", "works_author_search"],
+    requires: ["works_search"],
     query: `
       SELECT 1;
     `,

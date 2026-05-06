@@ -1,36 +1,16 @@
 import { schemaTask, tasks } from "@trigger.dev/sdk/v3";
 import { z } from "zod";
 import { BQClient } from "./bq";
-import { streamTracker, toPostgresCsvRow } from "./utils";
-import { getDbWriteConnection } from "@/db";
-import { env } from "@/env";
-import { pipeline } from "node:stream/promises";
+import { streamTracker } from "./utils";
 import prettyMilliseconds from "pretty-ms";
 import { ResourceMonitor } from "../resourceMonitor";
 import formatNumber from "format-number";
 import { createGunzip } from "node:zlib";
 import { Readable } from "node:stream";
 import { S3Client } from "./s3";
+import { Elastic } from "./elastic";
 
 const format = formatNumber({ round: 0 });
-
-const columns = [
-  "olid",
-  "canonical_score",
-  "title",
-  "subtitle",
-  "title_aliases",
-  "author_names",
-  "author_alternate_names",
-  "first_publish_date",
-  "first_edition_publish_year",
-  "latest_edition_publish_year",
-  "edition_count",
-  "subjects",
-  "description",
-  "publishers",
-  "language_ids",
-];
 
 tasks.middleware("resource-monitor", async ({ ctx, next }) => {
   const resourceMonitor = new ResourceMonitor({
@@ -103,11 +83,10 @@ export const openLibrarySyncWorkSearchTask = schemaTask({
   },
   run: async ({ dumpDate }) => {
     console.log(`Syncing works search rows for dump ${dumpDate}`);
-    const { sql } = getDbWriteConnection(env);
     const bq = new BQClient();
+    const elastic = new Elastic();
     const s3 = new S3Client("etl");
-    let insertedCount = 0;
-    let searchIndexDisabled = false;
+    let indexedCount = 0;
     const exportPrefix = `exports/works/`;
 
     try {
@@ -121,60 +100,31 @@ export const openLibrarySyncWorkSearchTask = schemaTask({
           overwrite = true
         ) AS
         SELECT
-          ${columns.join(",")}
+          *
         FROM \`${bq.projectId}.openlibrary.works_search\`
       `);
       await job.promise();
       console.log(`Exported BigQuery works_search table`);
 
-      console.log(`Truncating openlibrary_work_search table`);
-      await sql`TRUNCATE TABLE openlibrary_work_search`;
-      await sql`SELECT openlibrary_work_search_set_indexed(false)`;
-      searchIndexDisabled = true;
-
-      const pgStream = await sql`
-        COPY openlibrary_work_search (
-          ${sql.unsafe(columns.join(","))}
-        )
-        FROM STDIN
-        WITH (FORMAT csv, NULL '\\N');
-      `.writable();
+      console.log(`Clearing Elasticsearch work search index`);
+      await elastic.clearWorkSearchIndex();
+      console.log(`Cleared Elasticsearch work search index`);
 
       const jsonStream = await streamJsonRows(s3, exportPrefix);
-      await pipeline(
-        jsonStream,
+      const trackedRows = jsonStream.pipe(
         streamTracker(100_000, (n, t) => {
-          insertedCount = n;
           console.log(
             `Completed ${format(n)} rows in ${prettyMilliseconds(t)} (${format((n / t) * 1000)} rows/sec)`,
           );
         }),
-        toPostgresCsvRow(columns),
-        pgStream,
       );
-      console.log(`Synced ${insertedCount} works rows for dump ${dumpDate}`);
 
-      console.log(`Restoring indexed/logged state for openlibrary_work_search`);
-      await sql`SELECT openlibrary_work_search_set_indexed(true)`;
-      searchIndexDisabled = false;
-      console.log(`Restored indexed/logged state for openlibrary_work_search`);
+      const stats = await elastic.bulkIndexWorkSearchDocuments(trackedRows);
+      indexedCount = stats.successful;
+      console.log(`Indexed ${indexedCount} works rows for dump ${dumpDate}`);
 
-      return { dumpDate, insertedCount };
+      return { dumpDate, indexedCount };
     } finally {
-      if (searchIndexDisabled) {
-        try {
-          console.log(
-            `Restoring indexed/logged state for openlibrary_work_search after failure`,
-          );
-          await sql`SELECT openlibrary_work_search_set_indexed(true)`;
-        } catch (error) {
-          console.error(
-            `Failed to restore indexed/logged state for openlibrary_work_search`,
-            error,
-          );
-        }
-      }
-
       try {
         console.log(
           `Deleting exported work-search files from s3://${s3.bucket}/${exportPrefix}/`,
@@ -186,8 +136,6 @@ export const openLibrarySyncWorkSearchTask = schemaTask({
           error,
         );
       }
-
-      await sql.end();
     }
   },
 });
