@@ -45,6 +45,8 @@ export const extractOlidPhase1Task = schemaTask({
       cost: response.usage?.cost ?? 0,
     };
 
+    console.log(`OCR text: ${ocrText}`);
+
     console.log(
       `Phase 1 cost: $${usage.cost.toFixed(8)} | tokens in: ${usage.promptTokens.toLocaleString()} out: ${usage.completionTokens.toLocaleString()}`,
     );

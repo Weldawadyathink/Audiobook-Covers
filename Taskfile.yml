@@ -20,13 +20,6 @@ tasks:
       - pnpm exec wrangler types
       - pnpm exec tsc --noEmit
 
-  extract_olid:
-    desc: Run OpenLibrary work ID extraction pipeline. Pass args after --, e.g. -- --image-id <uuid> | --tablesample <pct> | --complete [--save] [--model phase1:phase2:phase3:phase4]
-    env:
-      NODE_OPTIONS: "--import=./src/scripts/cloudflare-loader.mjs"
-    cmds:
-      - op run --environment k36durot2n5dnzc6d56ziqibqm -- pnpm tsx src/scripts/extractOLID.ts {{.CLI_ARGS}}
-
   reindex_images:
     desc: Run the image reindex script (pass args after --, e.g. -- --tablesample 1 --threads 10 --model voyage-multimodal-3.5)
     env:

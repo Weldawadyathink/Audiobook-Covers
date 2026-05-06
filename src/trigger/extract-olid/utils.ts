@@ -2,13 +2,8 @@ import { z } from "zod";
 import zodToJsonSchema from "zod-to-json-schema";
 import { jsonrepair } from "jsonrepair";
 import ky from "ky";
-import * as fs from "fs";
 import { env } from "@/env";
-import { makeS3Client, headS3Object, downloadS3File } from "../openlibrary/utils";
-import {
-  buildOpenLibrarySearchSql,
-  shapeOpenLibrarySearchRows,
-} from "@/lib/openlibrarySearch";
+import { Elastic } from "../elastic";
 
 // --- Types ---
 
@@ -182,63 +177,30 @@ export async function callOpenRouter(
   }
 }
 
-// --- Parquet cache ---
+// --- OpenLibrary search ---
 
-const LOCAL_PARQUET_PATH =
-  "/tmp/extract-olid/enriched_works_local.parquet";
-const LOCAL_META_PATH =
-  "/tmp/extract-olid/enriched_works_local.meta.json";
-const S3_PARQUET_KEY = "openlibrary/enriched_works.parquet";
+let elastic: Elastic | null = null;
 
-interface EnrichedWorksParquetMeta {
-  etag: string;
-  contentLength: number;
+function getElastic() {
+  elastic ??= new Elastic();
+  return elastic;
 }
 
-export async function ensureEnrichedWorksParquetCached(): Promise<void> {
-  const s3 = makeS3Client();
-  const s3Head = await headS3Object(s3, S3_PARQUET_KEY);
-  if (!s3Head) throw new Error("enriched_works.parquet not found in S3");
-
-  fs.mkdirSync("/tmp/extract-olid", { recursive: true });
-
-  const localExists = fs.existsSync(LOCAL_PARQUET_PATH);
-  const metaExists = fs.existsSync(LOCAL_META_PATH);
-
-  if (localExists && metaExists) {
-    const meta: EnrichedWorksParquetMeta = JSON.parse(
-      fs.readFileSync(LOCAL_META_PATH, "utf-8"),
-    );
-    if (
-      meta.etag === s3Head.etag &&
-      meta.contentLength === s3Head.contentLength
-    ) {
-      console.log("Using cached enriched_works.parquet");
-      return;
-    }
-    console.log("enriched_works.parquet cache stale, re-downloading...");
-  } else {
-    console.log("Downloading enriched_works.parquet from S3...");
+export function parseSearchOpenLibraryToolArguments(argumentsJson: string) {
+  try {
+    const args = JSON.parse(argumentsJson);
+    return {
+      query: typeof args.query === "string" ? args.query : "",
+      limit: typeof args.limit === "number" ? args.limit : undefined,
+    };
+  } catch {
+    return { query: argumentsJson, limit: undefined };
   }
-
-  await downloadS3File(s3, S3_PARQUET_KEY, LOCAL_PARQUET_PATH);
-
-  const newMeta: EnrichedWorksParquetMeta = {
-    etag: s3Head.etag,
-    contentLength: s3Head.contentLength,
-  };
-  fs.writeFileSync(LOCAL_META_PATH, JSON.stringify(newMeta));
-  console.log("enriched_works.parquet downloaded and cached");
 }
 
-// Minimal structural interface for a DuckDB connection
-interface DuckDBLike {
-  run(sql: string): Promise<{ getRows(): Promise<Array<Array<unknown>>> }>;
-}
-
-export async function searchOpenLibraryByTitle(
-  con: DuckDBLike,
+export async function searchOpenLibrary(
   query: string,
+  limit = 10,
 ): Promise<string> {
   console.log(`  [tool] search_openlibrary: "${query}"`);
 
@@ -247,14 +209,12 @@ export async function searchOpenLibraryByTitle(
     return JSON.stringify({ totalItems: 0, results: [] });
   }
 
-  const result = await con.run(
-    buildOpenLibrarySearchSql(LOCAL_PARQUET_PATH, trimmedQuery),
+  const results = await getElastic().searchOpenLibraryWorks(
+    trimmedQuery,
+    limit,
   );
 
-  const rows = await result.getRows();
-  const results = shapeOpenLibrarySearchRows(rows);
-
-  console.log(`  [extractOLID] found ${results.length} results`);
+  console.log(`  [extract-olid] found ${results.length} results`);
   return JSON.stringify({ totalItems: results.length, results });
 }
 
@@ -277,7 +237,7 @@ Important: The search tool is work-centric. It can match title, series, subtitle
 
 Your goal is to find candidate books. The initial image is for an audiobook, but that is irrelevant to your task. You do not need to find an audiobook edition, a standard edition will do.
 
-Be thorough: try variations of the title and series. Explore multiple candidates before concluding.`;
+Be thorough: try variations of the title and series. Explore multiple candidates before concluding. For broad, ambiguous, or common-title searches, request a larger result limit.`;
 
 export const phase3SystemPrompt = `You are a book identification expert performing final analysis.
 You will receive:
@@ -326,6 +286,13 @@ export const searchOpenLibraryTool = {
           type: "string",
           description:
             "Book search string (for example a title, title plus author, or series phrase).",
+        },
+        limit: {
+          type: "integer",
+          minimum: 1,
+          maximum: 25,
+          description:
+            "Maximum number of ranked results to return. Use 10 by default; use up to 25 for broad or ambiguous searches.",
         },
       },
       required: ["query"],

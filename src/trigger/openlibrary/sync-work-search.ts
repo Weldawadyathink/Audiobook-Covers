@@ -8,7 +8,7 @@ import formatNumber from "format-number";
 import { createGunzip } from "node:zlib";
 import { Readable } from "node:stream";
 import { S3Client } from "./s3";
-import { Elastic } from "./elastic";
+import { Elastic } from "../elastic";
 
 const format = formatNumber({ round: 0 });
 
