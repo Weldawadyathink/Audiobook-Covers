@@ -6,8 +6,6 @@ provider "digitalocean" {
   token = local.digitalocean_token
 }
 
-provider "onepassword" {}
-
 provider "tailscale" {
   api_key = data.onepassword_item.tailscale.credential
   tailnet = "-"

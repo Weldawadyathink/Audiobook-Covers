@@ -10,6 +10,12 @@ search-test-results.csv
 .trigger
 openlibrary-data
 
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfplan
+
 infra/**/.terraform/
 infra/**/*.tfstate
 infra/**/*.tfstate.*

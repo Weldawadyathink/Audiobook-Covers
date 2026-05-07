@@ -1,67 +1,17 @@
 locals {
-  onepassword_vault_id = "xdpqq36uuedlgindu4gaiwdify"
-  cloudflare_zone_name = "audiobookcovers.com"
-  typesense_hostname   = "typesense.audiobookcovers.com"
-  tailscale_tags       = ["tag:server"]
-  digitalocean_token = one(flatten([
-    for section in data.onepassword_item.digitalocean.section : [
-      for field in section.field : field.value
-      if field.label == "token"
-    ]
-  ]))
+  typesense_hostname       = "typesense.audiobookcovers.com"
+  typesense_tailscale_tags = ["tag:server"]
+  typesense_tailscale_arg  = "--advertise-tags=${join(",", local.typesense_tailscale_tags)}"
+  typesense_droplet_tags   = ["audiobook-covers", "typesense"]
 }
 
-data "onepassword_item" "digitalocean" {
-  vault = local.onepassword_vault_id
-  uuid  = "r6tbyrvvzrdifgr3745qz2x2uq"
-}
-
-data "onepassword_item" "cloudflare" {
-  vault = local.onepassword_vault_id
-  uuid  = "rlhstmgoi7cs5bwxnsknribgsu"
-}
-
-data "onepassword_item" "typesense" {
-  vault = local.onepassword_vault_id
-  uuid  = "rvzbqswzbr5raj6lpslyokznj4"
-}
-
-data "onepassword_item" "tailscale" {
-  vault = local.onepassword_vault_id
-  uuid  = "xdghxnc2ekcvxx5gaogqaxsp3a"
-}
-
-data "cloudflare_zone" "audiobookcovers" {
-  filter = {
-    account = {
-      id = data.onepassword_item.cloudflare.username
-    }
-    name = local.cloudflare_zone_name
-  }
-}
-
-data "http" "cloudflare_ips" {
-  url = "https://api.cloudflare.com/client/v4/ips"
-
-  request_headers = {
-    Accept = "application/json"
-  }
-}
-
-locals {
-  cloudflare_ips              = jsondecode(data.http.cloudflare_ips.response_body).result
-  cloudflare_source_addresses = concat(local.cloudflare_ips.ipv4_cidrs, local.cloudflare_ips.ipv6_cidrs)
-  droplet_tags                = ["audiobook-covers", "typesense"]
-  tailscale_tags_arg          = "--advertise-tags=${join(",", local.tailscale_tags)}"
-}
-
-resource "tls_private_key" "origin" {
+resource "tls_private_key" "typesense_origin" {
   algorithm   = "ECDSA"
   ecdsa_curve = "P256"
 }
 
-resource "tls_cert_request" "origin" {
-  private_key_pem = tls_private_key.origin.private_key_pem
+resource "tls_cert_request" "typesense_origin" {
+  private_key_pem = tls_private_key.typesense_origin.private_key_pem
 
   subject {
     common_name  = local.typesense_hostname
@@ -72,7 +22,7 @@ resource "tls_cert_request" "origin" {
 }
 
 resource "cloudflare_origin_ca_certificate" "typesense" {
-  csr                = tls_cert_request.origin.cert_request_pem
+  csr                = tls_cert_request.typesense_origin.cert_request_pem
   hostnames          = [local.typesense_hostname]
   request_type       = "origin-ecc"
   requested_validity = 5475
@@ -84,30 +34,30 @@ resource "tailscale_tailnet_key" "typesense" {
   preauthorized       = true
   expiry              = 3600
   recreate_if_invalid = "always"
-  tags                = local.tailscale_tags
+  tags                = local.typesense_tailscale_tags
   description         = "Audiobook Covers Typesense Droplet"
 }
 
 resource "digitalocean_droplet" "typesense" {
-  name       = var.droplet_name
-  image      = var.droplet_image
-  region     = var.region
-  size       = var.droplet_size
+  name       = var.typesense_droplet_name
+  image      = var.typesense_droplet_image
+  region     = var.digitalocean_region
+  size       = var.typesense_droplet_size
   backups    = true
   monitoring = true
   ipv6       = true
-  tags       = local.droplet_tags
-  ssh_keys   = var.ssh_keys
+  tags       = local.typesense_droplet_tags
+  ssh_keys   = var.typesense_ssh_keys
 
   backup_policy {
     plan    = "weekly"
-    weekday = var.backup_weekday
-    hour    = var.backup_hour
+    weekday = var.typesense_backup_weekday
+    hour    = var.typesense_backup_hour
   }
 
-  user_data = templatefile("${path.module}/cloud-init.yaml.tftpl", {
+  user_data = templatefile("${path.module}/templates/typesense-cloud-init.yaml.tftpl", {
     origin_certificate_pem_b64 = base64encode(cloudflare_origin_ca_certificate.typesense.certificate)
-    origin_private_key_pem_b64 = base64encode(tls_private_key.origin.private_key_pem)
+    origin_private_key_pem_b64 = base64encode(tls_private_key.typesense_origin.private_key_pem)
     typesense_config_b64 = base64encode(<<-EOT
       api-address = 0.0.0.0
       api-port = 443
@@ -124,8 +74,8 @@ resource "digitalocean_droplet" "typesense" {
     EOT
     )
     tailscale_auth_key = tailscale_tailnet_key.typesense.key
-    tailscale_tags_arg = local.tailscale_tags_arg
-    droplet_name       = var.droplet_name
+    tailscale_tags_arg = local.typesense_tailscale_arg
+    droplet_name       = var.typesense_droplet_name
     typesense_version  = var.typesense_version
   })
 
@@ -135,7 +85,7 @@ resource "digitalocean_droplet" "typesense" {
 }
 
 resource "digitalocean_firewall" "typesense" {
-  name        = "${var.droplet_name}-firewall"
+  name        = "${var.typesense_droplet_name}-firewall"
   droplet_ids = [digitalocean_droplet.typesense.id]
 
   inbound_rule {

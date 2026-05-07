@@ -1,4 +1,0 @@
-region         = "sfo3"
-droplet_name   = "audiobook-covers-typesense"
-backup_weekday = "SUN"
-backup_hour    = 8
