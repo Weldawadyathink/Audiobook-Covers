@@ -659,9 +659,43 @@ export const queries = defineQueries([
     `,
   },
   {
+    name: "works_for_postgres",
+    requires: ["works_search"],
+    query: `
+      CREATE OR REPLACE TABLE \`audiobookcovers-487104.openlibrary.works_for_postgres\`
+      CLUSTER BY olid, title AS
+      SELECT
+        olid,
+        title,
+        subtitle,
+        ARRAY(
+          SELECT name
+          FROM UNNEST(IFNULL(author_names, CAST([] AS ARRAY<STRING>))) AS name
+          ORDER BY name
+        ) AS author_names,
+        ARRAY(
+          SELECT alias
+          FROM UNNEST(IFNULL(author_alternate_names, CAST([] AS ARRAY<STRING>))) AS alias
+          ORDER BY alias
+        ) AS author_aliases,
+        ARRAY(
+          SELECT alias
+          FROM UNNEST(IFNULL(title_aliases, CAST([] AS ARRAY<STRING>))) AS alias
+          ORDER BY alias
+        ) AS title_aliases,
+        COALESCE(
+          first_edition_publish_year,
+          SAFE_CAST(REGEXP_EXTRACT(first_publish_date, r'\\d{4}') AS INT64)
+        ) AS first_publish_year,
+        edition_count
+      FROM \`audiobookcovers-487104.openlibrary.works_search\`
+      WHERE title IS NOT NULL;
+    `,
+  },
+  {
     name: "works_search_ready",
     // End target. Make all desired tables required by this target.
-    requires: ["works_search"],
+    requires: ["works_for_postgres"],
     query: `
       SELECT 1;
     `,

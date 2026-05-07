@@ -63,6 +63,23 @@ CREATE TABLE image (
 CREATE INDEX idx_image_hash ON image USING btree (hash);
 CREATE INDEX idx_image_searchable ON image USING btree (searchable);
 
+CREATE TABLE openlibrary_work (
+    olid               TEXT NOT NULL PRIMARY KEY,
+    title              TEXT NOT NULL,
+    subtitle           TEXT,
+    author_names       TEXT[] NOT NULL DEFAULT '{}',
+    author_aliases     TEXT[] NOT NULL DEFAULT '{}',
+    title_aliases      TEXT[] NOT NULL DEFAULT '{}',
+    first_publish_year INTEGER,
+    edition_count      INTEGER
+);
+
+CREATE INDEX idx_openlibrary_work_title_search
+    ON openlibrary_work USING gin (to_tsvector('simple'::regconfig, COALESCE(title, '')));
+
+CREATE INDEX idx_openlibrary_work_author_names_search
+    ON openlibrary_work USING gin (to_tsvector('simple'::regconfig, array_to_string(author_names, ' ')));
+
 CREATE TABLE web_user (
     id            SERIAL PRIMARY KEY,
     username      TEXT NOT NULL UNIQUE,
@@ -97,3 +114,38 @@ CREATE TABLE reddit_comment (
 
 ALTER TABLE image ADD CONSTRAINT fk_image_reddit_post_id    FOREIGN KEY (reddit_post_id)    REFERENCES reddit_post (id)    ON DELETE SET NULL;
 ALTER TABLE image ADD CONSTRAINT fk_image_reddit_comment_id FOREIGN KEY (reddit_comment_id) REFERENCES reddit_comment (id) ON DELETE SET NULL;
+
+-- OpenLibrary ETL State
+
+CREATE TABLE openlibrary_etl_state (
+  id boolean PRIMARY KEY DEFAULT true CHECK (id),
+  status TEXT -- Will be 'not_complete', 'in_progress', 'failed', or dumpDate
+);
+
+CREATE OR REPLACE FUNCTION openlibrary_etl_state()
+RETURNS TABLE (status text)
+LANGUAGE sql
+AS $$
+    WITH upsert AS (
+        INSERT INTO openlibrary_etl_state (id, status)
+        VALUES (true, 'not_complete')
+        ON CONFLICT (id) DO NOTHING
+    )
+    SELECT s.status
+    FROM openlibrary_etl_state s
+    WHERE id = true;
+$$;
+
+CREATE OR REPLACE FUNCTION openlibrary_etl_state(p_status text)
+RETURNS TABLE (status text)
+LANGUAGE sql
+AS $$
+    INSERT INTO openlibrary_etl_state (id, status)
+    VALUES (true, p_status)
+    ON CONFLICT (id)
+    DO UPDATE SET
+        status = EXCLUDED.status;
+    SELECT s.status
+    FROM openlibrary_etl_state s
+    WHERE id = true;
+$$;

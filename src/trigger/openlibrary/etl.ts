@@ -3,8 +3,9 @@ import { resolveDumpDate } from "@/trigger/openlibrary/utils";
 import { S3Client } from "./s3";
 import { BQClient } from "./bq";
 import { getQueryForTarget, queries } from "./queries";
-import { triggerAndWait } from "../utils";
+import { batchTriggerAndWait, triggerAndWait } from "../utils";
 import { openLibrarySyncWorkSearchTask } from "./sync-work-search";
+import { openLibrarySyncWorksForPostgresTask } from "./sync-works-for-postgres";
 import { getDbWriteConnection } from "@/db";
 import { env } from "@/env";
 import { z } from "zod/v4";
@@ -94,16 +95,23 @@ export const openLibraryEtlTask = schedules.task({
         );
       }
 
-      await triggerAndWait({
-        task: openLibrarySyncWorkSearchTask,
-        payload: { dumpDate },
-      });
+      await batchTriggerAndWait([
+        {
+          task: openLibrarySyncWorkSearchTask,
+          payload: { dumpDate },
+        },
+        {
+          task: openLibrarySyncWorksForPostgresTask,
+          payload: { dumpDate },
+        },
+      ]);
 
       await sql`SELECT openlibrary_etl_state(${dumpDate})`;
       console.log(`Recorded successful OpenLibrary dump ${dumpDate}`);
       console.log(`Completed BigQuery search table build: ${TARGET_QUERY}`);
     } catch (e) {
       await sql`SELECT openlibrary_etl_state(${"not_complete"})`;
+      throw e;
     } finally {
       console.log(`Deleting ${csvKey} to save cloud storage costs`);
       await s3.deleteObject(csvKey);
