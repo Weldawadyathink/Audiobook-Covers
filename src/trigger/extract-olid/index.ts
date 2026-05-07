@@ -82,14 +82,17 @@ export const extractOlidTask = schemaTask({
       payload: { imageUrl, model: models[0] },
     });
 
-    const { phase2Messages, phase2FinalContent, usage: usage2 } =
-      await triggerAndWait({
-        task: extractOlidPhase2Task,
-        payload: {
-          ocrText,
-          model: models[1],
-        },
-      });
+    const {
+      phase2Messages,
+      phase2FinalContent,
+      usage: usage2,
+    } = await triggerAndWait({
+      task: extractOlidPhase2Task,
+      payload: {
+        ocrText,
+        model: models[1],
+      },
+    });
 
     const { phase3FinalContent, usage: usage3 } = await triggerAndWait({
       task: extractOlidPhase3Task,
@@ -215,7 +218,7 @@ export const extractOlidBatchTask = schemaTask({
       const estimatedCostPer1000Ids = averageCostPerId * 1000;
 
       console.log(
-        `Total cost: $${totalCost.toFixed(8)} | average cost per id: $${averageCostPerId.toFixed(8)} | estimated cost per 1k ids: $${estimatedCostPer1000Ids.toFixed(2)}`,
+        `Images indexed: ${outputs.length} | Total cost: $${totalCost.toFixed(8)} | average cost per id: $${averageCostPerId.toFixed(8)} | estimated cost per 1k ids: $${estimatedCostPer1000Ids.toFixed(2)}`,
       );
 
       return {

@@ -46,25 +46,13 @@ export type OpenLibraryWorkSearchDocument = {
 
 export type OpenLibraryWorkSearchResult = {
   olid: string;
-  search_score?: number;
   title: string | null;
   subtitle: string | null;
   author_names?: string[];
-  author_alternate_names?: string[];
   subjects?: string[];
   description: string | null;
-  first_publish_date: string | null;
-  first_edition_publish_year: number | null;
-  latest_edition_publish_year: number | null;
   other_titles?: string[];
-  translated_titles?: string[];
   title_aliases?: string[];
-  edition_titles?: string[];
-  edition_subtitles?: string[];
-  publishers?: string[];
-  language_ids?: string[];
-  edition_count: number;
-  canonical_score: number;
 };
 
 const searchTextField = {
@@ -140,42 +128,23 @@ export const openLibraryWorkSearchMapping = {
 } satisfies estypes.MappingTypeMapping;
 
 const OMIT_EMPTY_ARRAY_FIELDS = new Set<keyof OpenLibraryWorkSearchResult>([
-  "author_alternate_names",
   "subjects",
   "other_titles",
-  "translated_titles",
   "title_aliases",
-  "edition_titles",
-  "edition_subtitles",
-  "publishers",
-  "language_ids",
 ]);
 
 function shapeOpenLibraryWorkSearchResult(
   document: OpenLibraryWorkSearchDocument,
-  searchScore?: number,
 ): OpenLibraryWorkSearchResult {
   const result: OpenLibraryWorkSearchResult = {
     olid: document.olid,
-    search_score: searchScore,
     title: document.title,
     subtitle: document.subtitle,
     author_names: document.author_names,
-    author_alternate_names: document.author_alternate_names,
     subjects: document.subjects,
     description: document.description,
-    first_publish_date: document.first_publish_date,
-    first_edition_publish_year: document.first_edition_publish_year,
-    latest_edition_publish_year: document.latest_edition_publish_year,
     other_titles: document.other_titles,
-    translated_titles: document.translated_titles,
     title_aliases: document.title_aliases,
-    edition_titles: document.edition_titles,
-    edition_subtitles: document.edition_subtitles,
-    publishers: document.publishers,
-    language_ids: document.language_ids,
-    edition_count: document.edition_count,
-    canonical_score: document.canonical_score,
   };
 
   for (const field of OMIT_EMPTY_ARRAY_FIELDS) {
@@ -377,10 +346,7 @@ export class Elastic {
         ? [
             {
               score: hit._score ?? 0,
-              result: shapeOpenLibraryWorkSearchResult(
-                hit._source,
-                hit._score ?? undefined,
-              ),
+              result: shapeOpenLibraryWorkSearchResult(hit._source),
             },
           ]
         : [],

@@ -134,3 +134,39 @@ tasks:
         -U $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user')
         -d $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database')
         -f rebuild_dev_db.sql
+
+  infra:typesense:init:
+    desc: Initialize Terraform for the Typesense DigitalOcean infrastructure
+    dir: infra/typesense
+    cmds:
+      - OP_SERVICE_ACCOUNT_TOKEN="$(op read op://xdpqq36uuedlgindu4gaiwdify/okjnwzitpx5x5u6xnyx2qd2ycq/credential)" terraform init -upgrade
+
+  infra:typesense:fmt:
+    desc: Format Terraform for the Typesense DigitalOcean infrastructure
+    dir: infra/typesense
+    cmds:
+      - terraform fmt
+
+  infra:typesense:validate:
+    desc: Validate Terraform for the Typesense DigitalOcean infrastructure
+    dir: infra/typesense
+    cmds:
+      - OP_SERVICE_ACCOUNT_TOKEN="$(op read op://xdpqq36uuedlgindu4gaiwdify/okjnwzitpx5x5u6xnyx2qd2ycq/credential)" terraform validate
+
+  infra:typesense:plan:
+    desc: Plan Terraform changes for the Typesense DigitalOcean infrastructure
+    dir: infra/typesense
+    cmds:
+      - OP_SERVICE_ACCOUNT_TOKEN="$(op read op://xdpqq36uuedlgindu4gaiwdify/okjnwzitpx5x5u6xnyx2qd2ycq/credential)" terraform plan
+
+  infra:typesense:apply:
+    desc: Apply Terraform changes for the Typesense DigitalOcean infrastructure
+    dir: infra/typesense
+    cmds:
+      - OP_SERVICE_ACCOUNT_TOKEN="$(op read op://xdpqq36uuedlgindu4gaiwdify/okjnwzitpx5x5u6xnyx2qd2ycq/credential)" terraform apply
+
+  infra:typesense:destroy:
+    desc: Destroy Terraform-managed Typesense DigitalOcean infrastructure
+    dir: infra/typesense
+    cmds:
+      - OP_SERVICE_ACCOUNT_TOKEN="$(op read op://xdpqq36uuedlgindu4gaiwdify/okjnwzitpx5x5u6xnyx2qd2ycq/credential)" terraform destroy

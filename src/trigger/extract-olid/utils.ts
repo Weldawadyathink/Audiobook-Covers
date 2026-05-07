@@ -228,7 +228,7 @@ export async function searchOpenLibrary(
 
   const trimmedQuery = query.trim();
   if (trimmedQuery.length === 0) {
-    return JSON.stringify({ totalItems: 0, results: [] });
+    return "No results.";
   }
 
   const results = await getElastic().searchOpenLibraryWorks(
@@ -237,7 +237,69 @@ export async function searchOpenLibrary(
   );
 
   console.log(`  [extract-olid] found ${results.length} results`);
-  return JSON.stringify({ totalItems: results.length, results });
+  return formatOpenLibrarySearchResults(results);
+}
+
+function compactList(values: string[] | undefined, limit: number) {
+  return Array.from(new Set(values?.map((value) => value.trim()) ?? []))
+    .filter((value) => value.length > 0)
+    .slice(0, limit);
+}
+
+function trimDescription(description: string | null) {
+  if (!description) {
+    return null;
+  }
+
+  const normalized = description.replace(/\s+/g, " ").trim();
+  if (normalized.length <= 220) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, 217).trimEnd()}...`;
+}
+
+function formatOpenLibrarySearchResults(
+  results: Awaited<ReturnType<Elastic["searchOpenLibraryWorks"]>>,
+) {
+  if (results.length === 0) {
+    return "No results.";
+  }
+
+  return results
+    .map((result) => {
+      const lines = [result.olid];
+      const title = result.subtitle
+        ? `${result.title ?? "Untitled"}: ${result.subtitle}`
+        : (result.title ?? "Untitled");
+      lines.push(`Title: ${title}`);
+
+      const authors = compactList(result.author_names, 4);
+      if (authors.length > 0) {
+        lines.push(`Authors: ${authors.join("; ")}`);
+      }
+
+      const aliases = compactList(
+        [...(result.title_aliases ?? []), ...(result.other_titles ?? [])],
+        4,
+      );
+      if (aliases.length > 0) {
+        lines.push(`Aliases: ${aliases.join("; ")}`);
+      }
+
+      const subjects = compactList(result.subjects, 5);
+      if (subjects.length > 0) {
+        lines.push(`Subjects: ${subjects.join("; ")}`);
+      }
+
+      const description = trimDescription(result.description);
+      if (description) {
+        lines.push(`Description: ${description}`);
+      }
+
+      return lines.join("\n");
+    })
+    .join("\n\n");
 }
 
 // --- Prompts ---
@@ -252,7 +314,7 @@ Your task:
 1. Analyze the cover image and OCR text to identify the book title, series, and any other identifying information
 2. Brainstorm multiple possible search queries to find the correct book
 3. Use the search_openlibrary tool multiple times to gather metadata for candidate matches
-4. For each search, you will receive work-level metadata enriched with edition-derived signals including title aliases, author names, publishers, languages, publication years, edition counts, and OpenLibrary work IDs. Use this metadata for identification and to avoid sparse duplicate records.
+4. For each search, you will receive compact work-level metadata including title, authors, title aliases, subjects, description, and OpenLibrary work IDs. Use this metadata for identification and to avoid sparse duplicate records.
 5. Collect all relevant metadata found across your searches, including OpenLibrary work IDs (olid)
 
 Important: The search tool is work-centric. It can match title, series, subtitle, and author text, but the returned identifier is always an OpenLibrary work ID.
@@ -274,7 +336,7 @@ Your task:
    - Why this candidate is the best match (evidence from the cover image, OCR text, and search results)
    - Any weaknesses or uncertainties in the match (ambiguous text, multiple editions, common titles, etc.)
    - The evidence classification (see below) and the reasoning behind it
-   - All known metadata for the selected book: title, subjects, OpenLibrary work ID, publication date or publication window, description, and any alias or author evidence that helped disambiguate duplicate records
+   - Known metadata for the selected book: title, subjects, OpenLibrary work ID, description, and any alias or author evidence that helped disambiguate duplicate records
 4. Be honest about uncertainty — if no good match was found, say so clearly
 
 Note: Author names are available in search results and may be used to confirm a match.
@@ -300,7 +362,7 @@ export const searchOpenLibraryTool = {
   function: {
     name: "search_openlibrary",
     description:
-      "Search the enriched OpenLibrary works database for book metadata. Use this to look up candidate works by title, subtitle, series text, or author text. Results include author names, title aliases, publisher/language hints, edition counts, and the OpenLibrary work ID.",
+      "Search the enriched OpenLibrary works database for book metadata. Use this to look up candidate works by title, subtitle, series text, or author text. Results are compact text blocks with OpenLibrary work ID, title, authors, aliases, subjects, and a trimmed description.",
     parameters: {
       type: "object",
       properties: {

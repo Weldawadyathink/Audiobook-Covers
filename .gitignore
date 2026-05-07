@@ -9,3 +9,9 @@ search-test-results.csv
 .trigger.duckdb-skills/
 .trigger
 openlibrary-data
+
+infra/**/.terraform/
+infra/**/*.tfstate
+infra/**/*.tfstate.*
+infra/**/*.tfvars
+infra/**/*.tfplan

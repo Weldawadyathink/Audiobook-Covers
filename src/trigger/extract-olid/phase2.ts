@@ -15,6 +15,8 @@ const Phase2Payload = z.object({
   model: z.string(),
 });
 
+const MAX_PHASE2_SEARCH_CALLS = 12;
+
 export const extractOlidPhase2Task = schemaTask({
   id: "extract-olid-phase2",
   schema: Phase2Payload,
@@ -34,11 +36,15 @@ export const extractOlidPhase2Task = schemaTask({
       completionTokens: 0,
       cost: 0,
     };
+    let searchCallCount = 0;
+    let forceFinalAnswer = false;
 
     while (true) {
-      const response = await callOpenRouter(phase2Messages, model, [
-        searchOpenLibraryTool,
-      ]);
+      const response = await callOpenRouter(
+        phase2Messages,
+        model,
+        forceFinalAnswer ? undefined : [searchOpenLibraryTool],
+      );
       usage.promptTokens += response.usage?.prompt_tokens ?? 0;
       usage.completionTokens += response.usage?.completion_tokens ?? 0;
       usage.cost += response.usage?.cost ?? 0;
@@ -62,10 +68,22 @@ export const extractOlidPhase2Task = schemaTask({
       for (const toolCall of toolCalls) {
         if (toolCall.function.name !== "search_openlibrary") continue;
 
+        if (searchCallCount >= MAX_PHASE2_SEARCH_CALLS) {
+          phase2Messages.push({
+            role: "tool",
+            tool_call_id: toolCall.id,
+            content:
+              "Search limit reached. Use the search results already gathered and provide your final candidate research summary now.",
+          });
+          forceFinalAnswer = true;
+          continue;
+        }
+
         const { query, limit } = parseSearchOpenLibraryToolArguments(
           toolCall.function.arguments,
         );
         const searchResultJson = await searchOpenLibrary(query, limit);
+        searchCallCount++;
 
         phase2Messages.push({
           role: "tool",
