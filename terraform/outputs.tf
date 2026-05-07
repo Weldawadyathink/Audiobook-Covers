@@ -17,3 +17,8 @@ output "typesense_tailscale_ssh_command" {
   description = "Expected Tailscale SSH command after the node joins the tailnet and ACLs allow access."
   value       = "tailscale ssh root@${var.typesense_droplet_name}"
 }
+
+output "typesense_public_ssh_command" {
+  description = "Public SSH command for the Typesense Droplet."
+  value       = "ssh root@${digitalocean_droplet.typesense.ipv4_address}"
+}

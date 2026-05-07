@@ -14,6 +14,9 @@ runcmd:
   - |
     set -eu
 
+    curl -fsSL https://tailscale.com/install.sh | sh
+    tailscale up --auth-key="${tailscale_auth_key}" --ssh --hostname="${droplet_name}" ${tailscale_tags_arg}
+
     curl -fsSL "https://dl.typesense.org/releases/${typesense_version}/typesense-server-${typesense_version}-amd64.deb" -o /tmp/typesense-server.deb
     apt-get install -y /tmp/typesense-server.deb
     rm -f /tmp/typesense-server.deb
@@ -34,6 +37,3 @@ runcmd:
 
     systemctl daemon-reload
     systemctl enable --now typesense-server
-
-    curl -fsSL https://tailscale.com/install.sh | sh
-    tailscale up --auth-key="${tailscale_auth_key}" --ssh --hostname="${droplet_name}" ${tailscale_tags_arg}

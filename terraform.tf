@@ -44,3 +44,8 @@ output "typesense_tailscale_ssh_command" {
   description = "Expected Tailscale SSH command after the node joins the tailnet and ACLs allow access."
   value       = module.audiobook_covers.typesense_tailscale_ssh_command
 }
+
+output "typesense_public_ssh_command" {
+  description = "Public SSH command for the Typesense Droplet."
+  value       = module.audiobook_covers.typesense_public_ssh_command
+}

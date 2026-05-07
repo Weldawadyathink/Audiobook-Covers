@@ -1,8 +1,10 @@
 locals {
-  typesense_hostname       = "typesense.audiobookcovers.com"
-  typesense_tailscale_tags = ["tag:server"]
-  typesense_tailscale_arg  = "--advertise-tags=${join(",", local.typesense_tailscale_tags)}"
-  typesense_droplet_tags   = ["audiobook-covers", "typesense"]
+  typesense_hostname                 = "typesense.audiobookcovers.com"
+  typesense_tailscale_tags           = ["tag:server"]
+  typesense_tailscale_arg            = "--advertise-tags=${join(",", local.typesense_tailscale_tags)}"
+  typesense_droplet_tags             = ["audiobook-covers", "typesense"]
+  typesense_root_ssh_key             = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICIWGqUhso7mS8EVY+x0T61Cp5j89Qsq6TQWKf2yKeMC"
+  typesense_root_ssh_key_fingerprint = "33:0e:fb:da:66:54:33:d5:e3:43:f8:1b:71:16:10:3c"
 }
 
 resource "tls_private_key" "typesense_origin" {
@@ -39,15 +41,16 @@ resource "tailscale_tailnet_key" "typesense" {
 }
 
 resource "digitalocean_droplet" "typesense" {
-  name       = var.typesense_droplet_name
-  image      = var.typesense_droplet_image
-  region     = var.digitalocean_region
-  size       = var.typesense_droplet_size
-  backups    = true
-  monitoring = true
-  ipv6       = true
-  tags       = local.typesense_droplet_tags
-  ssh_keys   = var.typesense_ssh_keys
+  name          = var.typesense_droplet_name
+  image         = var.typesense_droplet_image
+  region        = var.digitalocean_region
+  size          = var.typesense_droplet_size
+  backups       = true
+  monitoring    = true
+  droplet_agent = true
+  ipv6          = true
+  tags          = local.typesense_droplet_tags
+  ssh_keys      = distinct(concat(var.typesense_ssh_keys, [local.typesense_root_ssh_key_fingerprint]))
 
   backup_policy {
     plan    = "weekly"
@@ -77,11 +80,10 @@ resource "digitalocean_droplet" "typesense" {
     tailscale_tags_arg = local.typesense_tailscale_arg
     droplet_name       = var.typesense_droplet_name
     typesense_version  = var.typesense_version
+    root_username_b64  = base64encode(data.onepassword_item.typesense_root.username)
+    root_password_b64  = base64encode(data.onepassword_item.typesense_root.password)
+    root_ssh_key_b64   = base64encode(local.typesense_root_ssh_key)
   })
-
-  lifecycle {
-    ignore_changes = [user_data]
-  }
 }
 
 resource "digitalocean_firewall" "typesense" {
@@ -92,6 +94,12 @@ resource "digitalocean_firewall" "typesense" {
     protocol         = "tcp"
     port_range       = "443"
     source_addresses = local.cloudflare_source_addresses
+  }
+
+  inbound_rule {
+    protocol         = "tcp"
+    port_range       = "22"
+    source_addresses = ["0.0.0.0/0", "::/0"]
   }
 
   outbound_rule {

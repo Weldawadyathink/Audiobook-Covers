@@ -51,7 +51,7 @@ variable "typesense_backup_hour" {
 }
 
 variable "typesense_ssh_keys" {
-  description = "Optional DigitalOcean SSH key IDs or fingerprints to inject. Public SSH ingress remains blocked."
+  description = "Optional additional DigitalOcean SSH key IDs or fingerprints to inject."
   type        = list(string)
   default     = []
 }

@@ -23,6 +23,11 @@ data "onepassword_item" "tailscale" {
   uuid  = "xdghxnc2ekcvxx5gaogqaxsp3a"
 }
 
+data "onepassword_item" "typesense_root" {
+  vault = local.onepassword_vault_id
+  uuid  = "2tsp6yl3j736s2vklmax3xmph4"
+}
+
 data "cloudflare_zone" "audiobookcovers" {
   filter = {
     account = {
