@@ -4,7 +4,6 @@ import * as path from "path";
 import os from "node:os";
 import type { Context } from "@trigger.dev/sdk/v3";
 import { DuckDBInstance } from "@duckdb/node-api";
-import postgres from "postgres";
 import { env } from "@/env";
 import { Transform } from "node:stream";
 

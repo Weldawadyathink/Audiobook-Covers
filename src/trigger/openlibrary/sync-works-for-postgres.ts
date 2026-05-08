@@ -9,6 +9,7 @@ import { BQClient } from "./bq";
 import { S3Client } from "./s3";
 import { getDbWriteConnection } from "@/db";
 import { env } from "@/env";
+import { streamTracker } from "./utils";
 
 const format = formatNumber({ round: 0 });
 const DATASET = "openlibrary";
@@ -176,15 +177,26 @@ export const openLibrarySyncWorksForPostgresTask = schemaTask({
           ) ON COMMIT DROP
         `);
 
-        const copyStream = await tx.unsafe(`
+        const copyStream = await tx
+          .unsafe(
+            `
           COPY openlibrary_work_import_stage (payload)
           FROM STDIN
           WITH (FORMAT csv)
-        `).writable();
+        `,
+          )
+          .writable();
         await pipeline(
           Readable.from(streamJsonExportAsCsv(s3, exportPrefix)),
+          streamTracker(100_000, (n, t) => {
+            console.log(
+              `Completed ${format(n)} rows in ${prettyMilliseconds(t)} (${format((n / t) * 1000)} rows/sec)`,
+            );
+          }),
           copyStream,
         );
+
+        console.log(`Completed stream to temporary table`);
 
         const [stageStats] = await tx.unsafe<
           [{ total: number; upserts: number; deletes: number }]
@@ -196,6 +208,11 @@ export const openLibrarySyncWorksForPostgresTask = schemaTask({
           FROM openlibrary_work_import_stage
         `);
 
+        console.log(
+          `Stage stats: total=${stageStats.total}, upserts=${stageStats.upserts}, deletes=${stageStats.deletes}`,
+        );
+
+        console.log(`Deleting ${format(stageStats.deletes)} rows`);
         const deleteResult = await tx.unsafe(`
           WITH deleted AS (
             SELECT payload->>'olid' AS olid
@@ -206,7 +223,9 @@ export const openLibrarySyncWorksForPostgresTask = schemaTask({
           USING deleted
           WHERE work.olid = deleted.olid
         `);
+        console.log(`Deletion complete`);
 
+        console.log(`Upserting ${format(stageStats.upserts)} rows`);
         const upsertResult = await tx.unsafe(`
           WITH upsert_rows AS (
             SELECT
@@ -263,6 +282,7 @@ export const openLibrarySyncWorksForPostgresTask = schemaTask({
              OR openlibrary_work.first_publish_year IS DISTINCT FROM EXCLUDED.first_publish_year
              OR openlibrary_work.edition_count IS DISTINCT FROM EXCLUDED.edition_count
         `);
+        console.log(`Upsert complete`);
 
         return {
           stageStats,

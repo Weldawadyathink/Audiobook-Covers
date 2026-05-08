@@ -74,11 +74,22 @@ CREATE TABLE openlibrary_work (
     edition_count      INTEGER
 );
 
+CREATE OR REPLACE FUNCTION public.immutable_array_to_string(input_array TEXT[], delimiter TEXT)
+RETURNS TEXT
+LANGUAGE sql
+IMMUTABLE
+PARALLEL SAFE
+AS $$
+    SELECT array_to_string(input_array, delimiter);
+$$;
+
 CREATE INDEX idx_openlibrary_work_title_search
-    ON openlibrary_work USING gin (to_tsvector('simple'::regconfig, COALESCE(title, '')));
+    ON openlibrary_work
+    USING gin (to_tsvector('simple'::regconfig, COALESCE(title, '')));
 
 CREATE INDEX idx_openlibrary_work_author_names_search
-    ON openlibrary_work USING gin (to_tsvector('simple'::regconfig, array_to_string(author_names, ' ')));
+    ON openlibrary_work
+    USING gin (to_tsvector('simple'::regconfig, immutable_array_to_string(author_names, ' ')));
 
 CREATE TABLE web_user (
     id            SERIAL PRIMARY KEY,
