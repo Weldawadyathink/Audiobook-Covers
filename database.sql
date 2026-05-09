@@ -71,7 +71,8 @@ CREATE TABLE openlibrary_work (
     author_aliases     TEXT[] NOT NULL DEFAULT '{}',
     title_aliases      TEXT[] NOT NULL DEFAULT '{}',
     first_publish_year INTEGER,
-    edition_count      INTEGER
+    edition_count      INTEGER,
+    canonical_score    INTEGER
 );
 
 CREATE OR REPLACE FUNCTION public.immutable_array_to_string(input_array TEXT[], delimiter TEXT)

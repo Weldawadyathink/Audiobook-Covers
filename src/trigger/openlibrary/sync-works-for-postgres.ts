@@ -25,6 +25,7 @@ const importedColumnNames = [
   "title_aliases",
   "first_publish_year",
   "edition_count",
+  "canonical_score",
 ] as const;
 
 const importedColumns = importedColumnNames.join(",\n      ");
@@ -46,7 +47,8 @@ function rowsWithHash(tableName: string) {
         author_aliases,
         title_aliases,
         first_publish_year,
-        edition_count
+        edition_count,
+        canonical_score
       )))) AS row_hash
     FROM \`${tableName}\`
   `;
@@ -157,7 +159,8 @@ export const openLibrarySyncWorksForPostgresTask = schemaTask({
               CAST([] AS ARRAY<STRING>) AS author_aliases,
               CAST([] AS ARRAY<STRING>) AS title_aliases,
               CAST(NULL AS INT64) AS first_publish_year,
-              CAST(NULL AS INT64) AS edition_count
+              CAST(NULL AS INT64) AS edition_count,
+              CAST(NULL AS INT64) AS canonical_score
             FROM synced_rows
             LEFT JOIN current_rows USING (olid)
             WHERE current_rows.olid IS NULL
@@ -242,7 +245,8 @@ export const openLibrarySyncWorksForPostgresTask = schemaTask({
                 SELECT jsonb_array_elements_text(COALESCE(payload->'title_aliases', '[]'::jsonb))
               ) AS title_aliases,
               (payload->>'first_publish_year')::int AS first_publish_year,
-              (payload->>'edition_count')::int AS edition_count
+              (payload->>'edition_count')::int AS edition_count,
+              (payload->>'canonical_score')::int AS canonical_score
             FROM openlibrary_work_import_stage
             WHERE payload->>'change_type' = 'upsert'
           )
@@ -254,7 +258,8 @@ export const openLibrarySyncWorksForPostgresTask = schemaTask({
             author_aliases,
             title_aliases,
             first_publish_year,
-            edition_count
+            edition_count,
+            canonical_score
           )
           SELECT
             olid,
@@ -264,7 +269,8 @@ export const openLibrarySyncWorksForPostgresTask = schemaTask({
             author_aliases,
             title_aliases,
             first_publish_year,
-            edition_count
+            edition_count,
+            canonical_score
           FROM upsert_rows
           ON CONFLICT (olid) DO UPDATE SET
             title = EXCLUDED.title,
@@ -273,7 +279,8 @@ export const openLibrarySyncWorksForPostgresTask = schemaTask({
             author_aliases = EXCLUDED.author_aliases,
             title_aliases = EXCLUDED.title_aliases,
             first_publish_year = EXCLUDED.first_publish_year,
-            edition_count = EXCLUDED.edition_count
+            edition_count = EXCLUDED.edition_count,
+            canonical_score = EXCLUDED.canonical_score
           WHERE openlibrary_work.title IS DISTINCT FROM EXCLUDED.title
              OR openlibrary_work.subtitle IS DISTINCT FROM EXCLUDED.subtitle
              OR openlibrary_work.author_names IS DISTINCT FROM EXCLUDED.author_names
@@ -281,6 +288,7 @@ export const openLibrarySyncWorksForPostgresTask = schemaTask({
              OR openlibrary_work.title_aliases IS DISTINCT FROM EXCLUDED.title_aliases
              OR openlibrary_work.first_publish_year IS DISTINCT FROM EXCLUDED.first_publish_year
              OR openlibrary_work.edition_count IS DISTINCT FROM EXCLUDED.edition_count
+             OR openlibrary_work.canonical_score IS DISTINCT FROM EXCLUDED.canonical_score
         `);
         console.log(`Upsert complete`);
 

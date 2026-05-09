@@ -687,7 +687,8 @@ export const queries = defineQueries([
           first_edition_publish_year,
           SAFE_CAST(REGEXP_EXTRACT(first_publish_date, r'\\d{4}') AS INT64)
         ) AS first_publish_year,
-        edition_count
+        edition_count,
+        canonical_score
       FROM \`audiobookcovers-487104.openlibrary.works_search\`
       WHERE title IS NOT NULL;
     `,
