@@ -1,12 +1,17 @@
 version: "3"
 
 tasks:
+  env:
+    desc: Output 1Password environment variables to .env
+    cmds:
+      - op environment read k36durot2n5dnzc6d56ziqibqm > .env
+
   dev:
     desc: Start the dev server and Trigger.dev local runner concurrently
     env:
       APP_STAGE: local
     cmds:
-      - op run --environment k36durot2n5dnzc6d56ziqibqm -- pnpm exec concurrently --raw --kill-others "pnpm exec vite dev" "pnpm dlx trigger.dev@latest dev --skip-update-check"
+      - pnpm exec concurrently --raw --kill-others "pnpm exec vite dev" "pnpm dlx trigger.dev@latest dev --skip-update-check"
 
   build:
     desc: Build the app and check for type errors
