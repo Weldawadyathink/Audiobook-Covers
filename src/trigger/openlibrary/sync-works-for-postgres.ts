@@ -191,9 +191,9 @@ export const openLibrarySyncWorksForPostgresTask = schemaTask({
           .writable();
         await pipeline(
           Readable.from(streamJsonExportAsCsv(s3, exportPrefix)),
-          streamTracker(100_000, (n, t) => {
+          streamTracker(100_000, (n, t, rowsSinceLastCall) => {
             console.log(
-              `Completed ${format(n)} rows in ${prettyMilliseconds(t)} (${format((n / t) * 1000)} rows/sec)`,
+              `Completed ${format(n)} rows in ${prettyMilliseconds(t)} (${format((rowsSinceLastCall / t) * 1000)} rows/sec)`,
             );
           }),
           copyStream,

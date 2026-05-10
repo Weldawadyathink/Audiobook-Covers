@@ -151,29 +151,30 @@ export async function clearDirectory(dirPath: string) {
 
 export function streamTracker(
   runEvery: number,
-  callback: (rowCount: number, time: number) => unknown,
+  callback: (rowCount: number, time: number, rowsSinceLastCall: number) => unknown,
 ) {
   let rowCount = 0;
   let lastReported = 0;
-  let lastTime: number | undefined = undefined;
+  let lastTime: number | undefined;
   return new Transform({
     objectMode: true,
     transform(chunk, _, done) {
       if (lastTime === undefined) {
         lastTime = performance.now();
-        callback(rowCount, 0);
       }
       rowCount++;
       if (rowCount % runEvery === 0) {
+        const now = performance.now();
+        const rowsSinceLastCall = rowCount - lastReported;
+        callback(rowCount, now - lastTime, rowsSinceLastCall);
         lastReported = rowCount;
-        callback(rowCount, performance.now() - lastTime);
-        lastTime = performance.now();
+        lastTime = now;
       }
       return done(null, chunk);
     },
     flush(done) {
-      if (rowCount !== lastReported) {
-        callback(rowCount, performance.now() - lastTime!);
+      if (lastTime !== undefined && rowCount !== lastReported) {
+        callback(rowCount, performance.now() - lastTime, rowCount - lastReported);
       }
       done();
     },
