@@ -2,7 +2,7 @@ import { schemaTask } from "@trigger.dev/sdk/v3";
 import { z } from "zod";
 import { z as zv4 } from "zod/v4";
 import { getDbWriteConnection } from "@/db";
-import { env } from "@/env";
+import { env } from "@/env.node";
 import { batchTriggerAndWaitSettled, triggerAndWait } from "../utils";
 import { extractOlidPhase1Task } from "./phase1";
 import { extractOlidPhase2Task } from "./phase2";

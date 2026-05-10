@@ -4,7 +4,7 @@ import * as path from "path";
 import os from "node:os";
 import type { Context } from "@trigger.dev/sdk/v3";
 import { DuckDBInstance } from "@duckdb/node-api";
-import { env } from "@/env";
+import { env } from "@/env.node";
 import { Transform } from "node:stream";
 
 const AUTO_MEMORY_LIMIT_RATIO = 0.8;
@@ -151,7 +151,11 @@ export async function clearDirectory(dirPath: string) {
 
 export function streamTracker(
   runEvery: number,
-  callback: (rowCount: number, time: number, rowsSinceLastCall: number) => unknown,
+  callback: (
+    rowCount: number,
+    time: number,
+    rowsSinceLastCall: number,
+  ) => unknown,
 ) {
   let rowCount = 0;
   let lastReported = 0;
@@ -174,7 +178,11 @@ export function streamTracker(
     },
     flush(done) {
       if (lastTime !== undefined && rowCount !== lastReported) {
-        callback(rowCount, performance.now() - lastTime, rowCount - lastReported);
+        callback(
+          rowCount,
+          performance.now() - lastTime,
+          rowCount - lastReported,
+        );
       }
       done();
     },

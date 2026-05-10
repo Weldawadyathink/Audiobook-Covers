@@ -1,7 +1,7 @@
 import ky from "ky";
 import { z } from "zod";
 import { ModelDefinition, EmbeddingOutput } from "./search";
-import { env } from "@/server/env";
+import { env } from "@/env.cloudflare";
 
 const JinaEmbeddingResponse = z.object({
   model: z.string(),

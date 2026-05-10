@@ -1,6 +1,6 @@
 import { createVoyage } from "voyage-ai-provider";
 import { ModelDefinition, EmbeddingOutput } from "./search";
-import { env } from "@/server/env";
+import { env } from "@/env.cloudflare";
 import { embed, embedMany } from "ai";
 
 const voyage = createVoyage({

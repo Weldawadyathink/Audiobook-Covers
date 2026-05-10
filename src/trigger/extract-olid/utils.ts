@@ -2,7 +2,7 @@ import { z } from "zod";
 import zodToJsonSchema from "zod-to-json-schema";
 import { jsonrepair } from "jsonrepair";
 import ky, { HTTPError } from "ky";
-import { env } from "@/env";
+import { env } from "@/env.node";
 import { Elastic } from "../elastic";
 
 // --- Types ---

@@ -1,5 +1,4 @@
 import { z } from "zod/v4";
-import "dotenv/config";
 
 type BigQueryCredentials = {
   client_email: string;
@@ -65,7 +64,6 @@ const envSchema = z.object({
 // Logs missing environment variables at startup
 export function parseEnv(inject: Record<string, unknown> = {}) {
   const rawEnv = {
-    ...process.env,
     ...inject,
   };
   const parsedEnv = envSchema.partial().parse(rawEnv);
@@ -86,5 +84,3 @@ export function parseEnv(inject: Record<string, unknown> = {}) {
     },
   });
 }
-
-export const env = parseEnv();

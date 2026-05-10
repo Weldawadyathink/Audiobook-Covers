@@ -1,5 +1,5 @@
 import { BigQuery } from "@google-cloud/bigquery";
-import { env } from "@/env";
+import { env } from "@/env.node";
 
 export class BQClient {
   bq: BigQuery;

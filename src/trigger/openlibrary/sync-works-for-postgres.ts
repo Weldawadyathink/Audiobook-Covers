@@ -8,7 +8,7 @@ import formatNumber from "format-number";
 import { BQClient } from "./bq";
 import { S3Client } from "./s3";
 import { getDbWriteConnection } from "@/db";
-import { env } from "@/env";
+import { env } from "@/env.node";
 import { streamTracker } from "./utils";
 
 const format = formatNumber({ round: 0 });

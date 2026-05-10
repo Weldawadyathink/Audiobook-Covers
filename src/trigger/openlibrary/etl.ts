@@ -7,7 +7,7 @@ import { batchTriggerAndWait, triggerAndWait } from "../utils";
 import { openLibrarySyncWorkSearchTask } from "./sync-work-search";
 import { openLibrarySyncWorksForPostgresTask } from "./sync-works-for-postgres";
 import { getDbWriteConnection } from "@/db";
-import { env } from "@/env";
+import { env } from "@/env.node";
 import { z } from "zod/v4";
 
 const TARGET_QUERY = "works_search_ready";

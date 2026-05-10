@@ -1,6 +1,6 @@
 import ky from "ky";
 import { RerankerDefinition } from "./rerankers";
-import { env } from "@/server/env";
+import { env } from "@/env.cloudflare";
 import { embedAndSortRelevanceScoreIntoImageData } from "./rerankerHelpers";
 import { type ImageData } from "@/server/imageData";
 

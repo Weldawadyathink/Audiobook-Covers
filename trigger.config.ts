@@ -1,6 +1,6 @@
 import { defineConfig } from "@trigger.dev/sdk/v3";
 import { syncEnvVars } from "@trigger.dev/build/extensions/core";
-import { env } from "./src/env";
+import { env } from "./src/env.node";
 
 export default defineConfig({
   project: "proj_ysabtzlyltotwctspqpi",

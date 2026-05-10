@@ -1,4 +1,4 @@
-import { env } from "@/env";
+import { env } from "@/env.node";
 import { Client } from "@elastic/elasticsearch";
 import type { estypes } from "@elastic/elasticsearch";
 import type { Readable } from "node:stream";
@@ -287,59 +287,58 @@ export class Elastic {
 
     const requestedLimit = clampOpenLibrarySearchLimit(limit);
 
-    const response =
-      await this.client.search<OpenLibraryWorkSearchDocument>({
-        index,
-        size: INTERNAL_OPENLIBRARY_WORK_SEARCH_LIMIT,
-        query: {
-          function_score: {
-            query: {
-              bool: {
-                should: [
-                  {
-                    match: {
-                      title_search_text: {
-                        query: trimmedQuery,
-                        boost: 4,
-                      },
+    const response = await this.client.search<OpenLibraryWorkSearchDocument>({
+      index,
+      size: INTERNAL_OPENLIBRARY_WORK_SEARCH_LIMIT,
+      query: {
+        function_score: {
+          query: {
+            bool: {
+              should: [
+                {
+                  match: {
+                    title_search_text: {
+                      query: trimmedQuery,
+                      boost: 4,
                     },
                   },
-                  {
-                    match: {
-                      title_search_text: {
-                        query: trimmedQuery,
-                        operator: "and",
-                        boost: 8,
-                      },
+                },
+                {
+                  match: {
+                    title_search_text: {
+                      query: trimmedQuery,
+                      operator: "and",
+                      boost: 8,
                     },
                   },
-                  {
-                    match: {
-                      author_search_text: {
-                        query: trimmedQuery,
-                        boost: 2,
-                      },
+                },
+                {
+                  match: {
+                    author_search_text: {
+                      query: trimmedQuery,
+                      boost: 2,
                     },
                   },
-                ],
-                minimum_should_match: 1,
+                },
+              ],
+              minimum_should_match: 1,
+            },
+          },
+          functions: [
+            {
+              field_value_factor: {
+                field: "canonical_score",
+                factor: 0.01,
+                modifier: "log1p",
+                missing: 0,
               },
             },
-            functions: [
-              {
-                field_value_factor: {
-                  field: "canonical_score",
-                  factor: 0.01,
-                  modifier: "log1p",
-                  missing: 0,
-                },
-              },
-            ],
-            boost_mode: "sum",
-            score_mode: "sum",
-          },
+          ],
+          boost_mode: "sum",
+          score_mode: "sum",
         },
-      });
+      },
+    });
 
     const hits = response.hits.hits.flatMap((hit) =>
       hit._source
@@ -369,11 +368,10 @@ export class Elastic {
     }
 
     try {
-      const response =
-        await this.client.get<OpenLibraryWorkSearchDocument>({
-          index,
-          id: trimmedOlid.toUpperCase(),
-        });
+      const response = await this.client.get<OpenLibraryWorkSearchDocument>({
+        index,
+        id: trimmedOlid.toUpperCase(),
+      });
 
       return response._source
         ? shapeOpenLibraryWorkSearchResult(response._source)

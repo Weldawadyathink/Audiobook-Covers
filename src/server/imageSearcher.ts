@@ -10,7 +10,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
 import { logAnalyticsEvent } from "@/server/analytics";
 import { getReranker } from "@/server/rerankers/rerankers";
-import { env } from "@/server/env";
+import { env } from "@/env.cloudflare";
 import { waitUntil } from "cloudflare:workers";
 
 const rrfModelConfig = z.object({

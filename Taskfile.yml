@@ -6,7 +6,7 @@ tasks:
     env:
       APP_STAGE: local
     cmds:
-      - pnpm exec concurrently --raw --kill-others "pnpm exec vite dev" "pnpm dlx trigger.dev@latest dev --skip-update-check"
+      - op run --environment k36durot2n5dnzc6d56ziqibqm -- pnpm exec concurrently --raw --kill-others "pnpm exec vite dev" "pnpm dlx trigger.dev@latest dev --skip-update-check"
 
   build:
     desc: Build the app and check for type errors

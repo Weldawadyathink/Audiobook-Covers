@@ -13,7 +13,7 @@ import {
 import { z } from "zod/v4";
 import { Readable } from "node:stream";
 import type { ReadableStream } from "node:stream/web";
-import { env } from "@/env";
+import { env } from "@/env.node";
 
 export class S3Client {
   s3Client: defaultS3Client;

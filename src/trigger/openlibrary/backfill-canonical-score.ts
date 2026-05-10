@@ -6,7 +6,7 @@ import prettyMilliseconds from "pretty-ms";
 import formatNumber from "format-number";
 import { BQClient } from "./bq";
 import { getDbWriteConnection } from "@/db";
-import { env } from "@/env";
+import { env } from "@/env.node";
 import { streamTracker } from "./utils";
 
 const format = formatNumber({ round: 0 });
@@ -21,7 +21,10 @@ function scoreRowsAsCsv() {
   return new Transform({
     objectMode: true,
     transform(row, _encoding, callback) {
-      callback(null, `${csvValue(row.olid)},${csvValue(row.canonical_score)}\n`);
+      callback(
+        null,
+        `${csvValue(row.olid)},${csvValue(row.canonical_score)}\n`,
+      );
     },
   });
 }
@@ -57,7 +60,11 @@ export const openLibraryBackfillCanonicalScoreTask = schemaTask({
       let exportedCount = 0;
       let updatedCount = 0;
 
-      for (let shardNumber = startShard; shardNumber <= endShard; shardNumber++) {
+      for (
+        let shardNumber = startShard;
+        shardNumber <= endShard;
+        shardNumber++
+      ) {
         const shardIndex = shardNumber - 1;
         console.log(
           `Streaming canonical score shard ${shardNumber}/${SHARD_COUNT}`,
