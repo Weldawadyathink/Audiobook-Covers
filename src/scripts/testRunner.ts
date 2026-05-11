@@ -1,7 +1,7 @@
 import { Command } from "commander";
 import { readFileSync, writeFileSync } from "node:fs";
 import { z } from "zod/v4";
-import { vectorSearchByString } from "@/server/imageSearcher";
+import { vectorSearchByString } from "@/server/imageSearcherAI";
 import "dotenv/config";
 import { logger } from "@/logger";
 

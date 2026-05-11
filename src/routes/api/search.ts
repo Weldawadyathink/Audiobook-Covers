@@ -1,6 +1,6 @@
 import { z } from "zod/v4";
 import { createFileRoute } from "@tanstack/react-router";
-import { vectorSearchByString } from "@/server/imageSearcher";
+import { vectorSearchByString } from "@/server/imageSearcherAI";
 import { getReranker } from "@/server/rerankers/rerankers";
 import { defaultModelName } from "@/server/search/search";
 import type { ImageData } from "@/server/imageData";
@@ -46,7 +46,9 @@ function mapImage(image: ImageData) {
   };
 }
 
-async function runSearch(params: z.infer<typeof searchSchema>): Promise<ImageData[]> {
+async function runSearch(
+  params: z.infer<typeof searchSchema>,
+): Promise<ImageData[]> {
   const { q, model, rrf_config, reranker, limit } = params;
 
   const modelArg = model === "rrf" ? (rrf_config ?? DEFAULT_RRF) : model;
@@ -63,7 +65,10 @@ async function runSearch(params: z.infer<typeof searchSchema>): Promise<ImageDat
   return images.slice(0, limit);
 }
 
-function buildResponse(images: ImageData[], params: z.infer<typeof searchSchema>): Response {
+function buildResponse(
+  images: ImageData[],
+  params: z.infer<typeof searchSchema>,
+): Response {
   return new Response(
     JSON.stringify({
       results: images.map(mapImage),

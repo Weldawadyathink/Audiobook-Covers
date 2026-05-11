@@ -169,6 +169,7 @@ export const extractOlidBatchTask = schemaTask({
         ${tablesample === undefined ? sql`` : sql`TABLESAMPLE BERNOULLI(${tablesample})`}
         WHERE openlibrary_work_id IS NULL
           AND deleted = false
+          AND openlibrary_work_id_confidence IS NULL
         ORDER BY id
         ${limit === undefined ? sql`` : sql`LIMIT ${limit}`}
       `;

@@ -1,5 +1,5 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { getImageByIdAndSimilar } from "@/server/imageSearcher";
+import { getImageByIdAndSimilar } from "@/server/imageSearcherAI";
 import ImageCard from "@/components/ImageCard";
 import { Button } from "@/components/ui/button";
 import { Download, ExternalLink, SearchCheck, SearchX } from "lucide-react";

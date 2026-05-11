@@ -131,7 +131,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
                           <span>Home</span>
                           <House />
                         </NavBarItem>
-                        <NavBarItem to="/search">
+                        <NavBarItem to="/ai-search">
                           <span>Search</span>
                           <Search />
                         </NavBarItem>
@@ -158,6 +158,10 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
                   </NavBarItem>
                   <NavBarItem to="/search">
                     <span>Search</span>
+                    <Search />
+                  </NavBarItem>
+                  <NavBarItem to="/ai-search">
+                    <span>AI Search</span>
                     <Search />
                   </NavBarItem>
                   <NavBarItem to="/about">

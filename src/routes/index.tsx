@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { getRandom } from "@/server/imageSearcher";
+import { getRandom } from "@/server/imageSearcherAI";
 import ImageCard from "@/components/ImageCard";
 import { cn } from "@/lib/utils";
 import { getIsAuthenticated } from "@/server/auth";

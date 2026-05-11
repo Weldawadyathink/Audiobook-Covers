@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { getRandom } from "@/server/imageSearcher";
+import { getRandom } from "@/server/imageSearcherAI";
 import ImageCard from "@/components/ImageCard";
 import { cn } from "@/lib/utils";
 import { getIsAuthenticated } from "@/server/auth";
@@ -32,7 +32,7 @@ function RouteComponent() {
             showDataset={auth.isAuthenticated}
             className={cn(
               "",
-              isLargeImage(index) && "col-span-2 row-span-2 scale-95"
+              isLargeImage(index) && "col-span-2 row-span-2 scale-95",
             )}
           />
         ))}

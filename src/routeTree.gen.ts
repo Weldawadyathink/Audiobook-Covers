@@ -13,6 +13,7 @@ import { Route as SearchRouteImport } from './routes/search'
 import { Route as RandomRouteImport } from './routes/random'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ContributeRouteImport } from './routes/contribute'
+import { Route as AiSearchRouteImport } from './routes/ai-search'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
@@ -44,6 +45,11 @@ const LoginRoute = LoginRouteImport.update({
 const ContributeRoute = ContributeRouteImport.update({
   id: '/contribute',
   path: '/contribute',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AiSearchRoute = AiSearchRouteImport.update({
+  id: '/ai-search',
+  path: '/ai-search',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -111,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRouteWithChildren
+  '/ai-search': typeof AiSearchRoute
   '/contribute': typeof ContributeRoute
   '/login': typeof LoginRoute
   '/random': typeof RandomRoute
@@ -128,6 +135,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/ai-search': typeof AiSearchRoute
   '/contribute': typeof ContributeRoute
   '/login': typeof LoginRoute
   '/random': typeof RandomRoute
@@ -147,6 +155,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRouteWithChildren
+  '/ai-search': typeof AiSearchRoute
   '/contribute': typeof ContributeRoute
   '/login': typeof LoginRoute
   '/random': typeof RandomRoute
@@ -167,6 +176,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/admin'
+    | '/ai-search'
     | '/contribute'
     | '/login'
     | '/random'
@@ -184,6 +194,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/ai-search'
     | '/contribute'
     | '/login'
     | '/random'
@@ -202,6 +213,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/admin'
+    | '/ai-search'
     | '/contribute'
     | '/login'
     | '/random'
@@ -221,6 +233,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   AdminRoute: typeof AdminRouteWithChildren
+  AiSearchRoute: typeof AiSearchRoute
   ContributeRoute: typeof ContributeRoute
   LoginRoute: typeof LoginRoute
   RandomRoute: typeof RandomRoute
@@ -259,6 +272,13 @@ declare module '@tanstack/react-router' {
       path: '/contribute'
       fullPath: '/contribute'
       preLoaderRoute: typeof ContributeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai-search': {
+      id: '/ai-search'
+      path: '/ai-search'
+      fullPath: '/ai-search'
+      preLoaderRoute: typeof AiSearchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -370,6 +390,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   AdminRoute: AdminRouteWithChildren,
+  AiSearchRoute: AiSearchRoute,
   ContributeRoute: ContributeRoute,
   LoginRoute: LoginRoute,
   RandomRoute: RandomRoute,
