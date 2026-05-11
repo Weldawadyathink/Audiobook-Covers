@@ -1,14 +1,11 @@
 import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { z } from "zod/v4";
 import { zodValidator } from "@tanstack/zod-adapter";
-import { vectorSearchByString } from "@/server/imageSearcherAI";
 import ImageCard from "@/components/ImageCard";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { getIsAuthenticated } from "@/server/auth";
-import { getModels } from "@/server/search/getModels";
-import { getRerankers } from "@/server/rerankers/getRerankers";
 import { coverSearch } from "@/server/imageSearcher";
 
 const searchParameters = z.object({
@@ -23,23 +20,26 @@ export const Route = createFileRoute("/search")({
   validateSearch: zodValidator(searchParameters),
   loaderDeps: ({ search }) => ({ search }),
   loader: async ({ deps: data }) => {
-    const [auth] = await Promise.all([
+    const [auth, images] = await Promise.all([
       getIsAuthenticated(),
       coverSearch({
-        q: data.search.q,
-        title: data.search.title,
-        author: data.search.author,
+        data: {
+          q: data.search.q,
+          title: data.search.title,
+          author: data.search.author,
+        },
       }),
     ]);
     return {
       query: data.search,
+      images,
       isAuthenticated: auth.isAuthenticated,
     };
   },
 });
 
 function RouteComponent() {
-  const { query, isAuthenticated } = Route.useLoaderData();
+  const { query, images, isAuthenticated } = Route.useLoaderData();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState(query.q);
   const [titleQuery, setTitleQuery] = useState(query.title);
@@ -64,6 +64,7 @@ function RouteComponent() {
         className="flex flex-col gap-3 mx-36"
         onSubmit={(e) => {
           e.preventDefault();
+          submitForm();
         }}
       >
         <div className="flex gap-6">

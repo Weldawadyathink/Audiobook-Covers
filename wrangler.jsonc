@@ -22,7 +22,6 @@
       ],
       "vars": {
         "APP_STAGE": "development",
-        "GOOGLE_VERTEX_LOCATION": "us-east1",
       },
       "routes": [
         {
@@ -42,7 +41,6 @@
       ],
       "vars": {
         "APP_STAGE": "production",
-        "GOOGLE_VERTEX_LOCATION": "us-east1",
       },
       "routes": [
         {
