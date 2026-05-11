@@ -14,6 +14,7 @@ const json = z.lazy(() => {
     z.null(),
     z.array(json),
     z.record(z.string(), json),
+    z.undefined(),
   ]);
 });
 
