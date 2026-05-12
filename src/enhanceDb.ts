@@ -3,6 +3,12 @@ import { z } from "zod/v4";
 
 export type PostgresSql = ReturnType<typeof postgres>;
 
+const ENHANCED_DB = Symbol("ENHANCED_DB");
+
+type EnhancedMarker = {
+  [ENHANCED_DB]?: true;
+};
+
 export type TaggedQuery<T> = (
   strings: TemplateStringsArray,
   ...values: unknown[]
@@ -159,6 +165,12 @@ type SqlWithScopedMethods = EnhanceableSql & {
 export function enhanceDb<TSql extends EnhanceableSql>(
   sql: TSql,
 ): EnhancedSql<TSql> {
+  const maybeEnhanced = sql as EnhancedSql<TSql> & EnhancedMarker;
+
+  if (maybeEnhanced[ENHANCED_DB]) {
+    return maybeEnhanced;
+  }
+
   const query = sql;
   const originalBegin =
     "begin" in sql && typeof sql.begin === "function"
@@ -449,6 +461,11 @@ export function enhanceDb<TSql extends EnhanceableSql>(
       return enhanceDb(reserved);
     };
   }
+
+  Object.defineProperty(enhanced, ENHANCED_DB, {
+    value: true,
+    enumerable: false,
+  });
 
   return enhanced;
 }
