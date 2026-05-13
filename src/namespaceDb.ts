@@ -9,13 +9,6 @@ type NamespaceMarker = {
   [NAMESPACED_DB]?: string;
 };
 
-export type NamespaceSqlMethods = {
-  table(tableName: string): postgres.PendingQuery<postgres.Row[]>;
-};
-
-export type NamespacedSql<TSql extends postgres.ISql = postgres.Sql> = TSql &
-  NamespaceSqlMethods;
-
 export function namespaceDb<TSql extends postgres.ISql>(
   sql: TSql,
   schemaName: string,
@@ -32,11 +25,7 @@ export function namespaceDb<TSql extends postgres.ISql>(
     return maybeNamespaced;
   }
 
-  const helpers: NamespaceSqlMethods = {
-    table(tableName) {
-      return sql`${sql(schemaName)}.${sql(tableName)}`;
-    },
-  };
+  const helpers = createNamespaceHelpers(sql, schemaName);
 
   return new Proxy(sql, {
     apply(target, thisArg, args) {
@@ -55,4 +44,17 @@ export function namespaceDb<TSql extends postgres.ISql>(
       return Reflect.get(target, prop, receiver);
     },
   }) as NamespacedSql<TSql>;
+}
+
+export type NamespaceSqlMethods = ReturnType<typeof createNamespaceHelpers>;
+
+export type NamespacedSql<TSql extends postgres.ISql = postgres.Sql> = TSql &
+  NamespaceSqlMethods;
+
+function createNamespaceHelpers(sql: postgres.ISql, schemaName: string) {
+  return {
+    table(tableName: string) {
+      return sql`${sql(schemaName)}.${sql(tableName)}`;
+    },
+  };
 }

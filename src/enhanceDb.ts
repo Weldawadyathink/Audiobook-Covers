@@ -24,50 +24,6 @@ type QuerySql = (
   ...values: unknown[]
 ) => PromiseLike<Row[]>;
 
-export type EnhancedSqlMethods = {
-  any<T extends z.ZodTypeAny>(schema: T): TaggedQuery<z.output<T>[]>;
-  anySafe<T extends z.ZodTypeAny>(
-    schema: T,
-  ): SafeTaggedQuery<z.output<T>[]>;
-  many<T extends z.ZodTypeAny>(schema: T): TaggedQuery<z.output<T>[]>;
-  manySafe<T extends z.ZodTypeAny>(
-    schema: T,
-  ): SafeTaggedQuery<z.output<T>[]>;
-  one<T extends z.ZodTypeAny>(schema: T): TaggedQuery<z.output<T>>;
-  oneSafe<T extends z.ZodTypeAny>(schema: T): SafeTaggedQuery<z.output<T>>;
-  maybeOne<T extends z.ZodTypeAny>(
-    schema: T,
-  ): TaggedQuery<z.output<T> | null>;
-  maybeOneSafe<T extends z.ZodTypeAny>(
-    schema: T,
-  ): SafeTaggedQuery<z.output<T> | null>;
-  anyFirst<T extends z.ZodTypeAny>(schema: T): TaggedQuery<z.output<T>[]>;
-  anyFirstSafe<T extends z.ZodTypeAny>(
-    schema: T,
-  ): SafeTaggedQuery<z.output<T>[]>;
-  manyFirst<T extends z.ZodTypeAny>(schema: T): TaggedQuery<z.output<T>[]>;
-  manyFirstSafe<T extends z.ZodTypeAny>(
-    schema: T,
-  ): SafeTaggedQuery<z.output<T>[]>;
-  oneFirst<T extends z.ZodTypeAny>(schema: T): TaggedQuery<z.output<T>>;
-  oneFirstSafe<T extends z.ZodTypeAny>(
-    schema: T,
-  ): SafeTaggedQuery<z.output<T>>;
-  maybeOneFirst<T extends z.ZodTypeAny>(
-    schema: T,
-  ): TaggedQuery<z.output<T> | null>;
-  maybeOneFirstSafe<T extends z.ZodTypeAny>(
-    schema: T,
-  ): SafeTaggedQuery<z.output<T> | null>;
-  exists(
-    strings: TemplateStringsArray,
-    ...values: unknown[]
-  ): Promise<boolean>;
-};
-
-export type EnhancedSql<TSql extends postgres.ISql = postgres.Sql> = TSql &
-  EnhancedSqlMethods;
-
 export class NotFoundError extends Error {
   constructor(message = "Query returned no rows.") {
     super(message);
@@ -94,7 +50,7 @@ function getFirstColumnValue(row: Row): unknown {
   return entries[0]?.[1];
 }
 
-function createHelpers(query: QuerySql): EnhancedSqlMethods {
+function createHelpers(query: QuerySql) {
   return {
     any<T extends z.ZodTypeAny>(schema: T): TaggedQuery<z.output<T>[]> {
       const arraySchema = z.array(schema);
@@ -357,6 +313,11 @@ function createHelpers(query: QuerySql): EnhancedSqlMethods {
     },
   };
 }
+
+export type EnhancedSqlMethods = ReturnType<typeof createHelpers>;
+
+export type EnhancedSql<TSql extends postgres.ISql = postgres.Sql> = TSql &
+  EnhancedSqlMethods;
 
 export function enhanceDb<TSql extends postgres.ISql>(
   sql: TSql,
