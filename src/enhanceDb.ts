@@ -1,7 +1,10 @@
 import postgres from "postgres";
 import { z } from "zod/v4";
 
-export type PostgresSql = ReturnType<typeof postgres>;
+type PostgresTypeMap = Record<string, unknown>;
+
+export type PostgresSql<TTypes extends PostgresTypeMap = {}> =
+  postgres.Sql<TTypes>;
 
 const ENHANCED_DB = Symbol("ENHANCED_DB");
 
@@ -18,25 +21,15 @@ export type SafeTaggedQuery<T> = TaggedQuery<z.ZodSafeParseResult<T>>;
 
 type Row = Record<string, unknown>;
 
-type EnhanceableSql = {
-  <T extends readonly (object | undefined)[] = postgres.Row[]>(
-    strings: TemplateStringsArray,
-    ...values: readonly unknown[]
-  ): postgres.PendingQuery<T>;
-  (identifier: string): postgres.Helper<string, []>;
-};
+type EnhanceableSql<TTypes extends PostgresTypeMap = {}> =
+  postgres.ISql<TTypes>;
+
+type QuerySql = (
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+) => PromiseLike<Row[]>;
 
 type ScopedSqlMethod = (...args: unknown[]) => Promise<unknown>;
-
-type EnhanceableTransactionSql = EnhanceableSql & {
-  savepoint: ScopedSqlMethod;
-};
-
-type EnhanceableReservedSql = EnhanceableSql & {
-  begin: ScopedSqlMethod;
-  reserve: () => Promise<EnhanceableSql>;
-  release(): void;
-};
 
 type TopLevelScopedMethodKey = "begin" | "reserve" | "savepoint";
 type TopLevelSqlKey =
@@ -52,54 +45,113 @@ type TopLevelSqlKey =
   | "parameters"
   | "subscribe";
 
-type ScopedSqlBase<
-  TSql extends EnhanceableSql,
-  TScoped extends EnhanceableSql,
-> = Omit<TSql, TopLevelSqlKey> & TScoped;
+type NativeSqlSurface<
+  TTypes extends PostgresTypeMap,
+  TSql extends EnhanceableSql<TTypes>,
+> = TSql extends { release(): void }
+  ? postgres.ReservedSql<TTypes>
+  : TSql extends { prepare: (...args: never[]) => unknown }
+    ? postgres.TransactionSql<TTypes>
+    : TSql extends { end: (...args: never[]) => unknown }
+      ? postgres.Sql<TTypes>
+      : postgres.ISql<TTypes>;
 
-type EnhancedTransactionSql<TSql extends EnhanceableSql> = EnhancedSql<
-  ScopedSqlBase<TSql, EnhanceableTransactionSql>
->;
-type EnhancedReservedSql<TSql extends EnhanceableSql> = EnhancedSql<
-  ScopedSqlBase<TSql, EnhanceableReservedSql>
->;
+type ExistingNamespaceMethods<TSql> = TSql extends {
+  table(tableName: string): infer TReturn;
+}
+  ? { table(tableName: string): TReturn }
+  : object;
 
-type EnhancedBeginMethod<TSql extends EnhanceableSql> = {
+type NamespaceMethods = {
+  table(tableName: string): postgres.PendingQuery<postgres.Row[]>;
+};
+
+type EnhancedTransactionSql<
+  TTypes extends PostgresTypeMap,
+  TExtra extends object,
+> = postgres.ISql<TTypes> &
+  Omit<postgres.TransactionSql<TTypes>, "savepoint"> &
+  TExtra &
+  EnhancedSqlMethods & {
+    savepoint: EnhancedSavepointMethod<TTypes, TExtra>;
+  };
+
+type EnhancedReservedSql<
+  TTypes extends PostgresTypeMap,
+  TExtra extends object,
+> = postgres.ISql<TTypes> &
+  Omit<postgres.ReservedSql<TTypes>, TopLevelScopedMethodKey> &
+  TExtra &
+  EnhancedSqlMethods & {
+    begin: EnhancedBeginMethod<TTypes, TExtra>;
+    reserve: EnhancedReserveMethod<TTypes, TExtra>;
+  };
+
+type EnhancedRootSql<
+  TTypes extends PostgresTypeMap,
+  TExtra extends object,
+> = postgres.ISql<TTypes> &
+  TExtra &
+  EnhancedSqlMethods & {
+    begin: EnhancedBeginMethod<TTypes, TExtra>;
+    reserve: EnhancedReserveMethod<TTypes, TExtra>;
+  };
+
+type EnhancedBeginMethod<
+  TTypes extends PostgresTypeMap,
+  TExtra extends object,
+> = {
   <T>(
-    callback: (sql: EnhancedTransactionSql<TSql>) => T | Promise<T>,
+    callback: (sql: EnhancedTransactionSql<TTypes, TExtra>) => T | Promise<T>,
   ): Promise<Awaited<T>>;
   <T>(
     options: string,
-    callback: (sql: EnhancedTransactionSql<TSql>) => T | Promise<T>,
+    callback: (sql: EnhancedTransactionSql<TTypes, TExtra>) => T | Promise<T>,
   ): Promise<Awaited<T>>;
 };
 
-type EnhancedSavepointMethod<TSql extends EnhanceableSql> = {
+type EnhancedSavepointMethod<
+  TTypes extends PostgresTypeMap,
+  TExtra extends object,
+> = {
   <T>(
-    callback: (sql: EnhancedTransactionSql<TSql>) => T | Promise<T>,
+    callback: (sql: EnhancedTransactionSql<TTypes, TExtra>) => T | Promise<T>,
   ): Promise<Awaited<T>>;
   <T>(
     name: string,
-    callback: (sql: EnhancedTransactionSql<TSql>) => T | Promise<T>,
+    callback: (sql: EnhancedTransactionSql<TTypes, TExtra>) => T | Promise<T>,
   ): Promise<Awaited<T>>;
 };
 
-type EnhancedReserveMethod<TSql extends EnhanceableSql> = () => Promise<
-  EnhancedReservedSql<TSql>
->;
+type EnhancedReserveMethod<
+  TTypes extends PostgresTypeMap,
+  TExtra extends object,
+> = () => Promise<EnhancedReservedSql<TTypes, TExtra>>;
 
-type EnhancedScopedMethods<TSql extends EnhanceableSql> =
-  (TSql extends { begin: (...args: never[]) => unknown }
-    ? { begin: EnhancedBeginMethod<TSql> }
+type EnhancedScopedMethods<
+  TTypes extends PostgresTypeMap,
+  TSql extends EnhanceableSql<TTypes>,
+  TExtra extends object,
+> =
+  (TSql extends { begin: unknown }
+    ? Omit<postgres.Sql<TTypes>, TopLevelScopedMethodKey> & {
+        begin: EnhancedBeginMethod<TTypes, TExtra>;
+      }
     : object) &
-    (TSql extends { savepoint: (...args: never[]) => unknown }
-      ? { savepoint: EnhancedSavepointMethod<TSql> }
+    (TSql extends { savepoint: unknown }
+      ? postgres.ISql<TTypes> &
+          Omit<postgres.TransactionSql<TTypes>, "savepoint"> & {
+          savepoint: EnhancedSavepointMethod<TTypes, TExtra>;
+        }
       : object) &
-    (TSql extends { reserve: (...args: never[]) => unknown }
-      ? { reserve: EnhancedReserveMethod<TSql> }
+    (TSql extends { reserve: unknown }
+      ? { reserve: EnhancedReserveMethod<TTypes, TExtra> }
+      : object) &
+    (TSql extends { release(): void }
+      ? { release(): void }
       : object);
 
-type EnhancedSqlMethods = {
+export type EnhancedSqlMethods = {
   any<T extends z.ZodTypeAny>(schema: T): TaggedQuery<z.output<T>[]>;
   anySafe<T extends z.ZodTypeAny>(
     schema: T,
@@ -140,11 +192,13 @@ type EnhancedSqlMethods = {
   ): Promise<boolean>;
 };
 
-export type EnhancedSql<TSql extends EnhanceableSql = EnhanceableSql> =
-  EnhanceableSql &
-  Omit<TSql, TopLevelScopedMethodKey> &
+export type EnhancedSql<
+  TTypes extends PostgresTypeMap = {},
+  TSql extends EnhanceableSql<TTypes> = postgres.ISql<TTypes>,
+> = postgres.ISql<TTypes> &
+  ExistingNamespaceMethods<TSql> &
   EnhancedSqlMethods &
-  EnhancedScopedMethods<TSql>;
+  EnhancedScopedMethods<TTypes, TSql, ExistingNamespaceMethods<TSql>>;
 
 export class NotFoundError extends Error {
   constructor(message = "Query returned no rows.") {
@@ -172,7 +226,9 @@ function getFirstColumnValue(row: Row): unknown {
   return entries[0]?.[1];
 }
 
-function wrapScopedSqlMethod(method: ScopedSqlMethod): ScopedSqlMethod {
+function wrapScopedSqlMethod<TTypes extends PostgresTypeMap>(
+  method: ScopedSqlMethod,
+): ScopedSqlMethod {
   return async (...args: unknown[]) => {
     const callback = args.at(-1);
 
@@ -180,39 +236,45 @@ function wrapScopedSqlMethod(method: ScopedSqlMethod): ScopedSqlMethod {
       return method(...args);
     }
 
-    return method(...args.slice(0, -1), (scopedSql: EnhanceableSql) =>
+    return method(...args.slice(0, -1), (scopedSql: postgres.ISql<TTypes>) =>
       callback(enhanceDb(scopedSql)),
     );
   };
 }
 
-type SqlWithScopedMethods = EnhanceableSql & {
+type SqlWithScopedMethods<TTypes extends PostgresTypeMap> =
+  postgres.ISql<TTypes> & {
   begin?: ScopedSqlMethod;
   savepoint?: ScopedSqlMethod;
-  reserve?: (...args: unknown[]) => Promise<EnhanceableSql>;
+  reserve?: (...args: unknown[]) => Promise<postgres.ISql<TTypes>>;
 };
 
-export function enhanceDb<TSql extends EnhanceableSql>(
+export function enhanceDb<
+  TTypes extends PostgresTypeMap = {},
+  TSql extends EnhanceableSql<TTypes> = postgres.Sql<TTypes>,
+>(
   sql: TSql,
-): EnhancedSql<TSql> {
-  const maybeEnhanced = sql as unknown as EnhancedSql<TSql> & EnhancedMarker;
+): EnhancedSql<TTypes, TSql> {
+  const maybeEnhanced = sql as unknown as EnhancedSql<TTypes, TSql> &
+    EnhancedMarker;
 
   if (maybeEnhanced[ENHANCED_DB]) {
     return maybeEnhanced;
   }
 
-  const query = sql;
+  const query = sql as unknown as QuerySql;
+  const runtimeSql = sql as unknown as SqlWithScopedMethods<TTypes>;
   const originalBegin =
-    "begin" in sql && typeof sql.begin === "function"
-      ? sql.begin.bind(sql)
+    typeof runtimeSql.begin === "function"
+      ? runtimeSql.begin.bind(sql)
       : undefined;
   const originalSavepoint =
-    "savepoint" in sql && typeof sql.savepoint === "function"
-      ? sql.savepoint.bind(sql)
+    typeof runtimeSql.savepoint === "function"
+      ? runtimeSql.savepoint.bind(sql)
       : undefined;
   const originalReserve =
-    "reserve" in sql && typeof sql.reserve === "function"
-      ? sql.reserve.bind(sql)
+    typeof runtimeSql.reserve === "function"
+      ? runtimeSql.reserve.bind(sql)
       : undefined;
 
   const enhanced = Object.assign(sql, {
@@ -475,20 +537,22 @@ export function enhanceDb<TSql extends EnhanceableSql>(
       const rows = await query(strings, ...values);
       return rows.length > 0;
     },
-  }) as unknown as EnhancedSql<TSql> & SqlWithScopedMethods;
+  }) as unknown as EnhancedSql<TTypes, TSql> & SqlWithScopedMethods<TTypes>;
 
   if (originalBegin) {
-    enhanced.begin = wrapScopedSqlMethod(originalBegin);
+    enhanced.begin = wrapScopedSqlMethod<TTypes>(originalBegin);
   }
 
   if (originalSavepoint) {
-    enhanced.savepoint = wrapScopedSqlMethod(originalSavepoint);
+    enhanced.savepoint = wrapScopedSqlMethod<TTypes>(originalSavepoint);
   }
 
   if (originalReserve) {
     enhanced.reserve = async (...args: unknown[]) => {
       const reserved = await originalReserve(...args);
-      return enhanceDb(reserved);
+      return enhanceDb(
+        reserved as postgres.ReservedSql<TTypes>,
+      ) as unknown as postgres.ISql<TTypes>;
     };
   }
 
@@ -500,4 +564,4 @@ export function enhanceDb<TSql extends EnhanceableSql>(
   return enhanced;
 }
 
-export type sql = ReturnType<typeof enhanceDb<PostgresSql>>;
+export type sql = EnhancedSql;

@@ -1,6 +1,10 @@
 import type postgres from "postgres";
+import type { EnhancedSqlMethods } from "./enhanceDb";
 
-export type PostgresSql = ReturnType<typeof postgres>;
+type PostgresTypeMap = Record<string, unknown>;
+
+export type PostgresSql<TTypes extends PostgresTypeMap = {}> =
+  postgres.Sql<TTypes>;
 
 const NAMESPACED_DB = Symbol("NAMESPACED_DB");
 
@@ -8,17 +12,12 @@ type NamespaceMarker = {
   [NAMESPACED_DB]?: string;
 };
 
-type SqlTag = {
-  <T extends readonly (object | undefined)[] = postgres.Row[]>(
-    strings: TemplateStringsArray,
-    ...values: readonly unknown[]
-  ): postgres.PendingQuery<T>;
-  (identifier: string): postgres.Helper<string, []>;
-};
+type EnhanceableSql<TTypes extends PostgresTypeMap = {}> =
+  postgres.ISql<TTypes>;
 
 type ScopedSqlMethod = (...args: unknown[]) => Promise<unknown>;
 
-type NamespaceSqlMethods = {
+export type NamespaceSqlMethods = {
   table(tableName: string): postgres.PendingQuery<postgres.Row[]>;
 };
 
@@ -36,74 +35,107 @@ type TopLevelSqlKey =
   | "parameters"
   | "subscribe";
 
-type ScopedSqlBase<TSql extends SqlTag, TScoped extends SqlTag> = Omit<
-  TSql,
-  TopLevelSqlKey
-> &
-  TScoped;
+type NativeSqlSurface<
+  TTypes extends PostgresTypeMap,
+  TSql extends EnhanceableSql<TTypes>,
+> = TSql extends { release(): void }
+  ? postgres.ReservedSql<TTypes>
+  : TSql extends { prepare: (...args: never[]) => unknown }
+    ? postgres.TransactionSql<TTypes>
+    : TSql extends { end: (...args: never[]) => unknown }
+      ? postgres.Sql<TTypes>
+      : postgres.ISql<TTypes>;
 
-type NamespacedTransactionSql<TSql extends SqlTag> = NamespacedSql<
-  ScopedSqlBase<
-    TSql,
-    SqlTag & {
-      savepoint: ScopedSqlMethod;
-    }
-  >
->;
+type ExistingEnhancedMethods<TSql> = TSql extends {
+  one: EnhancedSqlMethods["one"];
+}
+  ? EnhancedSqlMethods
+  : object;
 
-type NamespacedReservedSql<TSql extends SqlTag> = NamespacedSql<
-  ScopedSqlBase<
-    TSql,
-    SqlTag & {
-      begin: ScopedSqlMethod;
-      reserve: () => Promise<SqlTag>;
-      release(): void;
-    }
-  >
->;
+type NamespacedTransactionSql<
+  TTypes extends PostgresTypeMap,
+  TExtra extends object,
+> = postgres.ISql<TTypes> &
+  Omit<postgres.TransactionSql<TTypes>, "savepoint"> &
+  TExtra &
+  NamespaceSqlMethods & {
+    savepoint: NamespacedSavepointMethod<TTypes, TExtra>;
+  };
 
-type NamespacedBeginMethod<TSql extends SqlTag> = {
+type NamespacedReservedSql<
+  TTypes extends PostgresTypeMap,
+  TExtra extends object,
+> = postgres.ISql<TTypes> &
+  Omit<postgres.ReservedSql<TTypes>, TopLevelScopedMethodKey> &
+  TExtra &
+  NamespaceSqlMethods & {
+    begin: NamespacedBeginMethod<TTypes, TExtra>;
+    reserve: NamespacedReserveMethod<TTypes, TExtra>;
+  };
+
+type NamespacedBeginMethod<
+  TTypes extends PostgresTypeMap,
+  TExtra extends object,
+> = {
   <T>(
-    callback: (sql: NamespacedTransactionSql<TSql>) => T | Promise<T>,
+    callback: (sql: NamespacedTransactionSql<TTypes, TExtra>) => T | Promise<T>,
   ): Promise<Awaited<T>>;
   <T>(
     options: string,
-    callback: (sql: NamespacedTransactionSql<TSql>) => T | Promise<T>,
+    callback: (sql: NamespacedTransactionSql<TTypes, TExtra>) => T | Promise<T>,
   ): Promise<Awaited<T>>;
 };
 
-type NamespacedSavepointMethod<TSql extends SqlTag> = {
+type NamespacedSavepointMethod<
+  TTypes extends PostgresTypeMap,
+  TExtra extends object,
+> = {
   <T>(
-    callback: (sql: NamespacedTransactionSql<TSql>) => T | Promise<T>,
+    callback: (sql: NamespacedTransactionSql<TTypes, TExtra>) => T | Promise<T>,
   ): Promise<Awaited<T>>;
   <T>(
     name: string,
-    callback: (sql: NamespacedTransactionSql<TSql>) => T | Promise<T>,
+    callback: (sql: NamespacedTransactionSql<TTypes, TExtra>) => T | Promise<T>,
   ): Promise<Awaited<T>>;
 };
 
-type NamespacedReserveMethod<TSql extends SqlTag> = () => Promise<
-  NamespacedReservedSql<TSql>
->;
+type NamespacedReserveMethod<
+  TTypes extends PostgresTypeMap,
+  TExtra extends object,
+> = () => Promise<NamespacedReservedSql<TTypes, TExtra>>;
 
-type NamespacedScopedMethods<TSql extends SqlTag> =
-  (TSql extends { begin: (...args: never[]) => unknown }
-    ? { begin: NamespacedBeginMethod<TSql> }
+type NamespacedScopedMethods<
+  TTypes extends PostgresTypeMap,
+  TSql extends EnhanceableSql<TTypes>,
+  TExtra extends object,
+> =
+  (TSql extends { begin: unknown }
+    ? Omit<postgres.Sql<TTypes>, TopLevelScopedMethodKey> & {
+        begin: NamespacedBeginMethod<TTypes, TExtra>;
+      }
     : object) &
-    (TSql extends { savepoint: (...args: never[]) => unknown }
-      ? { savepoint: NamespacedSavepointMethod<TSql> }
+    (TSql extends { savepoint: unknown }
+      ? postgres.ISql<TTypes> &
+          Omit<postgres.TransactionSql<TTypes>, "savepoint"> & {
+          savepoint: NamespacedSavepointMethod<TTypes, TExtra>;
+        }
       : object) &
-    (TSql extends { reserve: (...args: never[]) => unknown }
-      ? { reserve: NamespacedReserveMethod<TSql> }
+    (TSql extends { reserve: unknown }
+      ? { reserve: NamespacedReserveMethod<TTypes, TExtra> }
+      : object) &
+    (TSql extends { release(): void }
+      ? { release(): void }
       : object);
 
-export type NamespacedSql<TSql extends SqlTag = SqlTag> =
-  SqlTag &
-  Omit<TSql, TopLevelScopedMethodKey> &
+export type NamespacedSql<
+  TTypes extends PostgresTypeMap = {},
+  TSql extends EnhanceableSql<TTypes> = postgres.ISql<TTypes>,
+> = postgres.ISql<TTypes> &
+  ExistingEnhancedMethods<TSql> &
   NamespaceSqlMethods &
-  NamespacedScopedMethods<TSql>;
+  NamespacedScopedMethods<TTypes, TSql, ExistingEnhancedMethods<TSql>>;
 
-function wrapScopedSqlMethod(
+function wrapScopedSqlMethod<TTypes extends PostgresTypeMap>(
   schemaName: string,
   method: ScopedSqlMethod,
 ): ScopedSqlMethod {
@@ -114,23 +146,27 @@ function wrapScopedSqlMethod(
       return method(...args);
     }
 
-    return method(...args.slice(0, -1), (scopedSql: SqlTag) =>
+    return method(...args.slice(0, -1), (scopedSql: postgres.ISql<TTypes>) =>
       callback(namespaceDb(scopedSql, schemaName)),
     );
   };
 }
 
-type SqlWithScopedMethods = SqlTag & {
+type SqlWithScopedMethods<TTypes extends PostgresTypeMap> =
+  postgres.ISql<TTypes> & {
   begin?: ScopedSqlMethod;
   savepoint?: ScopedSqlMethod;
-  reserve?: (...args: unknown[]) => Promise<SqlTag>;
+  reserve?: (...args: unknown[]) => Promise<postgres.ISql<TTypes>>;
 };
 
-export function namespaceDb<TSql extends SqlTag>(
+export function namespaceDb<
+  TTypes extends PostgresTypeMap = {},
+  TSql extends EnhanceableSql<TTypes> = postgres.Sql<TTypes>,
+>(
   sql: TSql,
   schemaName: string,
-): NamespacedSql<TSql> {
-  const maybeNamespaced = sql as unknown as NamespacedSql<TSql> &
+): NamespacedSql<TTypes, TSql> {
+  const maybeNamespaced = sql as unknown as NamespacedSql<TTypes, TSql> &
     NamespaceMarker;
 
   if (maybeNamespaced[NAMESPACED_DB]) {
@@ -143,17 +179,18 @@ export function namespaceDb<TSql extends SqlTag>(
     return maybeNamespaced;
   }
 
+  const runtimeSql = sql as unknown as SqlWithScopedMethods<TTypes>;
   const originalBegin =
-    "begin" in sql && typeof sql.begin === "function"
-      ? sql.begin.bind(sql)
+    typeof runtimeSql.begin === "function"
+      ? runtimeSql.begin.bind(sql)
       : undefined;
   const originalSavepoint =
-    "savepoint" in sql && typeof sql.savepoint === "function"
-      ? sql.savepoint.bind(sql)
+    typeof runtimeSql.savepoint === "function"
+      ? runtimeSql.savepoint.bind(sql)
       : undefined;
   const originalReserve =
-    "reserve" in sql && typeof sql.reserve === "function"
-      ? sql.reserve.bind(sql)
+    typeof runtimeSql.reserve === "function"
+      ? runtimeSql.reserve.bind(sql)
       : undefined;
   const query = sql;
 
@@ -161,20 +198,26 @@ export function namespaceDb<TSql extends SqlTag>(
     table(tableName: string): postgres.PendingQuery<postgres.Row[]> {
       return query`${query(schemaName)}.${query(tableName)}`;
     },
-  }) as unknown as NamespacedSql<TSql> & SqlWithScopedMethods;
+  }) as unknown as NamespacedSql<TTypes, TSql> & SqlWithScopedMethods<TTypes>;
 
   if (originalBegin) {
-    enhanced.begin = wrapScopedSqlMethod(schemaName, originalBegin);
+    enhanced.begin = wrapScopedSqlMethod<TTypes>(schemaName, originalBegin);
   }
 
   if (originalSavepoint) {
-    enhanced.savepoint = wrapScopedSqlMethod(schemaName, originalSavepoint);
+    enhanced.savepoint = wrapScopedSqlMethod<TTypes>(
+      schemaName,
+      originalSavepoint,
+    );
   }
 
   if (originalReserve) {
     enhanced.reserve = async (...args: unknown[]) => {
       const reserved = await originalReserve(...args);
-      return namespaceDb(reserved, schemaName);
+      return namespaceDb<TTypes, postgres.ReservedSql<TTypes>>(
+        reserved as postgres.ReservedSql<TTypes>,
+        schemaName,
+      ) as unknown as postgres.ISql<TTypes>;
     };
   }
 
