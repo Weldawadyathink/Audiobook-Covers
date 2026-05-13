@@ -18,10 +18,13 @@ export type SafeTaggedQuery<T> = TaggedQuery<z.ZodSafeParseResult<T>>;
 
 type Row = Record<string, unknown>;
 
-type EnhanceableSql = (
-  strings: TemplateStringsArray,
-  ...values: unknown[]
-) => PromiseLike<Row[]>;
+type EnhanceableSql = {
+  <T extends readonly (object | undefined)[] = postgres.Row[]>(
+    strings: TemplateStringsArray,
+    ...values: readonly unknown[]
+  ): postgres.PendingQuery<T>;
+  (identifier: string): postgres.Helper<string, []>;
+};
 
 type ScopedSqlMethod = (...args: unknown[]) => Promise<unknown>;
 
@@ -35,40 +38,65 @@ type EnhanceableReservedSql = EnhanceableSql & {
   release(): void;
 };
 
-type EnhancedTransactionSql = EnhancedSql<EnhanceableTransactionSql>;
-type EnhancedReservedSql = EnhancedSql<EnhanceableReservedSql>;
+type TopLevelScopedMethodKey = "begin" | "reserve" | "savepoint";
+type TopLevelSqlKey =
+  | TopLevelScopedMethodKey
+  | "CLOSE"
+  | "END"
+  | "PostgresError"
+  | "end"
+  | "largeObject"
+  | "listen"
+  | "notify"
+  | "options"
+  | "parameters"
+  | "subscribe";
 
-type EnhancedBeginMethod = {
-  <T>(callback: (sql: EnhancedTransactionSql) => T | Promise<T>): Promise<
-    Awaited<T>
-  >;
+type ScopedSqlBase<
+  TSql extends EnhanceableSql,
+  TScoped extends EnhanceableSql,
+> = Omit<TSql, TopLevelSqlKey> & TScoped;
+
+type EnhancedTransactionSql<TSql extends EnhanceableSql> = EnhancedSql<
+  ScopedSqlBase<TSql, EnhanceableTransactionSql>
+>;
+type EnhancedReservedSql<TSql extends EnhanceableSql> = EnhancedSql<
+  ScopedSqlBase<TSql, EnhanceableReservedSql>
+>;
+
+type EnhancedBeginMethod<TSql extends EnhanceableSql> = {
+  <T>(
+    callback: (sql: EnhancedTransactionSql<TSql>) => T | Promise<T>,
+  ): Promise<Awaited<T>>;
   <T>(
     options: string,
-    callback: (sql: EnhancedTransactionSql) => T | Promise<T>,
+    callback: (sql: EnhancedTransactionSql<TSql>) => T | Promise<T>,
   ): Promise<Awaited<T>>;
 };
 
-type EnhancedSavepointMethod = {
-  <T>(callback: (sql: EnhancedTransactionSql) => T | Promise<T>): Promise<
-    Awaited<T>
-  >;
+type EnhancedSavepointMethod<TSql extends EnhanceableSql> = {
+  <T>(
+    callback: (sql: EnhancedTransactionSql<TSql>) => T | Promise<T>,
+  ): Promise<Awaited<T>>;
   <T>(
     name: string,
-    callback: (sql: EnhancedTransactionSql) => T | Promise<T>,
+    callback: (sql: EnhancedTransactionSql<TSql>) => T | Promise<T>,
   ): Promise<Awaited<T>>;
 };
 
-type EnhancedReserveMethod = () => Promise<EnhancedReservedSql>;
+type EnhancedReserveMethod<TSql extends EnhanceableSql> = () => Promise<
+  EnhancedReservedSql<TSql>
+>;
 
 type EnhancedScopedMethods<TSql extends EnhanceableSql> =
   (TSql extends { begin: (...args: never[]) => unknown }
-    ? { begin: EnhancedBeginMethod }
+    ? { begin: EnhancedBeginMethod<TSql> }
     : object) &
     (TSql extends { savepoint: (...args: never[]) => unknown }
-      ? { savepoint: EnhancedSavepointMethod }
+      ? { savepoint: EnhancedSavepointMethod<TSql> }
       : object) &
     (TSql extends { reserve: (...args: never[]) => unknown }
-      ? { reserve: EnhancedReserveMethod }
+      ? { reserve: EnhancedReserveMethod<TSql> }
       : object);
 
 type EnhancedSqlMethods = {
@@ -112,7 +140,9 @@ type EnhancedSqlMethods = {
   ): Promise<boolean>;
 };
 
-export type EnhancedSql<TSql extends EnhanceableSql = EnhanceableSql> = TSql &
+export type EnhancedSql<TSql extends EnhanceableSql = EnhanceableSql> =
+  EnhanceableSql &
+  Omit<TSql, TopLevelScopedMethodKey> &
   EnhancedSqlMethods &
   EnhancedScopedMethods<TSql>;
 
@@ -165,7 +195,7 @@ type SqlWithScopedMethods = EnhanceableSql & {
 export function enhanceDb<TSql extends EnhanceableSql>(
   sql: TSql,
 ): EnhancedSql<TSql> {
-  const maybeEnhanced = sql as EnhancedSql<TSql> & EnhancedMarker;
+  const maybeEnhanced = sql as unknown as EnhancedSql<TSql> & EnhancedMarker;
 
   if (maybeEnhanced[ENHANCED_DB]) {
     return maybeEnhanced;
@@ -445,7 +475,7 @@ export function enhanceDb<TSql extends EnhanceableSql>(
       const rows = await query(strings, ...values);
       return rows.length > 0;
     },
-  }) as EnhancedSql<TSql> & SqlWithScopedMethods;
+  }) as unknown as EnhancedSql<TSql> & SqlWithScopedMethods;
 
   if (originalBegin) {
     enhanced.begin = wrapScopedSqlMethod(originalBegin);
