@@ -37,7 +37,7 @@ export function namespaceDb<TSql extends postgres.ISql>(
         return schemaName;
       }
 
-      if (prop in helpers) {
+      if (Object.hasOwn(helpers, prop)) {
         return helpers[prop as keyof NamespaceSqlMethods];
       }
 

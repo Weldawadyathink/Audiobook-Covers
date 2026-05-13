@@ -340,7 +340,7 @@ export function enhanceDb<TSql extends postgres.ISql>(
         return true;
       }
 
-      if (prop in helpers) {
+      if (Object.hasOwn(helpers, prop)) {
         return helpers[prop as keyof EnhancedSqlMethods];
       }
 
