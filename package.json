@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Audiobook Covers",
   "type": "module",
-  "packageManager": "pnpm@11.0.9",
+  "packageManager": "pnpm@11.1.2",
   "trigger.dev": {
     "endpointId": "weldawadyathink-5f4c"
   },
