@@ -11,10 +11,7 @@ function parsePostgresTextArray(value: unknown): unknown {
   let items: string[];
   try {
     items = JSON.parse(
-      `[${value
-        .slice(1, -1)
-        .replaceAll("\\\\", "\\")
-        .replaceAll('\\"', '"')}]`,
+      `[${value.slice(1, -1).replaceAll("\\\\", "\\").replaceAll('\\"', '"')}]`,
     );
   } catch {
     items = value.slice(1, -1).split(",");
@@ -46,7 +43,7 @@ export const DBImageDataValidator = z.object({
   openlibrary_first_publish_year: z.number().int().nullish(),
 });
 
-interface ImageDataBase {
+export interface ImageDataBase {
   id: string;
   url: string;
   blurhashUrl: string;
@@ -65,26 +62,18 @@ interface ImageDataBase {
   score?: number;
   from_old_database?: boolean;
   primaryColor: Awaited<ReturnType<typeof extractColors>>[number];
-}
-
-interface ImageDataWithWorkId {
-  openlibraryWorkId: string;
-  openLibraryWorkIdConfidence: "UNCERTAIN" | "LIKELY" | "CONFIRMED" | "HUMAN";
-  openlibraryWork?: {
-    title: string;
+  openlibrary?: {
+    workId: string;
+    confidence: "UNCERTAIN" | "LIKELY" | "CONFIRMED" | "HUMAN";
+    title: string | null;
     subtitle: string | null;
     authorNames: string[];
     firstPublishYear: number | null;
+    url: string;
   };
 }
 
-interface ImageDataWithoutWorkId {
-  openlibraryWorkId: null;
-  openLibraryWorkIdConfidence: "NO_MATCH" | null;
-}
-
-export type ImageData = ImageDataBase &
-  (ImageDataWithWorkId | ImageDataWithoutWorkId);
+export type ImageData = ImageDataBase;
 
 const imageUrlPrefix = "https://images.audiobookcovers.com";
 
@@ -159,34 +148,29 @@ export async function shapeImageData(
       ? { from_old_database: image.from_old_database }
       : {}),
   };
-  const openlibraryWork = image.openlibrary_title
-    ? {
-        title: image.openlibrary_title,
-        subtitle: image.openlibrary_subtitle ?? null,
-        authorNames: image.openlibrary_author_names ?? [],
-        firstPublishYear: image.openlibrary_first_publish_year ?? null,
-      }
-    : undefined;
   switch (image.openlibrary_work_id_confidence) {
     case "UNCERTAIN":
     case "LIKELY":
     case "CONFIRMED":
     case "HUMAN":
+      if (!image.openlibrary_work_id) return base;
+
       return {
         ...base,
-        openLibraryWorkIdConfidence: image.openlibrary_work_id_confidence,
-        openlibraryWorkId: image.openlibrary_work_id!,
-        ...(openlibraryWork ? { openlibraryWork } : {}),
+        openlibrary: {
+          workId: image.openlibrary_work_id,
+          confidence: image.openlibrary_work_id_confidence,
+          title: image.openlibrary_title ?? null,
+          subtitle: image.openlibrary_subtitle ?? null,
+          authorNames: image.openlibrary_author_names ?? [],
+          firstPublishYear: image.openlibrary_first_publish_year ?? null,
+          url: `https://openlibrary.org/works/${image.openlibrary_work_id}`,
+        },
       };
     case "NO_MATCH":
     case undefined:
     default:
-      return {
-        ...base,
-        openLibraryWorkIdConfidence:
-          image.openlibrary_work_id_confidence || null,
-        openlibraryWorkId: null,
-      };
+      return base;
   }
 }
 

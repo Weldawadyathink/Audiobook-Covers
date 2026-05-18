@@ -37,14 +37,14 @@ const confidenceLabels = {
   LIKELY: "Likely",
   CONFIRMED: "Confirmed",
   HUMAN: "Human",
-  NO_MATCH: "No match",
 } as const satisfies Record<
-  NonNullable<ImageData["openLibraryWorkIdConfidence"]>,
+  NonNullable<ImageData["openlibrary"]>["confidence"],
   string
 >;
 
-function formatConfidence(confidence: ImageData["openLibraryWorkIdConfidence"]) {
-  if (!confidence) return null;
+function formatConfidence(
+  confidence: NonNullable<ImageData["openlibrary"]>["confidence"],
+) {
   return confidenceLabels[confidence];
 }
 
@@ -73,23 +73,17 @@ function RouteComponent() {
     return <div className="text-center text-lg mt-16">Image not found</div>;
   }
 
-  const openlibraryUrl = image.openlibraryWorkId
-    ? `https://openlibrary.org/works/${image.openlibraryWorkId}`
+  const openlibrary = image.openlibrary;
+  const openlibraryConfidence = openlibrary
+    ? formatConfidence(openlibrary.confidence)
     : null;
-  const openlibraryConfidence = formatConfidence(
-    image.openLibraryWorkIdConfidence,
-  );
-  const openlibraryWork =
-    "openlibraryWork" in image ? image.openlibraryWork : undefined;
   const openlibraryTitle =
-    openlibraryWork &&
-    [openlibraryWork.title, openlibraryWork.subtitle]
-      .filter(Boolean)
-      .join(": ");
-  const openlibraryAuthors = openlibraryWork
-    ? formatList(openlibraryWork.authorNames)
+    openlibrary &&
+    [openlibrary.title, openlibrary.subtitle].filter(Boolean).join(": ");
+  const openlibraryAuthors = openlibrary
+    ? formatList(openlibrary.authorNames)
     : "";
-  const isHumanMatched = image.openLibraryWorkIdConfidence === "HUMAN";
+  const isHumanMatched = openlibrary?.confidence === "HUMAN";
   const MatchSourceIcon = isHumanMatched ? BadgeCheck : Sparkles;
   const matchDescription =
     isHumanMatched
@@ -132,7 +126,7 @@ function RouteComponent() {
           </ClientOnly>
         </div>
 
-        {(openlibraryWork || image.openlibraryWorkId) && (
+        {openlibrary && (
           <section className="mt-5 w-full border-t border-slate-200 pt-5 text-center text-slate-900">
             <div className="mb-3 flex items-center justify-center gap-2 text-sm font-semibold uppercase text-slate-500">
               <BookOpen className="size-4 shrink-0" />
@@ -151,23 +145,21 @@ function RouteComponent() {
               </p>
             )}
 
-            {openlibraryWork?.firstPublishYear && (
+            {openlibrary.firstPublishYear && (
               <p className="mt-1 text-sm text-slate-500">
-                First published {openlibraryWork.firstPublishYear}
+                First published {openlibrary.firstPublishYear}
               </p>
             )}
 
-            {openlibraryUrl && (
-              <a
-                href={openlibraryUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-4 inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 shadow-sm transition-colors hover:bg-slate-50"
-              >
-                <span>OpenLibrary.org</span>
-                <ExternalLink className="size-4" />
-              </a>
-            )}
+            <a
+              href={openlibrary.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 shadow-sm transition-colors hover:bg-slate-50"
+            >
+              <span>OpenLibrary.org</span>
+              <ExternalLink className="size-4" />
+            </a>
 
             <p
               className={
