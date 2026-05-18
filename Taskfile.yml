@@ -56,18 +56,18 @@ tasks:
 
   deploy:dev:
     desc: Build and deploy to Cloudflare (development env)
-    deps: [build]
     env:
       CLOUDFLARE_ENV: development
     cmds:
+      - pnpm exec vite build
       - pnpm exec wrangler deploy
 
   deploy:prod:
     desc: Build and deploy to Cloudflare (production)
-    deps: [build]
     env:
       CLOUDFLARE_ENV: production
     cmds:
+      - pnpm exec vite build
       - pnpm exec wrangler deploy
 
   db:migrate:
