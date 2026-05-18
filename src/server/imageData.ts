@@ -3,6 +3,31 @@ import { decode as decodePng } from "fast-png";
 import { extractColors } from "extract-colors";
 import { z } from "zod/v4";
 
+function parsePostgresTextArray(value: unknown): unknown {
+  if (value == null || Array.isArray(value)) return value;
+  if (typeof value !== "string") return value;
+  if (value === "{}") return [];
+
+  let items: string[];
+  try {
+    items = JSON.parse(
+      `[${value
+        .slice(1, -1)
+        .replaceAll("\\\\", "\\")
+        .replaceAll('\\"', '"')}]`,
+    );
+  } catch {
+    items = value.slice(1, -1).split(",");
+  }
+
+  return items.map((item) => item.replace(/^"|"$/g, "")).filter(Boolean);
+}
+
+const nullableStringArray = z.preprocess(
+  parsePostgresTextArray,
+  z.array(z.string()).nullish(),
+);
+
 export const DBImageDataValidator = z.object({
   id: z.uuid(),
   source: z.string(),
@@ -15,6 +40,10 @@ export const DBImageDataValidator = z.object({
   openlibrary_work_id_confidence: z
     .enum(["UNCERTAIN", "LIKELY", "CONFIRMED", "HUMAN", "NO_MATCH"])
     .nullable(),
+  openlibrary_title: z.string().nullish(),
+  openlibrary_subtitle: z.string().nullish(),
+  openlibrary_author_names: nullableStringArray,
+  openlibrary_first_publish_year: z.number().int().nullish(),
 });
 
 interface ImageDataBase {
@@ -41,6 +70,12 @@ interface ImageDataBase {
 interface ImageDataWithWorkId {
   openlibraryWorkId: string;
   openLibraryWorkIdConfidence: "UNCERTAIN" | "LIKELY" | "CONFIRMED" | "HUMAN";
+  openlibraryWork?: {
+    title: string;
+    subtitle: string | null;
+    authorNames: string[];
+    firstPublishYear: number | null;
+  };
 }
 
 interface ImageDataWithoutWorkId {
@@ -124,6 +159,14 @@ export async function shapeImageData(
       ? { from_old_database: image.from_old_database }
       : {}),
   };
+  const openlibraryWork = image.openlibrary_title
+    ? {
+        title: image.openlibrary_title,
+        subtitle: image.openlibrary_subtitle ?? null,
+        authorNames: image.openlibrary_author_names ?? [],
+        firstPublishYear: image.openlibrary_first_publish_year ?? null,
+      }
+    : undefined;
   switch (image.openlibrary_work_id_confidence) {
     case "UNCERTAIN":
     case "LIKELY":
@@ -133,6 +176,7 @@ export async function shapeImageData(
         ...base,
         openLibraryWorkIdConfidence: image.openlibrary_work_id_confidence,
         openlibraryWorkId: image.openlibrary_work_id!,
+        ...(openlibraryWork ? { openlibraryWork } : {}),
       };
     case "NO_MATCH":
     case undefined:

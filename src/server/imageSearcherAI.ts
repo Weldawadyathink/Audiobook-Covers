@@ -69,9 +69,14 @@ export const getImageByIdAndSimilar = createServerFn({
         from_old_database,
         searchable,
         openlibrary_work_id,
-        openlibrary_work_id_confidence
+        openlibrary_work_id_confidence,
+        work.title AS openlibrary_title,
+        work.subtitle AS openlibrary_subtitle,
+        work.author_names AS openlibrary_author_names,
+        work.first_publish_year AS openlibrary_first_publish_year
       FROM image
-      WHERE id = ${id}
+      LEFT JOIN openlibrary_work work ON work.olid = image.openlibrary_work_id
+      WHERE image.id = ${id}
     `;
     if (!target) {
       return [];
