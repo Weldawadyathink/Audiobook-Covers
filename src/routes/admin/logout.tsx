@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import cookie from "cookie";
-import { createWriteDb } from "@/server/db.http";
+import { createWriteDb } from "@/server/db";
 import { eq } from "drizzle-orm";
 import { useEffect } from "react";
 import { logAnalyticsEvent } from "@/server/analytics";

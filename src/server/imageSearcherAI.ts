@@ -3,7 +3,7 @@ import {
   shapeImageData,
   ImageData,
 } from "@/server/imageData";
-import { createReadDb } from "@/server/db.http";
+import { createReadDb } from "@/server/db";
 import { getModel, defaultModelName } from "@/server/search/search";
 import { DBImageDataValidator } from "@/server/imageData";
 import { createServerFn } from "@tanstack/react-start";

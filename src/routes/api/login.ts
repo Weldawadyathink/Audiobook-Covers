@@ -1,5 +1,5 @@
 import { z } from "zod/v4";
-import { createWriteDb } from "@/server/db.http";
+import { createWriteDb } from "@/server/db";
 import { eq, sql } from "drizzle-orm";
 import base64 from "base-64";
 import { createFileRoute } from "@tanstack/react-router";

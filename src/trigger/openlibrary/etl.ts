@@ -6,7 +6,7 @@ import { getQueryForTarget, queries } from "./queries";
 import { batchTriggerAndWait, triggerAndWait } from "../utils";
 import { openLibrarySyncWorkSearchTask } from "./sync-work-search";
 import { openLibrarySyncWorksForPostgresTask } from "./sync-works-for-postgres";
-import { getDbWriteConnection } from "@/db";
+import { createPostgresWriteDb } from "@/db";
 import { env } from "@/env.node";
 import { z } from "zod/v4";
 
@@ -30,7 +30,7 @@ export const openLibraryEtlTask = schedules.task({
     console.log(`Latest dump date: ${dumpDate}`);
 
     const bq = new BQClient();
-    const { sql, sqlTools } = getDbWriteConnection(env);
+    const { sql, sqlTools } = createPostgresWriteDb(env);
 
     const lastSuccessfulDumpDate = await sqlTools.one(
       z.string(),

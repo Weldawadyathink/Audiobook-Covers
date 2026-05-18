@@ -7,9 +7,12 @@ export const env = parseEnv({
   ...process.env,
   ...workerEnv,
 
-  // Cloudflare is too lazy to inject hyperdrive connection strings during dev
   DATABASE_READ_URL:
-    workerEnv.HYPERDRIVE?.connectionString || process.env.DATABASE_READ_URL,
+    workerEnv.HYPERDRIVE?.connectionString ||
+    workerEnv.DATABASE_READ_URL ||
+    process.env.DATABASE_READ_URL,
   DATABASE_WRITE_URL:
-    workerEnv.HYPERDRIVE?.connectionString || process.env.DATABASE_WRITE_URL,
+    workerEnv.HYPERDRIVE?.connectionString ||
+    workerEnv.DATABASE_WRITE_URL ||
+    process.env.DATABASE_WRITE_URL,
 });

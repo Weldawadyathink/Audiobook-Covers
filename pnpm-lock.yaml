@@ -26,9 +26,6 @@ importers:
       '@google-cloud/bigquery':
         specifier: ^8.3.1
         version: 8.3.1
-      '@neondatabase/serverless':
-        specifier: ^1.1.0
-        version: 1.1.0
       '@posthog/react':
         specifier: ^1.9.0
         version: 1.9.0(@types/react@19.2.14)(posthog-js@1.373.5)(react@19.2.6)
@@ -88,7 +85,7 @@ importers:
         version: 1.1.1
       drizzle-orm:
         specifier: ^0.45.2
-        version: 0.45.2(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(postgres@3.4.9)
+        version: 0.45.2(@opentelemetry/api@1.9.1)(postgres@3.4.9)
       extract-colors:
         specifier: ^4.2.1
         version: 4.2.1
@@ -164,9 +161,6 @@ importers:
       voyage-ai-provider:
         specifier: ^3.0.0
         version: 3.0.0(zod@3.25.76)
-      ws:
-        specifier: ^8.20.1
-        version: 8.20.1
       zod:
         specifier: ^3.25.76
         version: 3.25.76
@@ -1645,10 +1639,6 @@ packages:
 
   '@microsoft/fetch-event-source@2.0.1':
     resolution: {integrity: sha512-W6CLUJ2eBMw3Rec70qrsEW0jOm/3twwJv21mrmj2yORiaVmVYGS4sSS5yUwvQc1ZlDLYGPnClVWmUUMagKNsfA==}
-
-  '@neondatabase/serverless@1.1.0':
-    resolution: {integrity: sha512-r3ZZhRjEcfEdKIZnoB1RusNgvHuaBRqfCzV4Gi+5A9yUX0S4HTws/ASWqt13wL4y4I+0rqsWGdA2w7EQXHi3+Q==}
-    engines: {node: '>=19.0.0'}
 
   '@nodable/entities@2.1.0':
     resolution: {integrity: sha512-nyT7T3nbMyBI/lvr6L5TyWbFJAI9FTgVRakNoBqCD+PmID8DzFrrNdLLtHMwMszOtqZa8PAOV24ZqDnQrhQINA==}
@@ -6256,8 +6246,6 @@ snapshots:
 
   '@microsoft/fetch-event-source@2.0.1': {}
 
-  '@neondatabase/serverless@1.1.0': {}
-
   '@nodable/entities@2.1.0': {}
 
   '@oozcitak/dom@2.0.2':
@@ -7803,9 +7791,8 @@ snapshots:
       esbuild: 0.25.12
       tsx: 4.22.1
 
-  drizzle-orm@0.45.2(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(postgres@3.4.9):
+  drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(postgres@3.4.9):
     optionalDependencies:
-      '@neondatabase/serverless': 1.1.0
       '@opentelemetry/api': 1.9.1
       postgres: 3.4.9
 

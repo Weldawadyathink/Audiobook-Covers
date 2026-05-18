@@ -1,6 +1,6 @@
 import { modelMap, ModelDefinition } from "@/server/search/search";
 import { Command } from "commander";
-import { getDbWriteConnection } from "@/db";
+import { createPostgresWriteDb } from "@/db";
 import { env } from "@/env.cloudflare";
 import { DBImageDataValidator, shapeImageDataArray } from "@/server/imageData";
 import pLimit from "p-limit";
@@ -45,7 +45,7 @@ if (!modelDefinition) {
   process.exit(1);
 }
 
-const { sql, sqlTools } = getDbWriteConnection(env);
+const { sql, sqlTools } = createPostgresWriteDb(env);
 
 const images = await sqlTools.many(DBImageDataValidator)`
   SELECT id, source, extension, blurhash, from_old_database, searchable

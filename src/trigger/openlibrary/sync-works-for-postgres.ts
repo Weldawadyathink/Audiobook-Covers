@@ -7,7 +7,7 @@ import prettyMilliseconds from "pretty-ms";
 import formatNumber from "format-number";
 import { BQClient } from "./bq";
 import { S3Client } from "./s3";
-import { getDbWriteConnection } from "@/db";
+import { createPostgresWriteDb } from "@/db";
 import { env } from "@/env.node";
 import { streamTracker } from "./utils";
 
@@ -105,7 +105,7 @@ export const openLibrarySyncWorksForPostgresTask = schemaTask({
     console.log(`Syncing works_for_postgres rows for dump ${dumpDate}`);
     const bq = new BQClient();
     const s3 = new S3Client("etl");
-    const { sql } = getDbWriteConnection(env);
+    const { sql } = createPostgresWriteDb(env);
     const exportPrefix = "exports/works-for-postgres/";
 
     const currentTable = `${bq.projectId}.${DATASET}.${CURRENT_TABLE}`;

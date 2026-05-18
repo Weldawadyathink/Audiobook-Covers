@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
 import { getIsAuthenticated } from "./auth";
-import { createWriteDb } from "@/server/db.http";
+import { createWriteDb } from "@/server/db";
 import { logAnalyticsEvent } from "@/server/analytics";
 import { image } from "@/db/schema";
 import { eq } from "drizzle-orm";

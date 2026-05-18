@@ -1,7 +1,10 @@
 import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
 import { z } from "zod/v4";
 import { logger } from "@/logger";
 import type { parseEnv } from "@/env";
+import { env as defaultEnv } from "@/env.node";
+import * as schema from "@/db/schema";
 
 type TaggedQuery<T> = (
   strings: TemplateStringsArray,
@@ -15,9 +18,20 @@ type PostgresTag = (
   ...values: unknown[]
 ) => PromiseLike<Row[]>;
 
-export function getDbWriteConnection(
-  env: Pick<ReturnType<typeof parseEnv>, "DATABASE_WRITE_URL">,
-) {
+type ReadEnv = Pick<ReturnType<typeof parseEnv>, "DATABASE_READ_URL">;
+type WriteEnv = Pick<ReturnType<typeof parseEnv>, "DATABASE_WRITE_URL">;
+
+export function createReadDb(env: ReadEnv = defaultEnv) {
+  const { sql } = createPostgresReadDb(env);
+  return drizzle({ client: sql, schema });
+}
+
+export function createWriteDb(env: WriteEnv = defaultEnv) {
+  const { sql } = createPostgresWriteDb(env);
+  return drizzle({ client: sql, schema });
+}
+
+export function createPostgresWriteDb(env: WriteEnv = defaultEnv) {
   logger.info("Creating new db write connection");
   const sql = postgres(env.DATABASE_WRITE_URL, {
     max: 1,
@@ -28,9 +42,7 @@ export function getDbWriteConnection(
   return { sql, sqlTools };
 }
 
-export function getDbReadConnection(
-  env: Pick<ReturnType<typeof parseEnv>, "DATABASE_READ_URL">,
-) {
+export function createPostgresReadDb(env: ReadEnv = defaultEnv) {
   logger.info("Creating new db read connection");
   const sql = postgres(env.DATABASE_READ_URL, {
     max: 2,

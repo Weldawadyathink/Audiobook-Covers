@@ -1,4 +1,4 @@
-import { createWriteDb } from "@/server/db.http";
+import { createReadDb } from "@/server/db";
 import { and, eq, gt, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 import base64 from "base-64";
@@ -39,7 +39,6 @@ type AuthenticationResult =
 export const getIsAuthenticated = createServerFn().handler(
   async (): Promise<AuthenticationResult> => {
     console.log("Checking auth");
-    const writeDb = createWriteDb();
     const request = getRequest();
     const cookies = parseCookie(request.headers.get("cookie") ?? "");
     if (!cookies) {
@@ -62,7 +61,8 @@ export const getIsAuthenticated = createServerFn().handler(
       return { isAuthenticated: false };
     }
 
-    const [result] = await writeDb
+    const readDb = createReadDb();
+    const [result] = await readDb
       .select({
         username: web_user.username,
         session_id: session.session_id,

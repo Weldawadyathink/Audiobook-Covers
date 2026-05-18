@@ -5,7 +5,7 @@ import { pipeline } from "node:stream/promises";
 import prettyMilliseconds from "pretty-ms";
 import formatNumber from "format-number";
 import { BQClient } from "./bq";
-import { getDbWriteConnection } from "@/db";
+import { createPostgresWriteDb } from "@/db";
 import { env } from "@/env.node";
 import { streamTracker } from "./utils";
 
@@ -53,7 +53,7 @@ export const openLibraryBackfillCanonicalScoreTask = schemaTask({
       `Backfilling OpenLibrary canonical scores for shards ${startShard}-${endShard}/${SHARD_COUNT}`,
     );
     const bq = new BQClient();
-    const { sql } = getDbWriteConnection(env);
+    const { sql } = createPostgresWriteDb(env);
 
     try {
       const startedAt = performance.now();

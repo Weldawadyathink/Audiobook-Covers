@@ -1,5 +1,5 @@
 import { shapeImageDataArray, ImageData } from "@/server/imageData";
-import { createReadDb } from "@/server/db.http";
+import { createReadDb } from "@/server/db";
 import { DBImageDataValidator } from "@/server/imageData";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";

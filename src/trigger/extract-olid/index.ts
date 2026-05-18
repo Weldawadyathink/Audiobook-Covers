@@ -1,7 +1,7 @@
 import { schemaTask } from "@trigger.dev/sdk/v3";
 import { z } from "zod";
 import { z as zv4 } from "zod/v4";
-import { getDbWriteConnection } from "@/db";
+import { createPostgresWriteDb } from "@/db";
 import { env } from "@/env.node";
 import { batchTriggerAndWaitSettled, triggerAndWait } from "../utils";
 import { extractOlidPhase1Task } from "./phase1";
@@ -113,7 +113,7 @@ export const extractOlidTask = schemaTask({
     console.log(`Total cost: $${totalCost.toFixed(8)}`);
 
     if (save && result) {
-      const { sql, sqlTools } = getDbWriteConnection(env);
+      const { sql, sqlTools } = createPostgresWriteDb(env);
       try {
         await sqlTools.query`
           UPDATE image
@@ -161,7 +161,7 @@ export const extractOlidBatchTask = schemaTask({
     limit,
     tablesample,
   }) => {
-    const { sql, sqlTools } = getDbWriteConnection(env);
+    const { sql, sqlTools } = createPostgresWriteDb(env);
     try {
       const rows = await sqlTools.many(ImageIdRow)`
         SELECT id::text AS id

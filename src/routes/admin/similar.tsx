@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import ImageCard from "@/components/ImageCard";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
-import { createReadDb } from "@/server/db.http";
+import { createReadDb } from "@/server/db";
 import { toast, Toaster } from "sonner";
 import { DBImageDataValidator, shapeImageData } from "@/server/imageData";
 import { setImageDeleted, setImageNotDeleted } from "@/server/crud";
@@ -11,7 +11,7 @@ import { sql } from "drizzle-orm";
 const getSimilarImagePairs = createServerFn().handler(async () => {
   console.log("ADMIN: Getting similar images from database.");
   const readDb = createReadDb();
-  const result = await readDb.execute<{
+  const rows = await readDb.execute<{
     distance: number;
     image1: z.infer<typeof DBImageDataValidator>;
     image2: z.infer<typeof DBImageDataValidator>;
@@ -48,7 +48,7 @@ const getSimilarImagePairs = createServerFn().handler(async () => {
         image2: DBImageDataValidator,
       }),
     )
-    .parse(result.rows);
+    .parse(rows);
 
   const images = await Promise.all(
     rawImages.map(async (pair) => {
