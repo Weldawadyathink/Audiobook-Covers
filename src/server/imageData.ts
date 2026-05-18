@@ -11,9 +11,13 @@ export const DBImageDataValidator = z.object({
   searchable: z.boolean().optional(),
   score: z.number().nullish(),
   from_old_database: z.boolean().optional(),
+  openlibrary_work_id: z.string().nullable(),
+  openlibrary_work_id_confidence: z
+    .enum(["UNCERTAIN", "LIKELY", "CONFIRMED", "HUMAN", "NO_MATCH"])
+    .nullable(),
 });
 
-export interface ImageData {
+interface ImageDataBase {
   id: string;
   url: string;
   blurhashUrl: string;
@@ -33,6 +37,19 @@ export interface ImageData {
   from_old_database?: boolean;
   primaryColor: Awaited<ReturnType<typeof extractColors>>[number];
 }
+
+interface ImageDataWithWorkId {
+  openlibraryWorkId: string;
+  openLibraryWorkIdConfidence: "UNCERTAIN" | "LIKELY" | "CONFIRMED" | "HUMAN";
+}
+
+interface ImageDataWithoutWorkId {
+  openlibraryWorkId: null;
+  openLibraryWorkIdConfidence: "NO_MATCH" | null;
+}
+
+export type ImageData = ImageDataBase &
+  (ImageDataWithWorkId | ImageDataWithoutWorkId);
 
 const imageUrlPrefix = "https://images.audiobookcovers.com";
 
@@ -81,7 +98,7 @@ export async function shapeImageData(
 ): Promise<ImageData> {
   const blurhashUrl = image.blurhash ? getBlurhashUrl(image.blurhash) : "";
   const primaryColor = await getPrimaryImageColor(blurhashUrl);
-  return {
+  const base: ImageDataBase = {
     id: image.id,
     blurhashUrl,
     source:
@@ -107,6 +124,26 @@ export async function shapeImageData(
       ? { from_old_database: image.from_old_database }
       : {}),
   };
+  switch (image.openlibrary_work_id_confidence) {
+    case "UNCERTAIN":
+    case "LIKELY":
+    case "CONFIRMED":
+    case "HUMAN":
+      return {
+        ...base,
+        openLibraryWorkIdConfidence: image.openlibrary_work_id_confidence,
+        openlibraryWorkId: image.openlibrary_work_id!,
+      };
+    case "NO_MATCH":
+    case undefined:
+    default:
+      return {
+        ...base,
+        openLibraryWorkIdConfidence:
+          image.openlibrary_work_id_confidence || null,
+        openlibraryWorkId: null,
+      };
+  }
 }
 
 export function shapeImageDataArray(

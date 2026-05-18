@@ -12,17 +12,13 @@ type SearchMode = "titleAuthor" | "title" | "author" | "query";
 export const coverSearch = createServerFn({ method: "GET" })
   .inputValidator(
     z.object({
-      q: z.string().default(""),
       title: z.string().optional(),
       author: z.string().optional(),
     }),
   )
-  .handler(async ({ data: { q, title, author } }): Promise<ImageData[]> => {
-    const trimmedQuery = q.trim();
+  .handler(async ({ data: { title, author } }): Promise<ImageData[]> => {
     const trimmedTitle = title?.trim() ?? "";
     const trimmedAuthor = author?.trim() ?? "";
-
-    if (!trimmedTitle && !trimmedAuthor && trimmedQuery === "") return [];
 
     const start = performance.now();
     const { sql, sqlTools } = getDbReadConnection();
@@ -70,7 +66,9 @@ export const coverSearch = createServerFn({ method: "GET" })
           image.blurhash,
           image.from_old_database,
           image.searchable,
-          ranked_works.score
+          ranked_works.score,
+          image.openlibrary_work_id,
+          image.openlibrary_work_id_confidence
         FROM ranked_works
         JOIN image ON image.openlibrary_work_id = ranked_works.olid
         WHERE image.searchable IS TRUE
@@ -110,7 +108,9 @@ export const coverSearch = createServerFn({ method: "GET" })
           image.blurhash,
           image.from_old_database,
           image.searchable,
-          ranked_works.score
+          ranked_works.score,
+          image.openlibrary_work_id,
+          image.openlibrary_work_id_confidence
         FROM ranked_works
         JOIN image ON image.openlibrary_work_id = ranked_works.olid
         WHERE image.searchable IS TRUE
@@ -153,7 +153,9 @@ export const coverSearch = createServerFn({ method: "GET" })
           image.blurhash,
           image.from_old_database,
           image.searchable,
-          ranked_works.score
+          ranked_works.score,
+          image.openlibrary_work_id,
+          image.openlibrary_work_id_confidence
         FROM ranked_works
         JOIN image ON image.openlibrary_work_id = ranked_works.olid
         WHERE image.searchable IS TRUE
@@ -162,55 +164,7 @@ export const coverSearch = createServerFn({ method: "GET" })
         LIMIT 100
       `;
     } else {
-      searchMode = "query";
-      results = await sqlTools.many(DBImageDataValidator)`
-        WITH image_works AS (
-          SELECT DISTINCT openlibrary_work_id AS olid
-          FROM image
-          WHERE searchable IS TRUE
-            AND deleted IS FALSE
-            AND openlibrary_work_id IS NOT NULL
-        ),
-        query AS (
-          SELECT
-            websearch_to_tsquery('simple'::regconfig, ${trimmedQuery}) AS search_tsquery
-        ),
-        ranked_works AS (
-          SELECT
-            work.olid,
-            (
-              ts_rank(
-                to_tsvector('simple'::regconfig, COALESCE(work.title, '')),
-                query.search_tsquery
-              ) +
-              ts_rank(
-                to_tsvector('simple'::regconfig, immutable_array_to_string(work.author_names, ' ')),
-                query.search_tsquery
-              )
-            ) AS score
-          FROM image_works
-          JOIN openlibrary_work work ON work.olid = image_works.olid
-          CROSS JOIN query
-          WHERE to_tsvector('simple'::regconfig, COALESCE(work.title, '')) @@ query.search_tsquery
-             OR to_tsvector('simple'::regconfig, immutable_array_to_string(work.author_names, ' ')) @@ query.search_tsquery
-          ORDER BY score DESC
-          LIMIT 100
-        )
-        SELECT
-          image.id,
-          image.source,
-          image.extension,
-          image.blurhash,
-          image.from_old_database,
-          image.searchable,
-          ranked_works.score
-        FROM ranked_works
-        JOIN image ON image.openlibrary_work_id = ranked_works.olid
-        WHERE image.searchable IS TRUE
-          AND image.deleted IS FALSE
-        ORDER BY ranked_works.score DESC, image.id
-        LIMIT 100
-      `;
+      return [];
     }
 
     const time = performance.now() - start;
@@ -221,9 +175,8 @@ export const coverSearch = createServerFn({ method: "GET" })
         eventType: "coverSearch",
         payload: {
           appStage: env.APP_STAGE,
-          q: trimmedQuery,
-          title: trimmedTitle || undefined,
-          author: trimmedAuthor || undefined,
+          title: trimmedTitle || "",
+          author: trimmedAuthor || "",
           searchMode,
           results: final.length,
           databaseTime: time,

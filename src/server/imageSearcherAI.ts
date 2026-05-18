@@ -67,7 +67,9 @@ export const getImageByIdAndSimilar = createServerFn({
         extension,
         blurhash,
         from_old_database,
-        searchable
+        searchable,
+        openlibrary_work_id,
+        openlibrary_work_id_confidence
       FROM image
       WHERE id = ${id}
     `;
@@ -97,6 +99,8 @@ export const getImageByIdAndSimilar = createServerFn({
         i.blurhash,
         i.from_old_database,
         i.searchable,
+        i.openlibrary_work_id,
+        i.openlibrary_work_id_confidence,
         1 - (i.${sql(model.dbColumn)} <=> target.e) as score
       FROM
         searchable_images as i
@@ -170,6 +174,8 @@ async function singleModelSearch(
         blurhash,
         from_old_database,
         searchable,
+        openlibrary_work_id,
+        openlibrary_work_id_confidence
         1 - (${sql(model.dbColumn)} <=> ${JSON.stringify(vector.embedding)}) as score
       FROM image
       WHERE searchable IS TRUE
@@ -257,7 +263,9 @@ async function multiModelSearch(
       i.blurhash,
       i.from_old_database,
       i.searchable,
-      rrf.rrf_score AS score
+      rrf.rrf_score AS score,
+      i.openlibrary_work_id,
+      i.openlibrary_work_id_confidence
     FROM rrf
     JOIN image i ON i.id = rrf.id
     ORDER BY rrf_score DESC

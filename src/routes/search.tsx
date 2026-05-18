@@ -9,7 +9,6 @@ import { getIsAuthenticated } from "@/server/auth";
 import { coverSearch } from "@/server/imageSearcher";
 
 const searchParameters = z.object({
-  q: z.string().default(""),
   title: z.string().optional(),
   author: z.string().optional(),
   showScore: z.boolean().optional(),
@@ -24,7 +23,6 @@ export const Route = createFileRoute("/search")({
       getIsAuthenticated(),
       coverSearch({
         data: {
-          q: data.search.q,
           title: data.search.title,
           author: data.search.author,
         },
@@ -41,7 +39,6 @@ export const Route = createFileRoute("/search")({
 function RouteComponent() {
   const { query, images, isAuthenticated } = Route.useLoaderData();
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState(query.q);
   const [titleQuery, setTitleQuery] = useState(query.title);
   const [authorQuery, setAuthorQuery] = useState(query.author);
   const [showScore, setShowScore] = useState(query.showScore);
@@ -50,7 +47,6 @@ function RouteComponent() {
     navigate({
       to: "/search",
       search: {
-        q: searchQuery,
         title: titleQuery,
         author: authorQuery,
         showScore,
@@ -68,11 +64,22 @@ function RouteComponent() {
         }}
       >
         <div className="flex gap-6">
-          <Input
-            type="text border rounded-lg px-2 py-1"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+          <div>
+            <Input
+              type="text border rounded-lg px-2 py-1"
+              value={titleQuery}
+              onChange={(e) => setTitleQuery(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <Input
+              type="text border rounded-lg px-2 py-1"
+              value={authorQuery}
+              onChange={(e) => setAuthorQuery(e.target.value)}
+            />
+          </div>
+
           <Button type="submit">Search</Button>
         </div>
       </form>
