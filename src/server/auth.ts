@@ -1,10 +1,12 @@
-import { getDbWriteConnection } from "@/server/db";
+import { writeDb } from "@/server/db.http";
+import { and, eq, gt, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 import base64 from "base-64";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { redirect } from "@tanstack/react-router";
 import { logAnalyticsEvent } from "@/server/analytics";
+import { session, web_user } from "@/db/schema";
 
 function parseCookie(str: string) {
   if (!str || typeof str !== "string") return {} as Record<string, string>;
@@ -59,20 +61,21 @@ export const getIsAuthenticated = createServerFn().handler(
       return { isAuthenticated: false };
     }
 
-    const { sqlTools } = getDbWriteConnection();
-    const result = await sqlTools.maybeOne(
-      z.object({
-        username: z.string(),
-        session_id: z.string(),
-      }),
-    )`
-      SELECT s.session_id AS session_id, u.username AS username
-      FROM session s
-      JOIN web_user u ON s.user_id = u.id
-      WHERE session_id = ${auth.data.sessionId}
-      AND expires_at > NOW()
-      AND u.username = ${auth.data.username}
-    `;
+    const [result] = await writeDb
+      .select({
+        username: web_user.username,
+        session_id: session.session_id,
+      })
+      .from(session)
+      .innerJoin(web_user, eq(session.user_id, web_user.id))
+      .where(
+        and(
+          eq(session.session_id, auth.data.sessionId),
+          gt(session.expires_at, sql`NOW()`),
+          eq(web_user.username, auth.data.username),
+        ),
+      )
+      .limit(1);
 
     if (!result) {
       return { isAuthenticated: false };

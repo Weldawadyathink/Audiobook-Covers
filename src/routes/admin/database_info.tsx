@@ -1,41 +1,35 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { getDbReadConnection } from "@/server/db";
-import { z } from "zod/v4";
+import { readDb } from "@/server/db.http";
 import StatCard from "@/components/StatCard";
+import { image } from "@/db/schema";
+import { desc, isNotNull, sql } from "drizzle-orm";
 
 const getDatabaseStats = createServerFn().handler(async () => {
   console.log("ADMIN: Getting database statistics.");
-  const { sqlTools } = getDbReadConnection();
-  const overallStats = await sqlTools.one(
-    z.object({
-      total: z.number(),
-      deleted: z.number(),
-      searchable: z.number(),
-    }),
-  )`
-    SELECT
-      COUNT(*)::int AS total,
-      COUNT(*) FILTER (WHERE deleted = TRUE)::int AS deleted,
-      COUNT(*) FILTER (WHERE searchable = TRUE)::int AS searchable
-    FROM image
-  `;
+  const [overallStats] = await readDb
+    .select({
+      total: sql<number>`COUNT(*)::int`,
+      deleted: sql<number>`COUNT(*) FILTER (WHERE ${image.deleted} = TRUE)::int`,
+      searchable: sql<number>`COUNT(*) FILTER (WHERE ${image.searchable} = TRUE)::int`,
+    })
+    .from(image);
 
-  const extensionStats = await sqlTools.many(
-    z.object({
-      extension: z.string().nullable(),
-      count: z.number(),
-    }),
-  )`
-    SELECT
-      extension,
-      COUNT(*)::int AS count
-    FROM image
-    WHERE extension IS NOT NULL
-    GROUP BY extension
-    ORDER BY count DESC
-    LIMIT 10
-  `;
+  if (!overallStats) {
+    throw new Error("Could not load database statistics.");
+  }
+
+  const extensionCount = sql<number>`COUNT(*)::int`;
+  const extensionStats = await readDb
+    .select({
+      extension: image.extension,
+      count: extensionCount,
+    })
+    .from(image)
+    .where(isNotNull(image.extension))
+    .groupBy(image.extension)
+    .orderBy(desc(extensionCount))
+    .limit(10);
 
   return {
     overall: overallStats,

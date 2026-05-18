@@ -1,8 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
 import { getIsAuthenticated } from "./auth";
-import { getDbWriteConnection } from "@/server/db";
+import { writeDb } from "@/server/db.http";
 import { logAnalyticsEvent } from "@/server/analytics";
+import { image } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 export const setImageDeleted = createServerFn()
   .inputValidator(z.object({ id: z.uuid() }))
@@ -11,10 +13,7 @@ export const setImageDeleted = createServerFn()
     if (!auth.isAuthenticated) {
       throw new Error("Not authorized");
     }
-    const { sqlTools } = getDbWriteConnection();
-    await sqlTools.query`
-      UPDATE image SET deleted = TRUE WHERE id = ${id}
-    `;
+    await writeDb.update(image).set({ deleted: true }).where(eq(image.id, id));
     await logAnalyticsEvent({
       data: {
         eventType: "imageDeleted",
@@ -31,10 +30,10 @@ export const setImageNotDeleted = createServerFn()
     if (!auth.isAuthenticated) {
       throw new Error("Not authorized");
     }
-    const { sqlTools } = getDbWriteConnection();
-    await sqlTools.query`
-      UPDATE image SET deleted = FALSE WHERE id = ${id}
-    `;
+    await writeDb
+      .update(image)
+      .set({ deleted: false })
+      .where(eq(image.id, id));
     await logAnalyticsEvent({
       data: {
         eventType: "imageUndeleted",
@@ -52,10 +51,10 @@ export const setImageSearchable = createServerFn()
       throw new Error("Not authorized");
     }
     console.log("Setting image as searchable", id);
-    const { sqlTools } = getDbWriteConnection();
-    await sqlTools.query`
-      UPDATE image SET searchable = TRUE WHERE id = ${id}
-    `;
+    await writeDb
+      .update(image)
+      .set({ searchable: true })
+      .where(eq(image.id, id));
     await logAnalyticsEvent({
       data: {
         eventType: "setImageSearchable",
@@ -73,10 +72,10 @@ export const setImageNotSearchable = createServerFn()
       throw new Error("Not authorized");
     }
     console.log("Setting image as not searchable", id);
-    const { sqlTools } = getDbWriteConnection();
-    await sqlTools.query`
-      UPDATE image SET searchable = FALSE WHERE id = ${id}
-    `;
+    await writeDb
+      .update(image)
+      .set({ searchable: false })
+      .where(eq(image.id, id));
     await logAnalyticsEvent({
       data: {
         eventType: "setImageNotSearchable",

@@ -2,21 +2,19 @@ import { createFileRoute } from "@tanstack/react-router";
 import ImageCard from "@/components/ImageCard";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
-import { getDbReadConnection } from "@/server/db";
+import { readDb } from "@/server/db.http";
 import { toast, Toaster } from "sonner";
 import { DBImageDataValidator, shapeImageData } from "@/server/imageData";
 import { setImageDeleted, setImageNotDeleted } from "@/server/crud";
+import { sql } from "drizzle-orm";
 
 const getSimilarImagePairs = createServerFn().handler(async () => {
   console.log("ADMIN: Getting similar images from database.");
-  const { sqlTools } = getDbReadConnection();
-  const rawImages = await sqlTools.many(
-    z.object({
-      distance: z.number(),
-      image1: DBImageDataValidator,
-      image2: DBImageDataValidator,
-    }),
-  )`
+  const result = await readDb.execute<{
+    distance: number;
+    image1: z.infer<typeof DBImageDataValidator>;
+    image2: z.infer<typeof DBImageDataValidator>;
+  }>(sql`
       SELECT
         jsonb_build_object(
           'id',                i1.id,
@@ -40,7 +38,16 @@ const getSimilarImagePairs = createServerFn().handler(async () => {
       JOIN image i2 ON i2.id = n.id2 AND i2.deleted IS FALSE AND i2.searchable IS TRUE
       ORDER BY n.distance
       LIMIT 48
-    `;
+    `);
+  const rawImages = z
+    .array(
+      z.object({
+        distance: z.number(),
+        image1: DBImageDataValidator,
+        image2: DBImageDataValidator,
+      }),
+    )
+    .parse(result.rows);
 
   const images = await Promise.all(
     rawImages.map(async (pair) => {

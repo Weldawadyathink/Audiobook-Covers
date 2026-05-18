@@ -1,11 +1,13 @@
 import { z } from "zod/v4";
-import { getDbWriteConnection } from "@/server/db";
+import { writeDb } from "@/server/db.http";
+import { eq, sql } from "drizzle-orm";
 import base64 from "base-64";
 import { createFileRoute } from "@tanstack/react-router";
 import cookie from "cookie";
 import argon2 from "argon2-browser";
 import { randomBytes } from "node:crypto";
 import { logAnalyticsEvent } from "@/server/analytics";
+import { session, web_user } from "@/db/schema";
 
 const formValidator = z.object({
   username: z.string(),
@@ -25,18 +27,15 @@ export const Route = createFileRoute("/api/login")({
             status: 400,
           });
         }
-        const { sqlTools } = getDbWriteConnection();
-        const result = await sqlTools.maybeOne(
-          z.object({
-            id: z.number(),
-            username: z.string(),
-            password_hash: z.string(),
-          }),
-        )`
-          SELECT id, username, password_hash
-          FROM web_user
-          WHERE username = ${form.username}
-        `;
+        const [result] = await writeDb
+          .select({
+            id: web_user.id,
+            username: web_user.username,
+            password_hash: web_user.password_hash,
+          })
+          .from(web_user)
+          .where(eq(web_user.username, form.username))
+          .limit(1);
         if (!result) {
           await logAnalyticsEvent({
             data: {
@@ -63,10 +62,11 @@ export const Route = createFileRoute("/api/login")({
           return new Response("Invalid username or password", { status: 401 });
         }
         const sessionId = randomBytes(32).toString("hex");
-        await sqlTools.query`
-          INSERT INTO session(session_id, user_id, expires_at)
-          VALUES(${sessionId}, ${result.id}, NOW() + INTERVAL '1 day')
-        `;
+        await writeDb.insert(session).values({
+          session_id: sessionId,
+          user_id: result.id,
+          expires_at: sql`NOW() + INTERVAL '1 day'`,
+        });
         await logAnalyticsEvent({
           data: {
             eventType: "adminUserLoginSuccess",

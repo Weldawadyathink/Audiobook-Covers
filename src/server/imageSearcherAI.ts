@@ -3,7 +3,7 @@ import {
   shapeImageData,
   ImageData,
 } from "@/server/imageData";
-import { getDbReadConnection } from "@/server/db";
+import { readDb } from "@/server/db.http";
 import { getModel, defaultModelName } from "@/server/search/search";
 import { DBImageDataValidator } from "@/server/imageData";
 import { createServerFn } from "@tanstack/react-start";
@@ -11,7 +11,8 @@ import { z } from "zod/v4";
 import { logAnalyticsEvent } from "@/server/analytics";
 import { getReranker } from "@/server/rerankers/rerankers";
 import { env } from "@/env.cloudflare";
-import { waitUntil } from "cloudflare:workers";
+import { image, openlibrary_work } from "@/db/schema";
+import { and, eq, sql as drizzleSql } from "drizzle-orm";
 
 const rrfModelConfig = z.object({
   model: z.string(),
@@ -24,20 +25,19 @@ type RRFModelConfig = z.infer<typeof rrfModelConfig>;
 export const getRandom = createServerFn().handler(async () => {
   console.log("Getting random cover");
   const start = performance.now();
-  const { sqlTools } = getDbReadConnection();
-  const results = await sqlTools.many(DBImageDataValidator)`
-    SELECT
-      id,
-      source,
-      extension,
-      from_old_database,
-      blurhash
-    FROM image
-    WHERE searchable
-      AND deleted IS FALSE
-    ORDER BY RANDOM()
-    LIMIT 54
-  `;
+  const rows = await readDb
+    .select({
+      id: image.id,
+      source: image.source,
+      extension: image.extension,
+      from_old_database: image.from_old_database,
+      blurhash: image.blurhash,
+    })
+    .from(image)
+    .where(and(eq(image.searchable, true), eq(image.deleted, false)))
+    .orderBy(drizzleSql`RANDOM()`)
+    .limit(54);
+  const results = z.array(DBImageDataValidator).parse(rows);
   const time = performance.now() - start;
   console.log(`getRandom database lookup in ${time.toFixed(1)}ms`);
   await logAnalyticsEvent({
@@ -59,32 +59,38 @@ export const getImageByIdAndSimilar = createServerFn({
   .handler(async ({ data: id }) => {
     console.log(`getImageByIdAndSimilar: ${id}`);
     const start = performance.now();
-    const { sqlTools, sql } = getDbReadConnection();
-    const target = await sqlTools.maybeOne(DBImageDataValidator)`
-      SELECT
-        id,
-        source,
-        extension,
-        blurhash,
-        from_old_database,
-        searchable,
-        openlibrary_work_id,
-        openlibrary_work_id_confidence,
-        work.title AS openlibrary_title,
-        work.subtitle AS openlibrary_subtitle,
-        work.author_names AS openlibrary_author_names,
-        work.first_publish_year AS openlibrary_first_publish_year
-      FROM image
-      LEFT JOIN openlibrary_work work ON work.olid = image.openlibrary_work_id
-      WHERE image.id = ${id}
-    `;
+    const [targetRow] = await readDb
+      .select({
+        id: image.id,
+        source: image.source,
+        extension: image.extension,
+        blurhash: image.blurhash,
+        from_old_database: image.from_old_database,
+        searchable: image.searchable,
+        openlibrary_work_id: image.openlibrary_work_id,
+        openlibrary_work_id_confidence: image.openlibrary_work_id_confidence,
+        openlibrary_title: openlibrary_work.title,
+        openlibrary_subtitle: openlibrary_work.subtitle,
+        openlibrary_author_names: openlibrary_work.author_names,
+        openlibrary_first_publish_year: openlibrary_work.first_publish_year,
+      })
+      .from(image)
+      .leftJoin(
+        openlibrary_work,
+        eq(openlibrary_work.olid, image.openlibrary_work_id),
+      )
+      .where(eq(image.id, id))
+      .limit(1);
+    const target = targetRow ? DBImageDataValidator.parse(targetRow) : null;
     if (!target) {
       return [];
     }
 
     const model = getModel(defaultModelName);
+    const modelColumn = drizzleSql.identifier(model.dbColumn);
 
-    const results = await sqlTools.many(DBImageDataValidator)`
+    const result = await readDb.execute<z.infer<typeof DBImageDataValidator>>(
+      drizzleSql`
       WITH searchable_images AS (
         SELECT *
         FROM image
@@ -92,7 +98,7 @@ export const getImageByIdAndSimilar = createServerFn({
           AND deleted IS FALSE
       ),
       target AS (
-        SELECT ${sql(model.dbColumn)} AS e
+        SELECT ${modelColumn} AS e
         FROM image
         WHERE id = ${id}
           AND deleted IS FALSE
@@ -106,14 +112,16 @@ export const getImageByIdAndSimilar = createServerFn({
         i.searchable,
         i.openlibrary_work_id,
         i.openlibrary_work_id_confidence,
-        1 - (i.${sql(model.dbColumn)} <=> target.e) as score
+        1 - (${drizzleSql.identifier("i")}.${modelColumn} <=> target.e) as score
       FROM
         searchable_images as i
         CROSS JOIN target
       WHERE i.id != ${id}
       ORDER BY score DESC
       LIMIT 96
-    `;
+    `,
+    );
+    const results = z.array(DBImageDataValidator).parse(result.rows);
     const time = performance.now() - start;
     console.log(
       `getImageByIdAndSimilar database lookup in ${time.toFixed(1)}ms`,
@@ -169,8 +177,9 @@ async function singleModelSearch(
   const vector = await model.getTextEmbedding(q);
   const timeB = performance.now();
 
-  const { sql, sqlTools } = getDbReadConnection();
-  const results = await sqlTools.many(DBImageDataValidator)`
+  const modelColumn = drizzleSql.identifier(model.dbColumn);
+  const result = await readDb.execute<z.infer<typeof DBImageDataValidator>>(
+    drizzleSql`
     WITH searchable_images AS (
       SELECT
         id,
@@ -180,8 +189,8 @@ async function singleModelSearch(
         from_old_database,
         searchable,
         openlibrary_work_id,
-        openlibrary_work_id_confidence
-        1 - (${sql(model.dbColumn)} <=> ${JSON.stringify(vector.embedding)}) as score
+        openlibrary_work_id_confidence,
+        1 - (${modelColumn} <=> ${JSON.stringify(vector.embedding)}) as score
       FROM image
       WHERE searchable IS TRUE
         AND deleted IS FALSE
@@ -191,7 +200,9 @@ async function singleModelSearch(
     WHERE score >= ${similarityThreshold}
     ORDER BY score DESC
     LIMIT 100
-  `;
+  `,
+  );
+  const results = z.array(DBImageDataValidator).parse(result.rows);
   const timeC = performance.now();
   const final = await shapeImageDataArray(results);
 
@@ -210,8 +221,6 @@ async function singleModelSearch(
     },
   });
 
-  // Not strictly necessary, but closes all promises so local test runners exit cleanly
-  waitUntil(sql.end());
   return final;
 }
 
@@ -232,17 +241,16 @@ async function multiModelSearch(
 
   // Build a dynamic RRF SQL query using UNION ALL + GROUP BY in Postgres.
   // Each model contributes a ranked list; RRF scores are summed per image id.
-  const { sql, sqlTools } = getDbReadConnection();
-
-  const unionParts: ReturnType<typeof sql>[] = [];
+  const unionParts: ReturnType<typeof drizzleSql>[] = [];
 
   for (const result of embeddings) {
     if (result.status === "fulfilled") {
       const { config, model, embedding } = result.value;
-      unionParts.push(sql`(
+      const modelColumn = drizzleSql.identifier(model.dbColumn);
+      unionParts.push(drizzleSql`(
         SELECT
           id,
-          ROW_NUMBER() OVER (ORDER BY (${sql(model.dbColumn)} <=> ${JSON.stringify(embedding)})) AS rank,
+          ROW_NUMBER() OVER (ORDER BY (${modelColumn} <=> ${JSON.stringify(embedding)})) AS rank,
           ${config.k}::float AS k,
           ${config.weight}::float AS weight
         FROM image
@@ -252,9 +260,13 @@ async function multiModelSearch(
     }
   }
 
-  const query = sql`
+  if (unionParts.length === 0) {
+    return [];
+  }
+
+  const query = drizzleSql`
     WITH ranked_union AS (
-      ${unionParts.reduce((acc, part) => sql`${acc} UNION ALL ${part}`)}
+      ${drizzleSql.join(unionParts, drizzleSql` UNION ALL `)}
     ),
     rrf AS (
       SELECT id, SUM(weight / (k + rank)) AS rrf_score
@@ -277,7 +289,10 @@ async function multiModelSearch(
     LIMIT 100
   `;
 
-  const results = await sqlTools.many(DBImageDataValidator)`${query}`;
+  const result = await readDb.execute<z.infer<typeof DBImageDataValidator>>(
+    query,
+  );
+  const results = z.array(DBImageDataValidator).parse(result.rows);
   const timeC = performance.now();
   const final = await shapeImageDataArray(results);
 
@@ -296,8 +311,6 @@ async function multiModelSearch(
     },
   });
 
-  // Not strictly necessary, but closes all promises so local test runners exit cleanly
-  waitUntil(sql.end());
   return final;
 }
 

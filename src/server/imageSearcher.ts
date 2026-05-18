@@ -1,11 +1,11 @@
 import { shapeImageDataArray, ImageData } from "@/server/imageData";
-import { getDbReadConnection } from "@/server/db";
+import { readDb } from "@/server/db.http";
 import { DBImageDataValidator } from "@/server/imageData";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
 import { logAnalyticsEvent } from "@/server/analytics";
 import { env } from "@/env.cloudflare";
-import { waitUntil } from "cloudflare:workers";
+import { sql } from "drizzle-orm";
 
 type SearchMode = "titleAuthor" | "title" | "author" | "query";
 
@@ -21,14 +21,12 @@ export const coverSearch = createServerFn({ method: "GET" })
     const trimmedAuthor = author?.trim() ?? "";
 
     const start = performance.now();
-    const { sql, sqlTools } = getDbReadConnection();
-
     let searchMode: SearchMode;
     let results: Array<z.infer<typeof DBImageDataValidator>>;
 
     if (trimmedTitle && trimmedAuthor) {
       searchMode = "titleAuthor";
-      results = await sqlTools.many(DBImageDataValidator)`
+      const result = await readDb.execute<z.infer<typeof DBImageDataValidator>>(sql`
         WITH image_works AS (
           SELECT DISTINCT openlibrary_work_id AS olid
           FROM image
@@ -75,10 +73,11 @@ export const coverSearch = createServerFn({ method: "GET" })
           AND image.deleted IS FALSE
         ORDER BY ranked_works.score DESC, image.id
         LIMIT 100
-      `;
+      `);
+      results = z.array(DBImageDataValidator).parse(result.rows);
     } else if (trimmedTitle) {
       searchMode = "title";
-      results = await sqlTools.many(DBImageDataValidator)`
+      const result = await readDb.execute<z.infer<typeof DBImageDataValidator>>(sql`
         WITH image_works AS (
           SELECT DISTINCT openlibrary_work_id AS olid
           FROM image
@@ -117,10 +116,11 @@ export const coverSearch = createServerFn({ method: "GET" })
           AND image.deleted IS FALSE
         ORDER BY ranked_works.score DESC, image.id
         LIMIT 100
-      `;
+      `);
+      results = z.array(DBImageDataValidator).parse(result.rows);
     } else if (trimmedAuthor) {
       searchMode = "author";
-      results = await sqlTools.many(DBImageDataValidator)`
+      const result = await readDb.execute<z.infer<typeof DBImageDataValidator>>(sql`
         WITH image_works AS (
           SELECT DISTINCT openlibrary_work_id AS olid
           FROM image
@@ -162,7 +162,8 @@ export const coverSearch = createServerFn({ method: "GET" })
           AND image.deleted IS FALSE
         ORDER BY ranked_works.score DESC, image.id
         LIMIT 100
-      `;
+      `);
+      results = z.array(DBImageDataValidator).parse(result.rows);
     } else {
       return [];
     }
@@ -184,6 +185,5 @@ export const coverSearch = createServerFn({ method: "GET" })
       },
     });
 
-    waitUntil(sql.end());
     return final;
   });

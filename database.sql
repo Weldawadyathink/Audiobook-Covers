@@ -1,3 +1,7 @@
+-- Legacy schema reference.
+-- Drizzle schema lives in src/db/schema.ts; keep this file temporarily while
+-- the generated Drizzle migrations are reviewed and baselined by a human.
+
 -- Audiobookcovers user
 
 GRANT USAGE ON SCHEMA public TO audiobookcovers;

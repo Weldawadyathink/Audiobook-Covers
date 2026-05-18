@@ -1,6 +1,7 @@
 import { modelMap, ModelDefinition } from "@/server/search/search";
 import { Command } from "commander";
-import { getDbWriteConnection } from "@/server/db";
+import { getDbWriteConnection } from "@/db";
+import { env } from "@/env.cloudflare";
 import { DBImageDataValidator, shapeImageDataArray } from "@/server/imageData";
 import pLimit from "p-limit";
 import "dotenv/config";
@@ -44,7 +45,7 @@ if (!modelDefinition) {
   process.exit(1);
 }
 
-const { sql, sqlTools } = getDbWriteConnection();
+const { sql, sqlTools } = getDbWriteConnection(env);
 
 const images = await sqlTools.many(DBImageDataValidator)`
   SELECT id, source, extension, blurhash, from_old_database, searchable

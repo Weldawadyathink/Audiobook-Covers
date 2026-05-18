@@ -2,9 +2,11 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import cookie from "cookie";
-import { getDbWriteConnection } from "@/server/db";
+import { writeDb } from "@/server/db.http";
+import { eq } from "drizzle-orm";
 import { useEffect } from "react";
 import { logAnalyticsEvent } from "@/server/analytics";
+import { session } from "@/db/schema";
 
 export const logout = createServerFn({ method: "POST" }).handler(async () => {
   const request = getRequest();
@@ -17,10 +19,7 @@ export const logout = createServerFn({ method: "POST" }).handler(async () => {
         const sessionId = JSON.parse(
           Buffer.from(auth, "base64").toString(),
         ).sessionId;
-        const { sqlTools } = getDbWriteConnection();
-        await sqlTools.query`
-          DELETE FROM session WHERE session_id = ${sessionId}
-        `;
+        await writeDb.delete(session).where(eq(session.session_id, sessionId));
       } catch (e) {
         // If parsing fails, just continue with cookie removal
       }
