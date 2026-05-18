@@ -5,9 +5,55 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
 import { logAnalyticsEvent } from "@/server/analytics";
 import { env } from "@/env.cloudflare";
-import { sql } from "drizzle-orm";
+import { image, openlibrary_work } from "@/db/schema";
+import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 
 type SearchMode = "titleAuthor" | "title" | "author" | "query";
+
+const imageWorks = readDb.$with("image_works").as(
+  readDb
+    .selectDistinct({
+      olid: image.openlibrary_work_id,
+    })
+    .from(image)
+    .where(
+      and(
+        eq(image.searchable, true),
+        eq(image.deleted, false),
+        isNotNull(image.openlibrary_work_id),
+      ),
+    ),
+);
+
+function titleVector() {
+  return sql`to_tsvector('simple'::regconfig, COALESCE(${openlibrary_work.title}, ''))`;
+}
+
+function authorVector() {
+  return sql`to_tsvector('simple'::regconfig, immutable_array_to_string(${openlibrary_work.author_names}, ' '))`;
+}
+
+function titleQuery(value: string) {
+  return sql`websearch_to_tsquery('simple'::regconfig, ${value})`;
+}
+
+function authorQuery(value: string) {
+  return sql`websearch_to_tsquery('simple'::regconfig, ${value})`;
+}
+
+function resultSelection<TScore>(score: TScore) {
+  return {
+    id: image.id,
+    source: image.source,
+    extension: image.extension,
+    blurhash: image.blurhash,
+    from_old_database: image.from_old_database,
+    searchable: image.searchable,
+    score,
+    openlibrary_work_id: image.openlibrary_work_id,
+    openlibrary_work_id_confidence: image.openlibrary_work_id_confidence,
+  };
+}
 
 export const coverSearch = createServerFn({ method: "GET" })
   .inputValidator(
@@ -26,144 +72,95 @@ export const coverSearch = createServerFn({ method: "GET" })
 
     if (trimmedTitle && trimmedAuthor) {
       searchMode = "titleAuthor";
-      const result = await readDb.execute<z.infer<typeof DBImageDataValidator>>(sql`
-        WITH image_works AS (
-          SELECT DISTINCT openlibrary_work_id AS olid
-          FROM image
-          WHERE searchable IS TRUE
-            AND deleted IS FALSE
-            AND openlibrary_work_id IS NOT NULL
-        ),
-        query AS (
-          SELECT
-            websearch_to_tsquery('simple'::regconfig, ${trimmedTitle}) AS title_tsquery,
-            websearch_to_tsquery('simple'::regconfig, ${trimmedAuthor}) AS author_tsquery
-        ),
-        ranked_works AS (
-          SELECT
-            work.olid,
-            (
-              ts_rank(to_tsvector('simple'::regconfig, COALESCE(work.title, '')), query.title_tsquery) +
-              ts_rank(
-                to_tsvector('simple'::regconfig, immutable_array_to_string(work.author_names, ' ')),
-                query.author_tsquery
-              )
-            ) AS score
-          FROM image_works
-          JOIN openlibrary_work work ON work.olid = image_works.olid
-          CROSS JOIN query
-          WHERE to_tsvector('simple'::regconfig, COALESCE(work.title, '')) @@ query.title_tsquery
-            AND to_tsvector('simple'::regconfig, immutable_array_to_string(work.author_names, ' ')) @@ query.author_tsquery
-          ORDER BY score DESC
-          LIMIT 100
-        )
-        SELECT
-          image.id,
-          image.source,
-          image.extension,
-          image.blurhash,
-          image.from_old_database,
-          image.searchable,
-          ranked_works.score,
-          image.openlibrary_work_id,
-          image.openlibrary_work_id_confidence
-        FROM ranked_works
-        JOIN image ON image.openlibrary_work_id = ranked_works.olid
-        WHERE image.searchable IS TRUE
-          AND image.deleted IS FALSE
-        ORDER BY ranked_works.score DESC, image.id
-        LIMIT 100
-      `);
-      results = z.array(DBImageDataValidator).parse(result.rows);
+      const titleTsQuery = titleQuery(trimmedTitle);
+      const authorTsQuery = authorQuery(trimmedAuthor);
+      const score = sql<number>`(
+        ts_rank(${titleVector()}, ${titleTsQuery}) +
+        ts_rank(${authorVector()}, ${authorTsQuery})
+      )`.as("score");
+      const rankedWorks = readDb.$with("ranked_works").as(
+        readDb
+          .select({
+            olid: openlibrary_work.olid,
+            score,
+          })
+          .from(imageWorks)
+          .innerJoin(openlibrary_work, eq(openlibrary_work.olid, imageWorks.olid))
+          .where(
+            and(
+              sql`${titleVector()} @@ ${titleTsQuery}`,
+              sql`${authorVector()} @@ ${authorTsQuery}`,
+            ),
+          )
+          .orderBy(desc(score))
+          .limit(100),
+      );
+
+      const rows = await readDb
+        .with(imageWorks, rankedWorks)
+        .select(resultSelection(rankedWorks.score))
+        .from(rankedWorks)
+        .innerJoin(image, eq(image.openlibrary_work_id, rankedWorks.olid))
+        .where(and(eq(image.searchable, true), eq(image.deleted, false)))
+        .orderBy(desc(rankedWorks.score), image.id)
+        .limit(100);
+      results = z.array(DBImageDataValidator).parse(rows);
     } else if (trimmedTitle) {
       searchMode = "title";
-      const result = await readDb.execute<z.infer<typeof DBImageDataValidator>>(sql`
-        WITH image_works AS (
-          SELECT DISTINCT openlibrary_work_id AS olid
-          FROM image
-          WHERE searchable IS TRUE
-            AND deleted IS FALSE
-            AND openlibrary_work_id IS NOT NULL
-        ),
-        query AS (
-          SELECT
-            websearch_to_tsquery('simple'::regconfig, ${trimmedTitle}) AS title_tsquery
-        ),
-        ranked_works AS (
-          SELECT
-            work.olid,
-            ts_rank(to_tsvector('simple'::regconfig, COALESCE(work.title, '')), query.title_tsquery) AS score
-          FROM image_works
-          JOIN openlibrary_work work ON work.olid = image_works.olid
-          CROSS JOIN query
-          WHERE to_tsvector('simple'::regconfig, COALESCE(work.title, '')) @@ query.title_tsquery
-          ORDER BY score DESC
-          LIMIT 100
-        )
-        SELECT
-          image.id,
-          image.source,
-          image.extension,
-          image.blurhash,
-          image.from_old_database,
-          image.searchable,
-          ranked_works.score,
-          image.openlibrary_work_id,
-          image.openlibrary_work_id_confidence
-        FROM ranked_works
-        JOIN image ON image.openlibrary_work_id = ranked_works.olid
-        WHERE image.searchable IS TRUE
-          AND image.deleted IS FALSE
-        ORDER BY ranked_works.score DESC, image.id
-        LIMIT 100
-      `);
-      results = z.array(DBImageDataValidator).parse(result.rows);
+      const titleTsQuery = titleQuery(trimmedTitle);
+      const score = sql<number>`ts_rank(${titleVector()}, ${titleTsQuery})`.as(
+        "score",
+      );
+      const rankedWorks = readDb.$with("ranked_works").as(
+        readDb
+          .select({
+            olid: openlibrary_work.olid,
+            score,
+          })
+          .from(imageWorks)
+          .innerJoin(openlibrary_work, eq(openlibrary_work.olid, imageWorks.olid))
+          .where(sql`${titleVector()} @@ ${titleTsQuery}`)
+          .orderBy(desc(score))
+          .limit(100),
+      );
+
+      const rows = await readDb
+        .with(imageWorks, rankedWorks)
+        .select(resultSelection(rankedWorks.score))
+        .from(rankedWorks)
+        .innerJoin(image, eq(image.openlibrary_work_id, rankedWorks.olid))
+        .where(and(eq(image.searchable, true), eq(image.deleted, false)))
+        .orderBy(desc(rankedWorks.score), image.id)
+        .limit(100);
+      results = z.array(DBImageDataValidator).parse(rows);
     } else if (trimmedAuthor) {
       searchMode = "author";
-      const result = await readDb.execute<z.infer<typeof DBImageDataValidator>>(sql`
-        WITH image_works AS (
-          SELECT DISTINCT openlibrary_work_id AS olid
-          FROM image
-          WHERE searchable IS TRUE
-            AND deleted IS FALSE
-            AND openlibrary_work_id IS NOT NULL
-        ),
-        query AS (
-          SELECT
-            websearch_to_tsquery('simple'::regconfig, ${trimmedAuthor}) AS author_tsquery
-        ),
-        ranked_works AS (
-          SELECT
-            work.olid,
-            ts_rank(
-              to_tsvector('simple'::regconfig, immutable_array_to_string(work.author_names, ' ')),
-              query.author_tsquery
-            ) AS score
-          FROM image_works
-          JOIN openlibrary_work work ON work.olid = image_works.olid
-          CROSS JOIN query
-          WHERE to_tsvector('simple'::regconfig, immutable_array_to_string(work.author_names, ' ')) @@ query.author_tsquery
-          ORDER BY score DESC
-          LIMIT 100
-        )
-        SELECT
-          image.id,
-          image.source,
-          image.extension,
-          image.blurhash,
-          image.from_old_database,
-          image.searchable,
-          ranked_works.score,
-          image.openlibrary_work_id,
-          image.openlibrary_work_id_confidence
-        FROM ranked_works
-        JOIN image ON image.openlibrary_work_id = ranked_works.olid
-        WHERE image.searchable IS TRUE
-          AND image.deleted IS FALSE
-        ORDER BY ranked_works.score DESC, image.id
-        LIMIT 100
-      `);
-      results = z.array(DBImageDataValidator).parse(result.rows);
+      const authorTsQuery = authorQuery(trimmedAuthor);
+      const score = sql<number>`ts_rank(${authorVector()}, ${authorTsQuery})`.as(
+        "score",
+      );
+      const rankedWorks = readDb.$with("ranked_works").as(
+        readDb
+          .select({
+            olid: openlibrary_work.olid,
+            score,
+          })
+          .from(imageWorks)
+          .innerJoin(openlibrary_work, eq(openlibrary_work.olid, imageWorks.olid))
+          .where(sql`${authorVector()} @@ ${authorTsQuery}`)
+          .orderBy(desc(score))
+          .limit(100),
+      );
+
+      const rows = await readDb
+        .with(imageWorks, rankedWorks)
+        .select(resultSelection(rankedWorks.score))
+        .from(rankedWorks)
+        .innerJoin(image, eq(image.openlibrary_work_id, rankedWorks.olid))
+        .where(and(eq(image.searchable, true), eq(image.deleted, false)))
+        .orderBy(desc(rankedWorks.score), image.id)
+        .limit(100);
+      results = z.array(DBImageDataValidator).parse(rows);
     } else {
       return [];
     }

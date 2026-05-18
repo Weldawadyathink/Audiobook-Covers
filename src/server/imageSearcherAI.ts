@@ -12,7 +12,16 @@ import { logAnalyticsEvent } from "@/server/analytics";
 import { getReranker } from "@/server/rerankers/rerankers";
 import { env } from "@/env.cloudflare";
 import { image, openlibrary_work } from "@/db/schema";
-import { and, eq, sql as drizzleSql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  gte,
+  ne,
+  sql as drizzleSql,
+} from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
+import { cosineDistance } from "drizzle-orm/sql/functions/vector";
 
 const rrfModelConfig = z.object({
   model: z.string(),
@@ -21,6 +30,41 @@ const rrfModelConfig = z.object({
 });
 
 type RRFModelConfig = z.infer<typeof rrfModelConfig>;
+
+const embeddingColumnNames = [
+  "embedding_andreasjansson_clip",
+  "embedding_voyage_multimodal_3_5",
+  "embedding_voyage_multimodal_3",
+  "embedding_jina_clip_v2",
+  "embedding_jina_clip_v2_d32",
+  "embedding_jina_embeddings_v4",
+  "embedding_jina_embeddings_v4_d128",
+] as const;
+
+type EmbeddingColumnName = (typeof embeddingColumnNames)[number];
+
+function getEmbeddingColumn<
+  TTable extends Record<EmbeddingColumnName, unknown>,
+>(table: TTable, dbColumn: string): TTable[EmbeddingColumnName] {
+  if (!embeddingColumnNames.includes(dbColumn as EmbeddingColumnName)) {
+    throw new Error(`Unknown embedding column: ${dbColumn}`);
+  }
+  return table[dbColumn as EmbeddingColumnName];
+}
+
+function imageResultSelection<TScore>(score: TScore) {
+  return {
+    id: image.id,
+    source: image.source,
+    extension: image.extension,
+    blurhash: image.blurhash,
+    from_old_database: image.from_old_database,
+    searchable: image.searchable,
+    score,
+    openlibrary_work_id: image.openlibrary_work_id,
+    openlibrary_work_id_confidence: image.openlibrary_work_id_confidence,
+  };
+}
 
 export const getRandom = createServerFn().handler(async () => {
   console.log("Getting random cover");
@@ -87,41 +131,46 @@ export const getImageByIdAndSimilar = createServerFn({
     }
 
     const model = getModel(defaultModelName);
-    const modelColumn = drizzleSql.identifier(model.dbColumn);
-
-    const result = await readDb.execute<z.infer<typeof DBImageDataValidator>>(
-      drizzleSql`
-      WITH searchable_images AS (
-        SELECT *
-        FROM image
-        WHERE searchable IS TRUE
-          AND deleted IS FALSE
-      ),
-      target AS (
-        SELECT ${modelColumn} AS e
-        FROM image
-        WHERE id = ${id}
-          AND deleted IS FALSE
-      )
-      SELECT
-        i.id,
-        i.source,
-        i.extension,
-        i.blurhash,
-        i.from_old_database,
-        i.searchable,
-        i.openlibrary_work_id,
-        i.openlibrary_work_id_confidence,
-        1 - (${drizzleSql.identifier("i")}.${modelColumn} <=> target.e) as score
-      FROM
-        searchable_images as i
-        CROSS JOIN target
-      WHERE i.id != ${id}
-      ORDER BY score DESC
-      LIMIT 96
-    `,
+    const similarImage = alias(image, "i");
+    const targetEmbedding = readDb.$with("target_embedding").as(
+      readDb
+        .select({
+          e: getEmbeddingColumn(image, model.dbColumn),
+        })
+        .from(image)
+        .where(and(eq(image.id, id), eq(image.deleted, false))),
     );
-    const results = z.array(DBImageDataValidator).parse(result.rows);
+    const score = drizzleSql<number>`1 - (${getEmbeddingColumn(
+      similarImage,
+      model.dbColumn,
+    )} <=> ${targetEmbedding.e})`;
+
+    const rows = await readDb
+      .with(targetEmbedding)
+      .select({
+        id: similarImage.id,
+        source: similarImage.source,
+        extension: similarImage.extension,
+        blurhash: similarImage.blurhash,
+        from_old_database: similarImage.from_old_database,
+        searchable: similarImage.searchable,
+        openlibrary_work_id: similarImage.openlibrary_work_id,
+        openlibrary_work_id_confidence:
+          similarImage.openlibrary_work_id_confidence,
+        score: score.as("score"),
+      })
+      .from(similarImage)
+      .crossJoin(targetEmbedding)
+      .where(
+        and(
+          eq(similarImage.searchable, true),
+          eq(similarImage.deleted, false),
+          ne(similarImage.id, id),
+        ),
+      )
+      .orderBy(desc(score))
+      .limit(96);
+    const results = z.array(DBImageDataValidator).parse(rows);
     const time = performance.now() - start;
     console.log(
       `getImageByIdAndSimilar database lookup in ${time.toFixed(1)}ms`,
@@ -177,32 +226,23 @@ async function singleModelSearch(
   const vector = await model.getTextEmbedding(q);
   const timeB = performance.now();
 
-  const modelColumn = drizzleSql.identifier(model.dbColumn);
-  const result = await readDb.execute<z.infer<typeof DBImageDataValidator>>(
-    drizzleSql`
-    WITH searchable_images AS (
-      SELECT
-        id,
-        source,
-        extension,
-        blurhash,
-        from_old_database,
-        searchable,
-        openlibrary_work_id,
-        openlibrary_work_id_confidence,
-        1 - (${modelColumn} <=> ${JSON.stringify(vector.embedding)}) as score
-      FROM image
-      WHERE searchable IS TRUE
-        AND deleted IS FALSE
+  const score = drizzleSql<number>`1 - (${cosineDistance(
+    getEmbeddingColumn(image, model.dbColumn),
+    vector.embedding,
+  )})`;
+  const rows = await readDb
+    .select(imageResultSelection(score.as("score")))
+    .from(image)
+    .where(
+      and(
+        eq(image.searchable, true),
+        eq(image.deleted, false),
+        gte(score, similarityThreshold),
+      ),
     )
-    SELECT *
-    FROM searchable_images
-    WHERE score >= ${similarityThreshold}
-    ORDER BY score DESC
-    LIMIT 100
-  `,
-  );
-  const results = z.array(DBImageDataValidator).parse(result.rows);
+    .orderBy(desc(score))
+    .limit(100);
+  const results = z.array(DBImageDataValidator).parse(rows);
   const timeC = performance.now();
   const final = await shapeImageDataArray(results);
 
@@ -239,60 +279,63 @@ async function multiModelSearch(
   );
   const timeB = performance.now();
 
-  // Build a dynamic RRF SQL query using UNION ALL + GROUP BY in Postgres.
-  // Each model contributes a ranked list; RRF scores are summed per image id.
-  const unionParts: ReturnType<typeof drizzleSql>[] = [];
+  const rankedQueries: any[] = [];
 
   for (const result of embeddings) {
     if (result.status === "fulfilled") {
       const { config, model, embedding } = result.value;
-      const modelColumn = drizzleSql.identifier(model.dbColumn);
-      unionParts.push(drizzleSql`(
-        SELECT
-          id,
-          ROW_NUMBER() OVER (ORDER BY (${modelColumn} <=> ${JSON.stringify(embedding)})) AS rank,
-          ${config.k}::float AS k,
-          ${config.weight}::float AS weight
-        FROM image
-        WHERE searchable IS TRUE AND deleted IS FALSE
-        LIMIT 100
-      )`);
+      const distance = cosineDistance(
+        getEmbeddingColumn(image, model.dbColumn),
+        embedding,
+      );
+      rankedQueries.push(
+        readDb
+          .select({
+            id: image.id,
+            rank: drizzleSql<number>`ROW_NUMBER() OVER (ORDER BY ${distance})`.as(
+              "rank",
+            ),
+            k: drizzleSql<number>`${config.k}::float`.as("k"),
+            weight: drizzleSql<number>`${config.weight}::float`.as("weight"),
+          })
+          .from(image)
+          .where(and(eq(image.searchable, true), eq(image.deleted, false)))
+          .limit(100),
+      );
     }
   }
 
-  if (unionParts.length === 0) {
+  if (rankedQueries.length === 0) {
     return [];
   }
 
-  const query = drizzleSql`
-    WITH ranked_union AS (
-      ${drizzleSql.join(unionParts, drizzleSql` UNION ALL `)}
-    ),
-    rrf AS (
-      SELECT id, SUM(weight / (k + rank)) AS rrf_score
-      FROM ranked_union
-      GROUP BY id
-    )
-    SELECT
-      i.id,
-      i.source,
-      i.extension,
-      i.blurhash,
-      i.from_old_database,
-      i.searchable,
-      rrf.rrf_score AS score,
-      i.openlibrary_work_id,
-      i.openlibrary_work_id_confidence
-    FROM rrf
-    JOIN image i ON i.id = rrf.id
-    ORDER BY rrf_score DESC
-    LIMIT 100
-  `;
-
-  const result = await readDb.execute<z.infer<typeof DBImageDataValidator>>(
-    query,
+  const [firstRankedQuery, ...otherRankedQueries] = rankedQueries;
+  const rankedUnionQuery = otherRankedQueries.reduce<any>(
+    (query, nextQuery) => query.unionAll(nextQuery),
+    firstRankedQuery,
   );
-  const results = z.array(DBImageDataValidator).parse(result.rows);
+  const rankedUnion = readDb.$with("ranked_union").as(rankedUnionQuery);
+  const rrf = readDb.$with("rrf").as(
+    readDb
+      .select({
+        id: rankedUnion.id,
+        score:
+          drizzleSql<number>`SUM(${rankedUnion.weight} / (${rankedUnion.k} + ${rankedUnion.rank}))`.as(
+            "rrf_score",
+          ),
+      })
+      .from(rankedUnion)
+      .groupBy(rankedUnion.id),
+  );
+
+  const rows = await readDb
+    .with(rankedUnion, rrf)
+    .select(imageResultSelection(rrf.score))
+    .from(rrf)
+    .innerJoin(image, eq(image.id, rrf.id))
+    .orderBy(desc(rrf.score))
+    .limit(100);
+  const results = z.array(DBImageDataValidator).parse(rows);
   const timeC = performance.now();
   const final = await shapeImageDataArray(results);
 
