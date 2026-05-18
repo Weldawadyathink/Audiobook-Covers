@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { readDb } from "@/server/db.http";
+import { createReadDb } from "@/server/db.http";
 import StatCard from "@/components/StatCard";
 import { image } from "@/db/schema";
 import { desc, isNotNull, sql } from "drizzle-orm";
 
 const getDatabaseStats = createServerFn().handler(async () => {
   console.log("ADMIN: Getting database statistics.");
+  const readDb = createReadDb();
   const [overallStats] = await readDb
     .select({
       total: sql<number>`COUNT(*)::int`,

@@ -1,5 +1,5 @@
 import { z } from "zod/v4";
-import { writeDb } from "@/server/db.http";
+import { createWriteDb } from "@/server/db.http";
 import { eq, sql } from "drizzle-orm";
 import base64 from "base-64";
 import { createFileRoute } from "@tanstack/react-router";
@@ -18,6 +18,7 @@ export const Route = createFileRoute("/api/login")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const writeDb = createWriteDb();
         const formData = await request.formData();
         const { success, data: form } = formValidator.safeParse(
           Object.fromEntries(formData.entries()),

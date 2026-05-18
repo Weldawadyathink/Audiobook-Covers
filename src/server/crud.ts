@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
 import { getIsAuthenticated } from "./auth";
-import { writeDb } from "@/server/db.http";
+import { createWriteDb } from "@/server/db.http";
 import { logAnalyticsEvent } from "@/server/analytics";
 import { image } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -13,6 +13,7 @@ export const setImageDeleted = createServerFn()
     if (!auth.isAuthenticated) {
       throw new Error("Not authorized");
     }
+    const writeDb = createWriteDb();
     await writeDb.update(image).set({ deleted: true }).where(eq(image.id, id));
     await logAnalyticsEvent({
       data: {
@@ -30,6 +31,7 @@ export const setImageNotDeleted = createServerFn()
     if (!auth.isAuthenticated) {
       throw new Error("Not authorized");
     }
+    const writeDb = createWriteDb();
     await writeDb
       .update(image)
       .set({ deleted: false })
@@ -51,6 +53,7 @@ export const setImageSearchable = createServerFn()
       throw new Error("Not authorized");
     }
     console.log("Setting image as searchable", id);
+    const writeDb = createWriteDb();
     await writeDb
       .update(image)
       .set({ searchable: true })
@@ -72,6 +75,7 @@ export const setImageNotSearchable = createServerFn()
       throw new Error("Not authorized");
     }
     console.log("Setting image as not searchable", id);
+    const writeDb = createWriteDb();
     await writeDb
       .update(image)
       .set({ searchable: false })

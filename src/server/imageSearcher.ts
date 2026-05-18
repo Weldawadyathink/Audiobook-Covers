@@ -1,5 +1,5 @@
 import { shapeImageDataArray, ImageData } from "@/server/imageData";
-import { readDb } from "@/server/db.http";
+import { createReadDb } from "@/server/db.http";
 import { DBImageDataValidator } from "@/server/imageData";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
@@ -9,21 +9,24 @@ import { image, openlibrary_work } from "@/db/schema";
 import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 
 type SearchMode = "titleAuthor" | "title" | "author" | "query";
+type ReadDb = ReturnType<typeof createReadDb>;
 
-const imageWorks = readDb.$with("image_works").as(
-  readDb
-    .selectDistinct({
-      olid: image.openlibrary_work_id,
-    })
-    .from(image)
-    .where(
-      and(
-        eq(image.searchable, true),
-        eq(image.deleted, false),
-        isNotNull(image.openlibrary_work_id),
+function createImageWorks(readDb: ReadDb) {
+  return readDb.$with("image_works").as(
+    readDb
+      .selectDistinct({
+        olid: image.openlibrary_work_id,
+      })
+      .from(image)
+      .where(
+        and(
+          eq(image.searchable, true),
+          eq(image.deleted, false),
+          isNotNull(image.openlibrary_work_id),
+        ),
       ),
-    ),
-);
+  );
+}
 
 function titleVector() {
   return sql`to_tsvector('simple'::regconfig, COALESCE(${openlibrary_work.title}, ''))`;
@@ -67,6 +70,8 @@ export const coverSearch = createServerFn({ method: "GET" })
     const trimmedAuthor = author?.trim() ?? "";
 
     const start = performance.now();
+    const readDb = createReadDb();
+    const imageWorks = createImageWorks(readDb);
     let searchMode: SearchMode;
     let results: Array<z.infer<typeof DBImageDataValidator>>;
 

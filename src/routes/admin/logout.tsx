@@ -2,13 +2,14 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import cookie from "cookie";
-import { writeDb } from "@/server/db.http";
+import { createWriteDb } from "@/server/db.http";
 import { eq } from "drizzle-orm";
 import { useEffect } from "react";
 import { logAnalyticsEvent } from "@/server/analytics";
 import { session } from "@/db/schema";
 
 export const logout = createServerFn({ method: "POST" }).handler(async () => {
+  const writeDb = createWriteDb();
   const request = getRequest();
   const authCookie = request.headers.get("cookie");
   if (authCookie) {

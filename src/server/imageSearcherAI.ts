@@ -3,7 +3,7 @@ import {
   shapeImageData,
   ImageData,
 } from "@/server/imageData";
-import { readDb } from "@/server/db.http";
+import { createReadDb } from "@/server/db.http";
 import { getModel, defaultModelName } from "@/server/search/search";
 import { DBImageDataValidator } from "@/server/imageData";
 import { createServerFn } from "@tanstack/react-start";
@@ -69,6 +69,7 @@ function imageResultSelection<TScore>(score: TScore) {
 export const getRandom = createServerFn().handler(async () => {
   console.log("Getting random cover");
   const start = performance.now();
+  const readDb = createReadDb();
   const rows = await readDb
     .select({
       id: image.id,
@@ -103,6 +104,7 @@ export const getImageByIdAndSimilar = createServerFn({
   .handler(async ({ data: id }) => {
     console.log(`getImageByIdAndSimilar: ${id}`);
     const start = performance.now();
+    const readDb = createReadDb();
     const [targetRow] = await readDb
       .select({
         id: image.id,
@@ -226,6 +228,7 @@ async function singleModelSearch(
   const vector = await model.getTextEmbedding(q);
   const timeB = performance.now();
 
+  const readDb = createReadDb();
   const score = drizzleSql<number>`1 - (${cosineDistance(
     getEmbeddingColumn(image, model.dbColumn),
     vector.embedding,
@@ -279,6 +282,7 @@ async function multiModelSearch(
   );
   const timeB = performance.now();
 
+  const readDb = createReadDb();
   const rankedQueries: any[] = [];
 
   for (const result of embeddings) {

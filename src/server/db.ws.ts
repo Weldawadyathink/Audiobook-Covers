@@ -1,18 +1,32 @@
-import { Pool, neonConfig } from "@neondatabase/serverless";
+import { Client, Pool, type ClientConfig } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { env } from "@/env.cloudflare";
 import * as schema from "@/db/schema";
 
-if (globalThis.WebSocket) {
-  neonConfig.webSocketConstructor = globalThis.WebSocket;
+class PlanetScaleWsClient extends Client {
+  constructor(config?: string | ClientConfig) {
+    super(config);
+    this.neonConfig.pipelineConnect = false;
+    this.neonConfig.wsProxy = (host, port) => `${host}/v2?address=${host}:${port}`;
+  }
 }
-neonConfig.pipelineConnect = false;
-neonConfig.wsProxy = (host, port) => `${host}/v2?address=${host}:${port}`;
 
-export const readPool = new Pool({ connectionString: env.DATABASE_READ_URL });
-export const writePool = new Pool({ connectionString: env.DATABASE_WRITE_URL });
+export function createReadDb() {
+  return drizzle({
+    client: new Pool({
+      connectionString: env.DATABASE_READ_URL,
+      Client: PlanetScaleWsClient,
+    }),
+    schema,
+  });
+}
 
-export const readDb = drizzle({ client: readPool, schema });
-export const writeDb = drizzle({ client: writePool, schema });
-
-export const db = readDb;
+export function createWriteDb() {
+  return drizzle({
+    client: new Pool({
+      connectionString: env.DATABASE_WRITE_URL,
+      Client: PlanetScaleWsClient,
+    }),
+    schema,
+  });
+}
