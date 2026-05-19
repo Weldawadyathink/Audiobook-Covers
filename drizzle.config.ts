@@ -1,18 +1,16 @@
 import "dotenv/config";
 import { defineConfig } from "drizzle-kit";
-import { databaseUrlWithSearchPath } from "./drizzle.config.shared";
+import { env } from "@/env.node";
 
 export default defineConfig({
   dialect: "postgresql",
   schema: "./src/db/schema.ts",
   out: "./drizzle",
   dbCredentials: {
-    url: databaseUrlWithSearchPath("audiobookcovers_dev"),
+    url: env.DATABASE_WRITE_URL,
   },
-  schemaFilter: ["audiobookcovers_dev", "public"],
   migrations: {
-    schema: "audiobookcovers_dev",
-    table: "__drizzle_migrations_dev",
+    table: "__drizzle_migrations",
   },
   breakpoints: true,
   strict: true,

@@ -71,47 +71,21 @@ tasks:
       - pnpm exec wrangler deploy
 
   db:migrate:
-    desc: Apply Drizzle migrations (dev schema)
+    desc: Apply Drizzle migrations
     cmds:
-      - pnpm exec drizzle-kit migrate --config=drizzle.dev.config.ts
-
-  db:prod:migrate:
-    desc: Apply Drizzle migrations (production schema)
-    cmds:
-      - pnpm exec drizzle-kit migrate --config=drizzle.prod.config.ts
+      - pnpm exec drizzle-kit migrate --config=drizzle.config.ts
 
   db:generate:
     desc: Generate Drizzle migrations from the TypeScript schema
     cmds:
-      - pnpm exec drizzle-kit generate --config=drizzle.dev.config.ts
+      - pnpm exec drizzle-kit generate --config=drizzle.config.ts
 
-  db:pull:dev:
-    desc: Introspect the dev schema with Drizzle Kit
+  db:pull:
+    desc: Introspect the database with Drizzle Kit
     cmds:
-      - pnpm exec drizzle-kit pull --config=drizzle.dev.config.ts
+      - pnpm exec drizzle-kit pull --config=drizzle.config.ts
 
-  db:pull:prod:
-    desc: Introspect the production schema with Drizzle Kit
+  db:init:
+    desc: Baseline or initialize the database with Drizzle Kit after human review
     cmds:
-      - pnpm exec drizzle-kit pull --config=drizzle.prod.config.ts
-
-  db:init:dev:
-    desc: Baseline or initialize the dev schema with Drizzle Kit after human review
-    cmds:
-      - pnpm exec drizzle-kit push --config=drizzle.dev.config.ts --strict
-
-  db:init:prod:
-    desc: Baseline or initialize the production schema with Drizzle Kit after human review
-    cmds:
-      - pnpm exec drizzle-kit push --config=drizzle.prod.config.ts --strict
-
-  db:rebuild:
-    desc: Rebuild the dev database from rebuild_dev_db.sql
-    cmds:
-      - >
-        PGPASSWORD=$(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/password')
-        psql
-        -h $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/host')
-        -U $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/user')
-        -d $(op read 'op://xdpqq36uuedlgindu4gaiwdify/runw65mioxtmapip2qthyyycni/database')
-        -f rebuild_dev_db.sql
+      - pnpm exec drizzle-kit push --config=drizzle.config.ts --strict
