@@ -1,7 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
-  check,
   foreignKey,
   index,
   integer,
@@ -12,9 +11,17 @@ import {
   unique,
   uuid,
   vector,
+  pgSchema,
+  type PgSchema,
 } from "drizzle-orm/pg-core";
+import { env } from "@/env.node";
 
-export const reddit_post = pgTable(
+export const schema =
+  env.APP_STAGE === "production"
+    ? pgSchema("prod")
+    : (pgSchema("dev") as unknown as PgSchema<"prod">);
+
+export const reddit_post = schema.table(
   "reddit_post",
   {
     id: text("id").primaryKey(),
@@ -27,7 +34,7 @@ export const reddit_post = pgTable(
   (table) => [index("idx_reddit_post_status").on(table.status)],
 );
 
-export const reddit_comment = pgTable(
+export const reddit_comment = schema.table(
   "reddit_comment",
   {
     id: uuid("id").primaryKey(),
@@ -49,7 +56,7 @@ export const reddit_comment = pgTable(
   ],
 );
 
-export const image = pgTable(
+export const image = schema.table(
   "image",
   {
     id: uuid("id").primaryKey(),
@@ -66,44 +73,9 @@ export const image = pgTable(
     openlibrary_work_id: text("openlibrary_work_id"),
     openlibrary_work_id_confidence: text("openlibrary_work_id_confidence"),
     openlibrary_work_id_model: text("openlibrary_work_id_model"),
-    embedding_andreasjansson_clip: vector("embedding_andreasjansson_clip", {
-      dimensions: 768,
-    }),
-    embedding_voyage_multimodal_3_5: vector(
-      "embedding_voyage_multimodal_3_5",
-      { dimensions: 1024 },
-    ),
-    embedding_voyage_multimodal_3: vector("embedding_voyage_multimodal_3", {
-      dimensions: 1024,
-    }),
-    embedding_jina_clip_v1: vector("embedding_jina_clip_v1", {
-      dimensions: 768,
-    }),
     embedding_jina_clip_v2: vector("embedding_jina_clip_v2", {
       dimensions: 1024,
     }),
-    embedding_jina_clip_v2_d32: vector("embedding_jina_clip_v2_d32", {
-      dimensions: 32,
-    }),
-    embedding_jina_embeddings_v4: vector("embedding_jina_embeddings_v4", {
-      dimensions: 2048,
-    }),
-    embedding_jina_embeddings_v4_d128: vector(
-      "embedding_jina_embeddings_v4_d128",
-      { dimensions: 128 },
-    ),
-    embedding_cohere_embed_v4_0_d256: vector(
-      "embedding_cohere_embed_v4_0_d256",
-      { dimensions: 256 },
-    ),
-    embedding_cohere_embed_v4_0_d1536: vector(
-      "embedding_cohere_embed_v4_0_d1536",
-      { dimensions: 1536 },
-    ),
-    embedding_google_multimodalembedding_001: vector(
-      "embedding_google_multimodalembedding_001",
-      { dimensions: 768 },
-    ),
   },
   (table) => [
     index("idx_image_hash").using("btree", table.hash),
@@ -121,7 +93,7 @@ export const image = pgTable(
   ],
 );
 
-export const openlibrary_work = pgTable(
+export const openlibrary_work = schema.table(
   "openlibrary_work",
   {
     olid: text("olid").primaryKey(),
@@ -155,7 +127,7 @@ export const openlibrary_work = pgTable(
   ],
 );
 
-export const web_user = pgTable(
+export const web_user = schema.table(
   "web_user",
   {
     id: serial("id").primaryKey(),
@@ -165,7 +137,7 @@ export const web_user = pgTable(
   (table) => [unique("web_user_username_key").on(table.username)],
 );
 
-export const session = pgTable(
+export const session = schema.table(
   "session",
   {
     session_id: text("session_id").primaryKey(),
@@ -181,55 +153,3 @@ export const session = pgTable(
     }).onDelete("cascade"),
   ],
 );
-
-export const openlibrary_etl_state = pgTable(
-  "openlibrary_etl_state",
-  {
-    id: boolean("id").primaryKey().default(true),
-    status: text("status"),
-  },
-  (table) => [check("openlibrary_etl_state_id_check", sql`${table.id}`)],
-);
-
-export const immutable_array_to_string = sql`
-CREATE OR REPLACE FUNCTION public.immutable_array_to_string(input_array TEXT[], delimiter TEXT)
-RETURNS TEXT
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE
-AS $$
-    SELECT array_to_string(input_array, delimiter);
-$$
-`;
-
-export const openlibrary_etl_state_read = sql`
-CREATE OR REPLACE FUNCTION openlibrary_etl_state()
-RETURNS TABLE (status text)
-LANGUAGE sql
-AS $$
-    WITH upsert AS (
-        INSERT INTO openlibrary_etl_state (id, status)
-        VALUES (true, 'not_complete')
-        ON CONFLICT (id) DO NOTHING
-    )
-    SELECT s.status
-    FROM openlibrary_etl_state s
-    WHERE id = true;
-$$
-`;
-
-export const openlibrary_etl_state_write = sql`
-CREATE OR REPLACE FUNCTION openlibrary_etl_state(p_status text)
-RETURNS TABLE (status text)
-LANGUAGE sql
-AS $$
-    INSERT INTO openlibrary_etl_state (id, status)
-    VALUES (true, p_status)
-    ON CONFLICT (id)
-    DO UPDATE SET
-        status = EXCLUDED.status;
-    SELECT s.status
-    FROM openlibrary_etl_state s
-    WHERE id = true;
-$$
-`;

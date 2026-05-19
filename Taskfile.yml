@@ -70,22 +70,16 @@ tasks:
       - pnpm exec vite build
       - pnpm exec wrangler deploy
 
-  db:migrate:
-    desc: Apply Drizzle migrations
-    cmds:
-      - pnpm exec drizzle-kit migrate --config=drizzle.config.ts
-
-  db:generate:
-    desc: Generate Drizzle migrations from the TypeScript schema
-    cmds:
-      - pnpm exec drizzle-kit generate --config=drizzle.config.ts
-
-  db:pull:
-    desc: Introspect the database with Drizzle Kit
-    cmds:
-      - pnpm exec drizzle-kit pull --config=drizzle.config.ts
-
-  db:init:
+  db:push:dev:
     desc: Baseline or initialize the database with Drizzle Kit after human review
+    env:
+      APP_STAGE: development
+    cmds:
+      - pnpm exec drizzle-kit push --config=drizzle.config.ts --strict
+
+  db:push:prod:
+    desc: Baseline or initialize the database with Drizzle Kit after human review
+    env:
+      APP_STAGE: production
     cmds:
       - pnpm exec drizzle-kit push --config=drizzle.config.ts --strict
