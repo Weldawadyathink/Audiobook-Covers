@@ -5,7 +5,7 @@ import base64 from "base-64";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { redirect } from "@tanstack/react-router";
-import { logAnalyticsEvent } from "@/server/analytics";
+import { captureAnalyticsEvent } from "@/server/analyticsCore";
 import { session, web_user } from "@/db/schema";
 
 function parseCookie(str: string) {
@@ -37,7 +37,7 @@ type AuthenticationResult =
     };
 
 export const getIsAuthenticated = createServerFn().handler(
-  async (): Promise<AuthenticationResult> => {
+  async ({ context }): Promise<AuthenticationResult> => {
     console.log("Checking auth");
     const request = getRequest();
     const cookies = parseCookie(request.headers.get("cookie") ?? "");
@@ -61,7 +61,7 @@ export const getIsAuthenticated = createServerFn().handler(
       return { isAuthenticated: false };
     }
 
-    const readDb = createReadDb();
+    const readDb = createReadDb(context!.cloudflare.env);
     const [result] = await readDb
       .select({
         username: web_user.username,
@@ -85,7 +85,7 @@ export const getIsAuthenticated = createServerFn().handler(
       result.session_id === auth.data.sessionId &&
       result.username === auth.data.username
     ) {
-      await logAnalyticsEvent({
+      await captureAnalyticsEvent({
         data: {
           eventType: "adminUserAuthSuccess",
           payload: {
@@ -93,6 +93,8 @@ export const getIsAuthenticated = createServerFn().handler(
             username: auth.data.username,
           },
         },
+        env: context!.cloudflare.env,
+        ctx: context!.cloudflare.ctx,
       });
       return {
         isAuthenticated: true,

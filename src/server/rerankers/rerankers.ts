@@ -4,7 +4,11 @@ export interface RerankerDefinition {
   // Gets a reranking of the ImageData by query
   // Overrides the score field on each ImageData with the relevance score
   // Sorts the ImageData by relevance score descending
-  rerank: (query: string, documents: ImageData[]) => Promise<ImageData[]>;
+  rerank: (
+    query: string,
+    documents: ImageData[],
+    env?: Cloudflare.Env,
+  ) => Promise<ImageData[]>;
 }
 
 import { models as jinaRerankers } from "./jina";

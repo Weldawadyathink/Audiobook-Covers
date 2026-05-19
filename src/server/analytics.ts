@@ -1,39 +1,12 @@
-import { z } from "zod/v4";
 import { createServerFn } from "@tanstack/react-start";
-import { waitUntil } from "cloudflare:workers";
-import { PostHog } from "posthog-node";
-import { env } from "@/env.cloudflare";
-import { logger } from "../logger";
-
-// In theory, z.json() should work, but typescript complains about recursion with a server function
-const json = z.lazy(() => {
-  return z.union([
-    z.string(),
-    z.number(),
-    z.boolean(),
-    z.null(),
-    z.array(json),
-    z.record(z.string(), json),
-    z.undefined(),
-  ]);
-});
+import { analyticsEvent, captureAnalyticsEvent } from "@/server/analyticsCore";
 
 export const logAnalyticsEvent = createServerFn()
-  .inputValidator(
-    z.object({
-      eventType: z.string(),
-      payload: json,
-    }),
-  )
-  .handler(async ({ data }) => {
-    const posthog = new PostHog(env.VITE_PUBLIC_POSTHOG_KEY, {
-      host: env.VITE_PUBLIC_POSTHOG_HOST,
+  .inputValidator(analyticsEvent)
+  .handler(async ({ data, context }) => {
+    await captureAnalyticsEvent({
+      data,
+      env: context!.cloudflare.env,
+      ctx: context!.cloudflare.ctx,
     });
-    waitUntil(
-      posthog.captureImmediate({
-        event: data.eventType,
-        properties: data.payload,
-      }),
-    );
-    logger.info(`Logged analytics event: ${data.eventType}`);
   });

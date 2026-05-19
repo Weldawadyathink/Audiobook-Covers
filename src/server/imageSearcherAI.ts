@@ -8,9 +8,8 @@ import { getModel, defaultModelName } from "@/server/search/search";
 import { DBImageDataValidator } from "@/server/imageData";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
-import { logAnalyticsEvent } from "@/server/analytics";
+import { captureAnalyticsEvent } from "@/server/analyticsCore";
 import { getReranker } from "@/server/rerankers/rerankers";
-import { env } from "@/env.cloudflare";
 import { image, openlibrary_work } from "@/db/schema";
 import {
   and,
@@ -30,6 +29,10 @@ const rrfModelConfig = z.object({
 });
 
 type RRFModelConfig = z.infer<typeof rrfModelConfig>;
+type WorkerRuntime = {
+  env: Cloudflare.Env;
+  ctx: ExecutionContext;
+};
 
 const embeddingColumnNames = [
   "embedding_andreasjansson_clip",
@@ -66,10 +69,10 @@ function imageResultSelection<TScore>(score: TScore) {
   };
 }
 
-export const getRandom = createServerFn().handler(async () => {
+export const getRandom = createServerFn().handler(async ({ context }) => {
   console.log("Getting random cover");
   const start = performance.now();
-  const readDb = createReadDb();
+  const readDb = createReadDb(context!.cloudflare.env);
   const rows = await readDb
     .select({
       id: image.id,
@@ -85,7 +88,7 @@ export const getRandom = createServerFn().handler(async () => {
   const results = z.array(DBImageDataValidator).parse(rows);
   const time = performance.now() - start;
   console.log(`getRandom database lookup in ${time.toFixed(1)}ms`);
-  await logAnalyticsEvent({
+  await captureAnalyticsEvent({
     data: {
       eventType: "getRandom",
       payload: {
@@ -93,6 +96,8 @@ export const getRandom = createServerFn().handler(async () => {
         time: time,
       },
     },
+    env: context!.cloudflare.env,
+    ctx: context!.cloudflare.ctx,
   });
   return await shapeImageDataArray(results);
 });
@@ -101,10 +106,10 @@ export const getImageByIdAndSimilar = createServerFn({
   method: "GET",
 })
   .inputValidator(z.uuid())
-  .handler(async ({ data: id }) => {
+  .handler(async ({ data: id, context }) => {
     console.log(`getImageByIdAndSimilar: ${id}`);
     const start = performance.now();
-    const readDb = createReadDb();
+    const readDb = createReadDb(context!.cloudflare.env);
     const [targetRow] = await readDb
       .select({
         id: image.id,
@@ -177,7 +182,7 @@ export const getImageByIdAndSimilar = createServerFn({
     console.log(
       `getImageByIdAndSimilar database lookup in ${time.toFixed(1)}ms`,
     );
-    await logAnalyticsEvent({
+    await captureAnalyticsEvent({
       data: {
         eventType: "getImageByIdAndSimilar",
         payload: {
@@ -186,6 +191,8 @@ export const getImageByIdAndSimilar = createServerFn({
           time: time,
         },
       },
+      env: context!.cloudflare.env,
+      ctx: context!.cloudflare.ctx,
     });
     return await shapeImageDataArray([target, ...results]);
   });
@@ -220,15 +227,16 @@ export const getImageByIdAndSimilar = createServerFn({
 async function singleModelSearch(
   q: string,
   modelName: string,
+  runtime: WorkerRuntime,
 ): Promise<ImageData[]> {
   const model = getModel(modelName);
   const similarityThreshold = 0;
 
   const timeA = performance.now();
-  const vector = await model.getTextEmbedding(q);
+  const vector = await model.getTextEmbedding(q, runtime.env);
   const timeB = performance.now();
 
-  const readDb = createReadDb();
+  const readDb = createReadDb(runtime.env);
   const score = drizzleSql<number>`1 - (${cosineDistance(
     getEmbeddingColumn(image, model.dbColumn),
     vector.embedding,
@@ -249,11 +257,11 @@ async function singleModelSearch(
   const timeC = performance.now();
   const final = await shapeImageDataArray(results);
 
-  await logAnalyticsEvent({
+  await captureAnalyticsEvent({
     data: {
       eventType: "singleModelSearch",
       payload: {
-        appStage: env.APP_STAGE,
+        appStage: runtime.env.APP_STAGE,
         model: modelName,
         q,
         results: final.length,
@@ -262,6 +270,8 @@ async function singleModelSearch(
         totalTime: timeC - timeA,
       },
     },
+    env: runtime.env,
+    ctx: runtime.ctx,
   });
 
   return final;
@@ -270,19 +280,20 @@ async function singleModelSearch(
 async function multiModelSearch(
   q: string,
   configs: RRFModelConfig[],
+  runtime: WorkerRuntime,
 ): Promise<ImageData[]> {
   // Compute all embeddings in parallel
   const timeA = performance.now();
   const embeddings = await Promise.allSettled(
     configs.map(async (config) => {
       const model = getModel(config.model);
-      const output = await model.getTextEmbedding(q);
+      const output = await model.getTextEmbedding(q, runtime.env);
       return { config, model, embedding: output.embedding };
     }),
   );
   const timeB = performance.now();
 
-  const readDb = createReadDb();
+  const readDb = createReadDb(runtime.env);
   const rankedQueries: any[] = [];
 
   for (const result of embeddings) {
@@ -343,11 +354,11 @@ async function multiModelSearch(
   const timeC = performance.now();
   const final = await shapeImageDataArray(results);
 
-  await logAnalyticsEvent({
+  await captureAnalyticsEvent({
     data: {
       eventType: "multiModelSearch",
       payload: {
-        appStage: env.APP_STAGE,
+        appStage: runtime.env.APP_STAGE,
         models: configs.map((c) => c.model),
         q,
         results: final.length,
@@ -356,6 +367,8 @@ async function multiModelSearch(
         totalTime: timeC - timeA,
       },
     },
+    env: runtime.env,
+    ctx: runtime.ctx,
   });
 
   return final;
@@ -370,17 +383,17 @@ export const vectorSearchByString = createServerFn()
         .optional(),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     if (data.q === "") {
       return [];
     }
 
     if (data.model === undefined) {
-      return singleModelSearch(data.q, defaultModelName);
+      return singleModelSearch(data.q, defaultModelName, context!.cloudflare);
     }
     if (typeof data.model === "string") {
-      return singleModelSearch(data.q, data.model);
+      return singleModelSearch(data.q, data.model, context!.cloudflare);
     }
     const modelConfig = z.array(rrfModelConfig).parse(data.model);
-    return multiModelSearch(data.q, modelConfig);
+    return multiModelSearch(data.q, modelConfig, context!.cloudflare);
   });

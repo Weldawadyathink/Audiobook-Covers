@@ -5,50 +5,54 @@ import cookie from "cookie";
 import { createWriteDb } from "@/server/db";
 import { eq } from "drizzle-orm";
 import { useEffect } from "react";
-import { logAnalyticsEvent } from "@/server/analytics";
+import { captureAnalyticsEvent } from "@/server/analyticsCore";
 import { session } from "@/db/schema";
 
-export const logout = createServerFn({ method: "POST" }).handler(async () => {
-  const writeDb = createWriteDb();
-  const request = getRequest();
-  const authCookie = request.headers.get("cookie");
-  if (authCookie) {
-    const parsed = cookie.parse(authCookie);
-    const auth = parsed.auth;
-    if (auth) {
-      try {
-        const sessionId = JSON.parse(
-          Buffer.from(auth, "base64").toString(),
-        ).sessionId;
-        await writeDb.delete(session).where(eq(session.session_id, sessionId));
-      } catch (e) {
-        // If parsing fails, just continue with cookie removal
+export const logout = createServerFn({ method: "POST" }).handler(
+  async ({ context }) => {
+    const writeDb = createWriteDb(context!.cloudflare.env);
+    const request = getRequest();
+    const authCookie = request.headers.get("cookie");
+    if (authCookie) {
+      const parsed = cookie.parse(authCookie);
+      const auth = parsed.auth;
+      if (auth) {
+        try {
+          const sessionId = JSON.parse(
+            Buffer.from(auth, "base64").toString(),
+          ).sessionId;
+          await writeDb.delete(session).where(eq(session.session_id, sessionId));
+        } catch (e) {
+          // If parsing fails, just continue with cookie removal
+        }
       }
     }
-  }
 
-  await logAnalyticsEvent({
-    data: {
-      eventType: "adminUserLogout",
-      payload: {},
-    },
-  });
+    await captureAnalyticsEvent({
+      data: {
+        eventType: "adminUserLogout",
+        payload: {},
+      },
+      env: context!.cloudflare.env,
+      ctx: context!.cloudflare.ctx,
+    });
 
-  // Clear the auth cookie
-  const headers = new Headers();
-  headers.append(
-    "Set-Cookie",
-    cookie.serialize("auth", "", {
-      maxAge: 0,
-      sameSite: "lax",
-      domain: new URL(request.url).hostname,
-      path: "/",
-      secure: process.env.NODE_ENV === "production",
-      httpOnly: true,
-    }),
-  );
-  return { success: true };
-});
+    // Clear the auth cookie
+    const headers = new Headers();
+    headers.append(
+      "Set-Cookie",
+      cookie.serialize("auth", "", {
+        maxAge: 0,
+        sameSite: "lax",
+        domain: new URL(request.url).hostname,
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+        httpOnly: true,
+      }),
+    );
+    return { success: true };
+  },
+);
 
 export const Route = createFileRoute("/admin/logout")({
   component: RouteComponent,

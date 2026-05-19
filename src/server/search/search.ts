@@ -6,9 +6,18 @@ export interface EmbeddingOutput {
 export interface ModelDefinition {
   dimensions: number;
   dbColumn: string;
-  getTextEmbedding: (input: string) => Promise<EmbeddingOutput>;
-  getImageEmbedding: (input: string) => Promise<EmbeddingOutput>;
-  getImageEmbeddings: (inputs: string[]) => Promise<EmbeddingOutput[]>;
+  getTextEmbedding: (
+    input: string,
+    env?: Cloudflare.Env,
+  ) => Promise<EmbeddingOutput>;
+  getImageEmbedding: (
+    input: string,
+    env?: Cloudflare.Env,
+  ) => Promise<EmbeddingOutput>;
+  getImageEmbeddings: (
+    inputs: string[],
+    env?: Cloudflare.Env,
+  ) => Promise<EmbeddingOutput[]>;
 }
 
 import { models as replicateModels } from "./replicate";

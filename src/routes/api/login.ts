@@ -6,7 +6,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import cookie from "cookie";
 import argon2 from "argon2-browser";
 import { randomBytes } from "node:crypto";
-import { logAnalyticsEvent } from "@/server/analytics";
+import { captureAnalyticsEvent } from "@/server/analyticsCore";
 import { session, web_user } from "@/db/schema";
 
 const formValidator = z.object({
@@ -17,8 +17,8 @@ const formValidator = z.object({
 export const Route = createFileRoute("/api/login")({
   server: {
     handlers: {
-      POST: async ({ request }) => {
-        const writeDb = createWriteDb();
+      POST: async ({ request, context }) => {
+        const writeDb = createWriteDb(context!.cloudflare.env);
         const formData = await request.formData();
         const { success, data: form } = formValidator.safeParse(
           Object.fromEntries(formData.entries()),
@@ -38,7 +38,7 @@ export const Route = createFileRoute("/api/login")({
           .where(eq(web_user.username, form.username))
           .limit(1);
         if (!result) {
-          await logAnalyticsEvent({
+          await captureAnalyticsEvent({
             data: {
               eventType: "adminUserLoginFailure",
               payload: {
@@ -46,12 +46,14 @@ export const Route = createFileRoute("/api/login")({
                 reason: "usernameNotFound",
               },
             },
+            env: context!.cloudflare.env,
+            ctx: context!.cloudflare.ctx,
           });
           return new Response("Invalid username or password", { status: 401 });
         }
         const valid = await argon2.verify(result.password_hash, form.password);
         if (!valid) {
-          await logAnalyticsEvent({
+          await captureAnalyticsEvent({
             data: {
               eventType: "adminUserLoginFailure",
               payload: {
@@ -59,6 +61,8 @@ export const Route = createFileRoute("/api/login")({
                 reason: "passwordIncorrect",
               },
             },
+            env: context!.cloudflare.env,
+            ctx: context!.cloudflare.ctx,
           });
           return new Response("Invalid username or password", { status: 401 });
         }
@@ -68,7 +72,7 @@ export const Route = createFileRoute("/api/login")({
           user_id: result.id,
           expires_at: sql`NOW() + INTERVAL '1 day'`,
         });
-        await logAnalyticsEvent({
+        await captureAnalyticsEvent({
           data: {
             eventType: "adminUserLoginSuccess",
             payload: {
@@ -76,6 +80,8 @@ export const Route = createFileRoute("/api/login")({
               sessionId,
             },
           },
+          env: context!.cloudflare.env,
+          ctx: context!.cloudflare.ctx,
         });
         const authValue = base64.encode(
           JSON.stringify({ sessionId, username: result.username }),

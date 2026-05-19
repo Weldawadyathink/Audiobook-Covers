@@ -2,7 +2,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "compatibility_date": "2026-01-31",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "@tanstack/react-start/server-entry",
+  "main": "src/server.ts",
   "account_id": "57d01014eca6e2153041393f3114dc60",
   "observability": {
     "enabled": true,

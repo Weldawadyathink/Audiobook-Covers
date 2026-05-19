@@ -8,9 +8,9 @@ import { DBImageDataValidator, shapeImageData } from "@/server/imageData";
 import { setImageDeleted, setImageNotDeleted } from "@/server/crud";
 import { sql } from "drizzle-orm";
 
-const getSimilarImagePairs = createServerFn().handler(async () => {
+const getSimilarImagePairs = createServerFn().handler(async ({ context }) => {
   console.log("ADMIN: Getting similar images from database.");
-  const readDb = createReadDb();
+  const readDb = createReadDb(context!.cloudflare.env);
   const rows = await readDb.execute<{
     distance: number;
     image1: z.infer<typeof DBImageDataValidator>;

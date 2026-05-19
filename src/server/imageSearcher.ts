@@ -3,8 +3,7 @@ import { createReadDb } from "@/server/db";
 import { DBImageDataValidator } from "@/server/imageData";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
-import { logAnalyticsEvent } from "@/server/analytics";
-import { env } from "@/env.cloudflare";
+import { captureAnalyticsEvent } from "@/server/analyticsCore";
 import { image, openlibrary_work } from "@/db/schema";
 import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 
@@ -65,12 +64,15 @@ export const coverSearch = createServerFn({ method: "GET" })
       author: z.string().optional(),
     }),
   )
-  .handler(async ({ data: { title, author } }): Promise<ImageData[]> => {
+  .handler(async ({
+    data: { title, author },
+    context,
+  }): Promise<ImageData[]> => {
     const trimmedTitle = title?.trim() ?? "";
     const trimmedAuthor = author?.trim() ?? "";
 
     const start = performance.now();
-    const readDb = createReadDb();
+    const readDb = createReadDb(context!.cloudflare.env);
     const imageWorks = createImageWorks(readDb);
     let searchMode: SearchMode;
     let results: Array<z.infer<typeof DBImageDataValidator>>;
@@ -173,11 +175,11 @@ export const coverSearch = createServerFn({ method: "GET" })
     const time = performance.now() - start;
     const final = await shapeImageDataArray(results);
 
-    await logAnalyticsEvent({
+    await captureAnalyticsEvent({
       data: {
         eventType: "coverSearch",
         payload: {
-          appStage: env.APP_STAGE,
+          appStage: context!.cloudflare.env.APP_STAGE,
           title: trimmedTitle || "",
           author: trimmedAuthor || "",
           searchMode,
@@ -185,6 +187,8 @@ export const coverSearch = createServerFn({ method: "GET" })
           databaseTime: time,
         },
       },
+      env: context!.cloudflare.env,
+      ctx: context!.cloudflare.ctx,
     });
 
     return final;
