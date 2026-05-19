@@ -23,14 +23,6 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
           CLOUDFLARE_API_TOKEN: op://xdpqq36uuedlgindu4gaiwdify/jxjrrnqlbka5p5i23bbktexyky/password
           TRIGGER_SECRET_KEY: op://xdpqq36uuedlgindu4gaiwdify/ih3z2q4qifrpdxzw6d6mbbu23a/password
-      - uses: go-task/setup-task@v1
-      - run: |
-          curl -sSfLO https://github.com/pgschema/pgschema/releases/download/v1.7.1/pgschema_1.7.1_amd64.deb
-          sudo dpkg -i pgschema_1.7.1_amd64.deb || sudo apt-get install -f -y
-      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
-      - run: task db:prod:migrate:force
-        env:
-          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - run: task deploy:prod
         env:
           CLOUDFLARE_API_TOKEN: ${{ steps.load_secrets.outputs.CLOUDFLARE_API_TOKEN }}
