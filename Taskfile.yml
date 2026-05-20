@@ -83,3 +83,10 @@ tasks:
       APP_STAGE: production
     cmds:
       - pnpm exec drizzle-kit push --config=drizzle.config.ts --strict
+
+  db:populate:
+    desc: Truncate the dev schema and repopulate it from prod
+    env:
+      APP_STAGE: development
+    cmds:
+      - pnpm tsx src/scripts/populateDevDatabase.ts
