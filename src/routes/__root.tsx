@@ -19,8 +19,8 @@ import {
   House,
   Info,
   Search,
-  ShieldUser,
   Menu,
+  // @ts-ignore
 } from "lucide-react";
 import { Separator } from "@radix-ui/react-separator";
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
@@ -106,7 +106,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
           }}
         >
           <div className="fixed inset-0 z-[-1] pointer-events-none">
-            <div className="absolute inset-0 bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900" />
+            <div className="absolute inset-0 bg-linear-to-br from-slate-700 via-slate-800 to-slate-900" />
           </div>
           <nav className="fixed top-0 left-0 right-0 z-30 w-full bg-slate-800/80 backdrop-blur border-b border-slate-700 shadow-md">
             <div className="mx-auto max-w-4xl flex items-center justify-between px-4 py-2">
