@@ -1,15 +1,10 @@
-import {
-  shapeImageDataArray,
-  shapeImageData,
-  ImageData,
-} from "@/server/imageData";
+import { shapeImageDataArray, ImageData } from "@/server/imageData";
 import { createReadDb } from "@/server/db";
 import { getModel, defaultModelName } from "@/server/search/search";
 import { DBImageDataValidator } from "@/server/imageData";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
 import { captureAnalyticsEvent } from "@/server/analyticsCore";
-import { getReranker } from "@/server/rerankers/rerankers";
 import { image, openlibrary_work } from "@/db/schema";
 import {
   and,
@@ -22,38 +17,10 @@ import {
 import { alias } from "drizzle-orm/pg-core";
 import { cosineDistance } from "drizzle-orm/sql/functions/vector";
 
-const rrfModelConfig = z.object({
-  model: z.string(),
-  k: z.number().default(60),
-  weight: z.number().default(1),
-});
-
-type RRFModelConfig = z.infer<typeof rrfModelConfig>;
 type WorkerRuntime = {
   env: Cloudflare.Env;
   ctx: ExecutionContext;
 };
-
-const embeddingColumnNames = [
-  "embedding_andreasjansson_clip",
-  "embedding_voyage_multimodal_3_5",
-  "embedding_voyage_multimodal_3",
-  "embedding_jina_clip_v2",
-  "embedding_jina_clip_v2_d32",
-  "embedding_jina_embeddings_v4",
-  "embedding_jina_embeddings_v4_d128",
-] as const;
-
-type EmbeddingColumnName = (typeof embeddingColumnNames)[number];
-
-function getEmbeddingColumn<
-  TTable extends Record<EmbeddingColumnName, unknown>,
->(table: TTable, dbColumn: string): TTable[EmbeddingColumnName] {
-  if (!embeddingColumnNames.includes(dbColumn as EmbeddingColumnName)) {
-    throw new Error(`Unknown embedding column: ${dbColumn}`);
-  }
-  return table[dbColumn as EmbeddingColumnName];
-}
 
 function imageResultSelection<TScore>(score: TScore) {
   return {
@@ -137,20 +104,16 @@ export const getImageByIdAndSimilar = createServerFn({
       return [];
     }
 
-    const model = getModel(defaultModelName);
     const similarImage = alias(image, "i");
     const targetEmbedding = readDb.$with("target_embedding").as(
       readDb
         .select({
-          e: getEmbeddingColumn(image, model.dbColumn),
+          e: image.embedding_jina_clip_v2,
         })
         .from(image)
         .where(and(eq(image.id, id), eq(image.deleted, false))),
     );
-    const score = drizzleSql<number>`1 - (${getEmbeddingColumn(
-      similarImage,
-      model.dbColumn,
-    )} <=> ${targetEmbedding.e})`;
+    const score = drizzleSql<number>`1 - (${similarImage.embedding_jina_clip_v2} <=> ${targetEmbedding.e})`;
 
     const rows = await readDb
       .with(targetEmbedding)
@@ -226,10 +189,9 @@ export const getImageByIdAndSimilar = createServerFn({
 
 async function singleModelSearch(
   q: string,
-  modelName: string,
   runtime: WorkerRuntime,
 ): Promise<ImageData[]> {
-  const model = getModel(modelName);
+  const model = getModel(defaultModelName);
   const similarityThreshold = 0;
 
   const timeA = performance.now();
@@ -238,7 +200,7 @@ async function singleModelSearch(
 
   const readDb = createReadDb(runtime.env);
   const score = drizzleSql<number>`1 - (${cosineDistance(
-    getEmbeddingColumn(image, model.dbColumn),
+    image.embedding_jina_clip_v2,
     vector.embedding,
   )})`;
   const rows = await readDb
@@ -262,104 +224,7 @@ async function singleModelSearch(
       eventType: "singleModelSearch",
       payload: {
         appStage: runtime.env.APP_STAGE,
-        model: modelName,
-        q,
-        results: final.length,
-        modelTime: timeB - timeA,
-        databaseTime: timeC - timeB,
-        totalTime: timeC - timeA,
-      },
-    },
-    env: runtime.env,
-    ctx: runtime.ctx,
-  });
-
-  return final;
-}
-
-async function multiModelSearch(
-  q: string,
-  configs: RRFModelConfig[],
-  runtime: WorkerRuntime,
-): Promise<ImageData[]> {
-  // Compute all embeddings in parallel
-  const timeA = performance.now();
-  const embeddings = await Promise.allSettled(
-    configs.map(async (config) => {
-      const model = getModel(config.model);
-      const output = await model.getTextEmbedding(q, runtime.env);
-      return { config, model, embedding: output.embedding };
-    }),
-  );
-  const timeB = performance.now();
-
-  const readDb = createReadDb(runtime.env);
-  const rankedQueries: any[] = [];
-
-  for (const result of embeddings) {
-    if (result.status === "fulfilled") {
-      const { config, model, embedding } = result.value;
-      const distance = cosineDistance(
-        getEmbeddingColumn(image, model.dbColumn),
-        embedding,
-      );
-      rankedQueries.push(
-        readDb
-          .select({
-            id: image.id,
-            rank: drizzleSql<number>`ROW_NUMBER() OVER (ORDER BY ${distance})`.as(
-              "rank",
-            ),
-            k: drizzleSql<number>`${config.k}::float`.as("k"),
-            weight: drizzleSql<number>`${config.weight}::float`.as("weight"),
-          })
-          .from(image)
-          .where(and(eq(image.searchable, true), eq(image.deleted, false)))
-          .limit(100),
-      );
-    }
-  }
-
-  if (rankedQueries.length === 0) {
-    return [];
-  }
-
-  const [firstRankedQuery, ...otherRankedQueries] = rankedQueries;
-  const rankedUnionQuery = otherRankedQueries.reduce<any>(
-    (query, nextQuery) => query.unionAll(nextQuery),
-    firstRankedQuery,
-  );
-  const rankedUnion = readDb.$with("ranked_union").as(rankedUnionQuery);
-  const rrf = readDb.$with("rrf").as(
-    readDb
-      .select({
-        id: rankedUnion.id,
-        score:
-          drizzleSql<number>`SUM(${rankedUnion.weight} / (${rankedUnion.k} + ${rankedUnion.rank}))`.as(
-            "rrf_score",
-          ),
-      })
-      .from(rankedUnion)
-      .groupBy(rankedUnion.id),
-  );
-
-  const rows = await readDb
-    .with(rankedUnion, rrf)
-    .select(imageResultSelection(rrf.score))
-    .from(rrf)
-    .innerJoin(image, eq(image.id, rrf.id))
-    .orderBy(desc(rrf.score))
-    .limit(100);
-  const results = z.array(DBImageDataValidator).parse(rows);
-  const timeC = performance.now();
-  const final = await shapeImageDataArray(results);
-
-  await captureAnalyticsEvent({
-    data: {
-      eventType: "multiModelSearch",
-      payload: {
-        appStage: runtime.env.APP_STAGE,
-        models: configs.map((c) => c.model),
+        model: defaultModelName,
         q,
         results: final.length,
         modelTime: timeB - timeA,
@@ -378,9 +243,6 @@ export const vectorSearchByString = createServerFn()
   .inputValidator(
     z.object({
       q: z.string(),
-      model: z
-        .union([z.string(), z.array(z.string()), z.array(rrfModelConfig)])
-        .optional(),
     }),
   )
   .handler(async ({ data, context }) => {
@@ -388,12 +250,5 @@ export const vectorSearchByString = createServerFn()
       return [];
     }
 
-    if (data.model === undefined) {
-      return singleModelSearch(data.q, defaultModelName, context!.cloudflare);
-    }
-    if (typeof data.model === "string") {
-      return singleModelSearch(data.q, data.model, context!.cloudflare);
-    }
-    const modelConfig = z.array(rrfModelConfig).parse(data.model);
-    return multiModelSearch(data.q, modelConfig, context!.cloudflare);
+    return singleModelSearch(data.q, context!.cloudflare);
   });

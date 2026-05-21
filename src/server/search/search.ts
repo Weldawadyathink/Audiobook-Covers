@@ -20,15 +20,11 @@ export interface ModelDefinition {
   ) => Promise<EmbeddingOutput[]>;
 }
 
-import { models as replicateModels } from "./replicate";
-import { models as voyageModels } from "./voyage";
 import { models as jinaModels } from "./jina";
 
-export const defaultModelName = "voyage-multimodal-3";
+export const defaultModelName = "jina-clip-v2";
 
 export const modelMap: Record<string, ModelDefinition> = {
-  ...replicateModels,
-  ...voyageModels,
   ...jinaModels,
 };
 

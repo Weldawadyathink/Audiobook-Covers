@@ -5,24 +5,12 @@ import { getReranker } from "@/server/rerankers/rerankers";
 import { defaultModelName } from "@/server/search/search";
 import type { ImageData } from "@/server/imageData";
 
-const rrfSlotSchema = z.object({
-  model: z.string(),
-  k: z.coerce.number().default(60),
-  weight: z.coerce.number().default(1),
-});
-
 const searchSchema = z.object({
   q: z.string().min(1),
   model: z.string().optional(),
   reranker: z.string().optional(),
-  rrf_config: z.array(rrfSlotSchema).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
-
-const DEFAULT_RRF = [
-  { model: "voyage-multimodal-3", k: 60, weight: 1 },
-  { model: "voyage-multimodal-3.5", k: 60, weight: 1 },
-];
 
 function jsonError(message: string, status: number): Response {
   return new Response(JSON.stringify({ error: message }), {
@@ -50,11 +38,9 @@ async function runSearch(
   params: z.infer<typeof searchSchema>,
   env?: Cloudflare.Env,
 ): Promise<ImageData[]> {
-  const { q, model, rrf_config, reranker, limit } = params;
+  const { q, reranker, limit } = params;
 
-  const modelArg = model === "rrf" ? (rrf_config ?? DEFAULT_RRF) : model;
-
-  let images = await vectorSearchByString({ data: { q, model: modelArg } });
+  let images = await vectorSearchByString({ data: { q } });
 
   if (reranker) {
     const rerankerInstance = getReranker(reranker);
@@ -75,7 +61,7 @@ function buildResponse(
       results: images.map(mapImage),
       count: images.length,
       query: params.q,
-      model: params.model ?? defaultModelName,
+      model: defaultModelName,
     }),
     { status: 200, headers: { "Content-Type": "application/json" } },
   );
@@ -87,21 +73,10 @@ export const Route = createFileRoute("/api/search")({
       GET: async ({ request, context }) => {
         const sp = new URL(request.url).searchParams;
 
-        let rrf_config: unknown = undefined;
-        const rrfRaw = sp.get("rrf_config");
-        if (rrfRaw) {
-          try {
-            rrf_config = JSON.parse(rrfRaw);
-          } catch {
-            return jsonError("Invalid rrf_config: must be valid JSON", 400);
-          }
-        }
-
         const parsed = searchSchema.safeParse({
           q: sp.get("q") ?? undefined,
           model: sp.get("model") ?? undefined,
           reranker: sp.get("reranker") ?? undefined,
-          rrf_config,
           limit: sp.has("limit") ? sp.get("limit") : undefined,
         });
 

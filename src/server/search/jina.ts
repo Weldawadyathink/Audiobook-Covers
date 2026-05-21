@@ -17,7 +17,7 @@ const JinaEmbeddingResponse = z.object({
 });
 
 async function embed(
-  modelId: "jina-clip-v1" | "jina-clip-v2" | "jina-embeddings-v4",
+  modelId: "jina-clip-v2",
   input: Array<{ text: string } | { image: string }>,
   inputType: "retrieval.query" | "retrieval.passage",
   outputDimension?: number,
@@ -60,7 +60,7 @@ async function embed(
 }
 
 async function getTextEmbedding(
-  modelId: "jina-clip-v1" | "jina-clip-v2" | "jina-embeddings-v4",
+  modelId: "jina-clip-v2",
   input: string,
   outputDimension?: number,
   runtimeEnv?: Cloudflare.Env,
@@ -76,7 +76,7 @@ async function getTextEmbedding(
 }
 
 async function getImageEmbedding(
-  modelId: "jina-clip-v1" | "jina-clip-v2" | "jina-embeddings-v4",
+  modelId: "jina-clip-v2",
   input: string,
   outputDimension?: number,
   runtimeEnv?: Cloudflare.Env,
@@ -92,7 +92,7 @@ async function getImageEmbedding(
 }
 
 async function getImageEmbeddings(
-  modelId: "jina-clip-v1" | "jina-clip-v2" | "jina-embeddings-v4",
+  modelId: "jina-clip-v2",
   inputs: string[],
   outputDimension?: number,
   runtimeEnv?: Cloudflare.Env,
@@ -117,38 +117,5 @@ export const models = {
       getImageEmbedding("jina-clip-v2", input, undefined, env),
     getImageEmbeddings: (inputs, env) =>
       getImageEmbeddings("jina-clip-v2", inputs, undefined, env),
-  },
-  "jina-clip-v2-d32": {
-    // clip v2 model reduced to 32 dimensions
-    // Testing if I can use a low dimensionality model for poor quality retrieval
-    // with lower database impact and use a reranker to get good quality rankings
-    dimensions: 32,
-    dbColumn: "embedding_jina_clip_v2_d32",
-    getTextEmbedding: (input, env) =>
-      getTextEmbedding("jina-clip-v2", input, 32, env),
-    getImageEmbedding: (input, env) =>
-      getImageEmbedding("jina-clip-v2", input, 32, env),
-    getImageEmbeddings: (inputs, env) =>
-      getImageEmbeddings("jina-clip-v2", inputs, 32, env),
-  },
-  "jina-embeddings-v4": {
-    dimensions: 2048,
-    dbColumn: "embedding_jina_embeddings_v4",
-    getTextEmbedding: (input, env) =>
-      getTextEmbedding("jina-embeddings-v4", input, 2048, env),
-    getImageEmbedding: (input, env) =>
-      getImageEmbedding("jina-embeddings-v4", input, 2048, env),
-    getImageEmbeddings: (inputs, env) =>
-      getImageEmbeddings("jina-embeddings-v4", inputs, 2048, env),
-  },
-  "jina-embeddings-v4-d128": {
-    dimensions: 128,
-    dbColumn: "embedding_jina_embeddings_v4_d128",
-    getTextEmbedding: (input, env) =>
-      getTextEmbedding("jina-embeddings-v4", input, 128, env),
-    getImageEmbedding: (input, env) =>
-      getImageEmbedding("jina-embeddings-v4", input, 128, env),
-    getImageEmbeddings: (inputs, env) =>
-      getImageEmbeddings("jina-embeddings-v4", inputs, 128, env),
   },
 } satisfies Record<string, ModelDefinition>;
