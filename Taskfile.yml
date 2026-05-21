@@ -20,27 +20,9 @@ tasks:
     env:
       CLOUDFLARE_INCLUDE_PROCESS_ENV: "true"
     cmds:
-      - pnpm exec vite build
-
-  types:
-    desc: Regenerate Wrangler/Cloudflare Worker types
-    cmds:
       - pnpm exec wrangler types
       - pnpm exec tsc --noEmit
-
-  reindex_images:
-    desc: Run the image reindex script (pass args after --, e.g. -- --tablesample 1 --threads 10 --model voyage-multimodal-3.5)
-    env:
-      NODE_OPTIONS: "--import=./src/scripts/cloudflare-loader.mjs"
-    cmds:
-      - pnpm tsx src/scripts/reembedImages.ts {{.CLI_ARGS}}
-
-  test:search:
-    desc: Run the search model test runner (pass args after --, e.g. -- --config test-runner.json --output results.csv)
-    env:
-      NODE_OPTIONS: "--import=./src/scripts/cloudflare-loader.mjs --import=./src/scripts/tanstack-start-loader.mjs"
-    cmds:
-      - pnpm tsx src/scripts/testRunner.ts {{.CLI_ARGS}}
+      - pnpm exec vite build
 
   trigger:dev:
     desc: Start the Trigger.dev local dev runner
