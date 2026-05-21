@@ -16,7 +16,6 @@ tasks:
 
   build:
     desc: Build the app and check for type errors
-    deps: [types]
     env:
       CLOUDFLARE_INCLUDE_PROCESS_ENV: "true"
     cmds:
