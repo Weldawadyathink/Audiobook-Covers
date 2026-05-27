@@ -13,15 +13,13 @@ export const setImageDeleted = createServerFn()
     if (!auth.isAuthenticated) {
       throw new Error("Not authorized");
     }
-    const writeDb = createWriteDb(context!.cloudflare.env);
+    const writeDb = createWriteDb();
     await writeDb.update(image).set({ deleted: true }).where(eq(image.id, id));
     await captureAnalyticsEvent({
       data: {
         eventType: "imageDeleted",
         payload: { id, username: auth.username, sessionId: auth.sessionId },
       },
-      env: context!.cloudflare.env,
-      ctx: context!.cloudflare.ctx,
     });
     return { success: true };
   });
@@ -33,15 +31,13 @@ export const setImageNotDeleted = createServerFn()
     if (!auth.isAuthenticated) {
       throw new Error("Not authorized");
     }
-    const writeDb = createWriteDb(context!.cloudflare.env);
+    const writeDb = createWriteDb();
     await writeDb.update(image).set({ deleted: false }).where(eq(image.id, id));
     await captureAnalyticsEvent({
       data: {
         eventType: "imageUndeleted",
         payload: { id, username: auth.username, sessionId: auth.sessionId },
       },
-      env: context!.cloudflare.env,
-      ctx: context!.cloudflare.ctx,
     });
     return { success: true };
   });
@@ -54,7 +50,7 @@ export const setImageSearchable = createServerFn()
       throw new Error("Not authorized");
     }
     console.log("Setting image as searchable", id);
-    const writeDb = createWriteDb(context!.cloudflare.env);
+    const writeDb = createWriteDb();
     await writeDb
       .update(image)
       .set({ searchable: true })
@@ -64,8 +60,6 @@ export const setImageSearchable = createServerFn()
         eventType: "setImageSearchable",
         payload: { id, username: auth.username, sessionId: auth.sessionId },
       },
-      env: context!.cloudflare.env,
-      ctx: context!.cloudflare.ctx,
     });
     return { success: true };
   });
@@ -78,7 +72,7 @@ export const setImageNotSearchable = createServerFn()
       throw new Error("Not authorized");
     }
     console.log("Setting image as not searchable", id);
-    const writeDb = createWriteDb(context!.cloudflare.env);
+    const writeDb = createWriteDb();
     await writeDb
       .update(image)
       .set({ searchable: false })
@@ -88,8 +82,6 @@ export const setImageNotSearchable = createServerFn()
         eventType: "setImageNotSearchable",
         payload: { id, username: auth.username, sessionId: auth.sessionId },
       },
-      env: context!.cloudflare.env,
-      ctx: context!.cloudflare.ctx,
     });
     return { success: true };
   });

@@ -5,9 +5,9 @@ import StatCard from "@/components/StatCard";
 import { image } from "@/db/schema";
 import { desc, isNotNull, sql } from "drizzle-orm";
 
-const getDatabaseStats = createServerFn().handler(async ({ context }) => {
+const getDatabaseStats = createServerFn().handler(async () => {
   console.log("ADMIN: Getting database statistics.");
-  const readDb = createReadDb(context!.cloudflare.env);
+  const readDb = createReadDb();
   const [overallStats] = await readDb
     .select({
       total: sql<number>`COUNT(*)::int`,

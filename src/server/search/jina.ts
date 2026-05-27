@@ -21,12 +21,11 @@ async function embed(
   input: Array<{ text: string } | { image: string }>,
   inputType: "retrieval.query" | "retrieval.passage",
   outputDimension?: number,
-  runtimeEnv?: Cloudflare.Env,
 ) {
   const response = await ky
     .post("https://api.jina.ai/v1/embeddings", {
       headers: {
-        Authorization: `Bearer ${runtimeEnv?.JINA_API_KEY ?? env.JINA_API_KEY}`,
+        Authorization: `Bearer ${env.JINA_API_KEY}`,
       },
       json: {
         model: modelId,
@@ -63,14 +62,12 @@ async function getTextEmbedding(
   modelId: "jina-clip-v2",
   input: string,
   outputDimension?: number,
-  runtimeEnv?: Cloudflare.Env,
 ): Promise<EmbeddingOutput> {
   const response = await embed(
     modelId,
     [{ text: input }],
     "retrieval.query",
     outputDimension,
-    runtimeEnv,
   );
   return { input, embedding: response[0].embedding };
 }
@@ -79,14 +76,12 @@ async function getImageEmbedding(
   modelId: "jina-clip-v2",
   input: string,
   outputDimension?: number,
-  runtimeEnv?: Cloudflare.Env,
 ): Promise<EmbeddingOutput> {
   const response = await embed(
     modelId,
     [{ image: input }],
     "retrieval.passage",
     outputDimension,
-    runtimeEnv,
   );
   return { input, embedding: response[0].embedding };
 }
@@ -95,14 +90,12 @@ async function getImageEmbeddings(
   modelId: "jina-clip-v2",
   inputs: string[],
   outputDimension?: number,
-  runtimeEnv?: Cloudflare.Env,
 ): Promise<EmbeddingOutput[]> {
   const response = await embed(
     modelId,
     inputs.map((input) => ({ image: input })),
     "retrieval.passage",
     outputDimension,
-    runtimeEnv,
   );
   return response.map((r, i) => ({ input: inputs[i], embedding: r.embedding }));
 }
@@ -111,11 +104,9 @@ export const models = {
   "jina-clip-v2": {
     dimensions: 1024,
     dbColumn: "embedding_jina_clip_v2",
-    getTextEmbedding: (input, env) =>
-      getTextEmbedding("jina-clip-v2", input, undefined, env),
-    getImageEmbedding: (input, env) =>
-      getImageEmbedding("jina-clip-v2", input, undefined, env),
-    getImageEmbeddings: (inputs, env) =>
-      getImageEmbeddings("jina-clip-v2", inputs, undefined, env),
+    getTextEmbedding: (input) => getTextEmbedding("jina-clip-v2", input),
+    getImageEmbedding: (input) => getImageEmbedding("jina-clip-v2", input),
+    getImageEmbeddings: (inputs) =>
+      getImageEmbeddings("jina-clip-v2", inputs),
   },
 } satisfies Record<string, ModelDefinition>;

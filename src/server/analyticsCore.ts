@@ -22,18 +22,11 @@ export const analyticsEvent = z.object({
 
 export async function captureAnalyticsEvent({
   data,
-  env = defaultEnv,
-  ctx,
 }: {
   data: z.infer<typeof analyticsEvent>;
-  env?: Pick<
-    Cloudflare.Env,
-    "VITE_PUBLIC_POSTHOG_HOST" | "VITE_PUBLIC_POSTHOG_KEY"
-  >;
-  ctx?: ExecutionContext;
 }) {
   const event = analyticsEvent.parse(data);
-  const host = env.VITE_PUBLIC_POSTHOG_HOST.replace(/\/$/, "");
+  const host = defaultEnv.VITE_PUBLIC_POSTHOG_HOST.replace(/\/$/, "");
 
   const capture = fetch(`${host}/capture/`, {
     method: "POST",
@@ -41,7 +34,7 @@ export async function captureAnalyticsEvent({
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      api_key: env.VITE_PUBLIC_POSTHOG_KEY,
+      api_key: defaultEnv.VITE_PUBLIC_POSTHOG_KEY,
       event: event.eventType,
       properties: event.payload,
     }),
@@ -62,11 +55,7 @@ export async function captureAnalyticsEvent({
       });
     });
 
-  if (ctx) {
-    ctx.waitUntil(capture);
-  } else {
-    await capture;
-  }
+  await capture;
 
   logger.info(`Logged analytics event: ${event.eventType}`);
 }

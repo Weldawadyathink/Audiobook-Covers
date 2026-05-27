@@ -6,18 +6,9 @@ export interface EmbeddingOutput {
 export interface ModelDefinition {
   dimensions: number;
   dbColumn: string;
-  getTextEmbedding: (
-    input: string,
-    env?: Cloudflare.Env,
-  ) => Promise<EmbeddingOutput>;
-  getImageEmbedding: (
-    input: string,
-    env?: Cloudflare.Env,
-  ) => Promise<EmbeddingOutput>;
-  getImageEmbeddings: (
-    inputs: string[],
-    env?: Cloudflare.Env,
-  ) => Promise<EmbeddingOutput[]>;
+  getTextEmbedding: (input: string) => Promise<EmbeddingOutput>;
+  getImageEmbedding: (input: string) => Promise<EmbeddingOutput>;
+  getImageEmbeddings: (inputs: string[]) => Promise<EmbeddingOutput[]>;
 }
 
 import { models as jinaModels } from "./jina";

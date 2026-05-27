@@ -37,7 +37,7 @@ type AuthenticationResult =
     };
 
 export const getIsAuthenticated = createServerFn().handler(
-  async ({ context }): Promise<AuthenticationResult> => {
+  async (): Promise<AuthenticationResult> => {
     console.log("Checking auth");
     const request = getRequest();
     const cookies = parseCookie(request.headers.get("cookie") ?? "");
@@ -61,7 +61,7 @@ export const getIsAuthenticated = createServerFn().handler(
       return { isAuthenticated: false };
     }
 
-    const readDb = createReadDb(context!.cloudflare.env);
+    const readDb = createReadDb();
     const [result] = await readDb
       .select({
         username: web_user.username,
@@ -93,8 +93,6 @@ export const getIsAuthenticated = createServerFn().handler(
             username: auth.data.username,
           },
         },
-        env: context!.cloudflare.env,
-        ctx: context!.cloudflare.ctx,
       });
       return {
         isAuthenticated: true,

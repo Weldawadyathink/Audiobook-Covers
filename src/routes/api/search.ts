@@ -36,7 +36,6 @@ function mapImage(image: ImageData) {
 
 async function runSearch(
   params: z.infer<typeof searchSchema>,
-  env?: Cloudflare.Env,
 ): Promise<ImageData[]> {
   const { q, reranker, limit } = params;
 
@@ -45,7 +44,7 @@ async function runSearch(
   if (reranker) {
     const rerankerInstance = getReranker(reranker);
     if (rerankerInstance) {
-      images = await rerankerInstance.rerank(q, images, env);
+      images = await rerankerInstance.rerank(q, images);
     }
   }
 
@@ -70,7 +69,7 @@ function buildResponse(
 export const Route = createFileRoute("/api/search")({
   server: {
     handlers: {
-      GET: async ({ request, context }) => {
+      GET: async ({ request }) => {
         const sp = new URL(request.url).searchParams;
 
         const parsed = searchSchema.safeParse({
@@ -86,7 +85,7 @@ export const Route = createFileRoute("/api/search")({
         }
 
         try {
-          const images = await runSearch(parsed.data, context!.cloudflare.env);
+          const images = await runSearch(parsed.data);
           return buildResponse(images, parsed.data);
         } catch (err) {
           console.error("Search error:", err);
@@ -94,7 +93,7 @@ export const Route = createFileRoute("/api/search")({
         }
       },
 
-      POST: async ({ request, context }) => {
+      POST: async ({ request }) => {
         let body: unknown;
         try {
           body = await request.json();
@@ -109,7 +108,7 @@ export const Route = createFileRoute("/api/search")({
         }
 
         try {
-          const images = await runSearch(parsed.data, context!.cloudflare.env);
+          const images = await runSearch(parsed.data);
           return buildResponse(images, parsed.data);
         } catch (err) {
           console.error("Search error:", err);

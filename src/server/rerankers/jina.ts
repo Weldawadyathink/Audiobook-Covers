@@ -12,12 +12,11 @@ async function fetchJinaRerank(
   query: string,
   documents: ImageData[],
   documentUrls: string[],
-  runtimeEnv?: Cloudflare.Env,
 ) {
   const response = await ky
     .post("https://api.jina.ai/v1/rerank", {
       headers: {
-        Authorization: `Bearer ${runtimeEnv?.JINA_API_KEY ?? env.JINA_API_KEY}`,
+        Authorization: `Bearer ${env.JINA_API_KEY}`,
       },
       json: {
         model: "jina-reranker-m0",
@@ -47,39 +46,39 @@ async function fetchJinaRerank(
 
 export const models = {
   "jina-reranker-m0-webp-1280": {
-    rerank: async (query, documents, env) => {
+    rerank: async (query, documents) => {
       const documentUrls = documents.map((doc) => doc.webp[1280]);
-      return fetchJinaRerank(query, documents, documentUrls, env);
+      return fetchJinaRerank(query, documents, documentUrls);
     },
   },
   "jina-reranker-m0-jpeg-1280": {
-    rerank: async (query, documents, env) => {
+    rerank: async (query, documents) => {
       const documentUrls = documents.map((doc) => doc.jpeg[1280]);
-      return fetchJinaRerank(query, documents, documentUrls, env);
+      return fetchJinaRerank(query, documents, documentUrls);
     },
   },
   "jina-reranker-m0-webp-640": {
-    rerank: async (query, documents, env) => {
+    rerank: async (query, documents) => {
       const documentUrls = documents.map((doc) => doc.webp[640]);
-      return fetchJinaRerank(query, documents, documentUrls, env);
+      return fetchJinaRerank(query, documents, documentUrls);
     },
   },
   "jina-reranker-m0-jpeg-640": {
-    rerank: async (query, documents, env) => {
+    rerank: async (query, documents) => {
       const documentUrls = documents.map((doc) => doc.jpeg[640]);
-      return fetchJinaRerank(query, documents, documentUrls, env);
+      return fetchJinaRerank(query, documents, documentUrls);
     },
   },
   "jina-reranker-m0-webp-320": {
-    rerank: async (query, documents, env) => {
+    rerank: async (query, documents) => {
       const documentUrls = documents.map((doc) => doc.webp[320]);
-      return fetchJinaRerank(query, documents, documentUrls, env);
+      return fetchJinaRerank(query, documents, documentUrls);
     },
   },
   "jina-reranker-m0-jpeg-320": {
-    rerank: async (query, documents, env) => {
+    rerank: async (query, documents) => {
       const documentUrls = documents.map((doc) => doc.jpeg[320]);
-      return fetchJinaRerank(query, documents, documentUrls, env);
+      return fetchJinaRerank(query, documents, documentUrls);
     },
   },
 } satisfies Record<string, RerankerDefinition>;

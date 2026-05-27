@@ -17,8 +17,8 @@ const formValidator = z.object({
 export const Route = createFileRoute("/api/login")({
   server: {
     handlers: {
-      POST: async ({ request, context }) => {
-        const writeDb = createWriteDb(context!.cloudflare.env);
+      POST: async ({ request }) => {
+        const writeDb = createWriteDb();
         const formData = await request.formData();
         const { success, data: form } = formValidator.safeParse(
           Object.fromEntries(formData.entries()),
@@ -46,8 +46,6 @@ export const Route = createFileRoute("/api/login")({
                 reason: "usernameNotFound",
               },
             },
-            env: context!.cloudflare.env,
-            ctx: context!.cloudflare.ctx,
           });
           return new Response("Invalid username or password", { status: 401 });
         }
@@ -61,8 +59,6 @@ export const Route = createFileRoute("/api/login")({
                 reason: "passwordIncorrect",
               },
             },
-            env: context!.cloudflare.env,
-            ctx: context!.cloudflare.ctx,
           });
           return new Response("Invalid username or password", { status: 401 });
         }
@@ -80,8 +76,6 @@ export const Route = createFileRoute("/api/login")({
               sessionId,
             },
           },
-          env: context!.cloudflare.env,
-          ctx: context!.cloudflare.ctx,
         });
         const authValue = base64.encode(
           JSON.stringify({ sessionId, username: result.username }),

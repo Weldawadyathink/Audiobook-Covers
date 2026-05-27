@@ -9,8 +9,8 @@ import { captureAnalyticsEvent } from "@/server/analyticsCore";
 import { session } from "@/db/schema";
 
 export const logout = createServerFn({ method: "POST" }).handler(
-  async ({ context }) => {
-    const writeDb = createWriteDb(context!.cloudflare.env);
+  async () => {
+    const writeDb = createWriteDb();
     const request = getRequest();
     const authCookie = request.headers.get("cookie");
     if (authCookie) {
@@ -35,8 +35,6 @@ export const logout = createServerFn({ method: "POST" }).handler(
         eventType: "adminUserLogout",
         payload: {},
       },
-      env: context!.cloudflare.env,
-      ctx: context!.cloudflare.ctx,
     });
 
     // Clear the auth cookie

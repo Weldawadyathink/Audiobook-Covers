@@ -9,11 +9,7 @@ import { image, openlibrary_work } from "@/db/schema";
 import { and, desc, eq, gte, ne, sql as drizzleSql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { cosineDistance } from "drizzle-orm/sql/functions/vector";
-
-type WorkerRuntime = {
-  env: Cloudflare.Env;
-  ctx: ExecutionContext;
-};
+import { env } from "@/env.cloudflare";
 
 function imageResultSelection<TScore>(score: TScore) {
   return {
@@ -29,10 +25,10 @@ function imageResultSelection<TScore>(score: TScore) {
   };
 }
 
-export const getRandom = createServerFn().handler(async ({ context }) => {
+export const getRandom = createServerFn().handler(async () => {
   console.log("Getting random cover");
   const start = performance.now();
-  const readDb = createReadDb(context!.cloudflare.env);
+  const readDb = createReadDb();
   const rows = await readDb
     .select({
       id: image.id,
@@ -56,8 +52,6 @@ export const getRandom = createServerFn().handler(async ({ context }) => {
         time: time,
       },
     },
-    env: context!.cloudflare.env,
-    ctx: context!.cloudflare.ctx,
   });
   return await shapeImageDataArray(results);
 });
@@ -66,10 +60,10 @@ export const getImageByIdAndSimilar = createServerFn({
   method: "GET",
 })
   .inputValidator(z.uuid())
-  .handler(async ({ data: id, context }) => {
+  .handler(async ({ data: id }) => {
     console.log(`getImageByIdAndSimilar: ${id}`);
     const start = performance.now();
-    const readDb = createReadDb(context!.cloudflare.env);
+    const readDb = createReadDb();
     const [targetRow] = await readDb
       .select({
         id: image.id,
@@ -147,8 +141,6 @@ export const getImageByIdAndSimilar = createServerFn({
           time: time,
         },
       },
-      env: context!.cloudflare.env,
-      ctx: context!.cloudflare.ctx,
     });
     return await shapeImageDataArray([target, ...results]);
   });
@@ -180,18 +172,15 @@ export const getImageByIdAndSimilar = createServerFn({
 //   return (await shapeImageDataArray([results]))[0];
 // }
 
-async function singleModelSearch(
-  q: string,
-  runtime: WorkerRuntime,
-): Promise<ImageData[]> {
+async function singleModelSearch(q: string): Promise<ImageData[]> {
   const model = getModel(defaultModelName);
   const similarityThreshold = 0;
 
   const timeA = performance.now();
-  const vector = await model.getTextEmbedding(q, runtime.env);
+  const vector = await model.getTextEmbedding(q);
   const timeB = performance.now();
 
-  const readDb = createReadDb(runtime.env);
+  const readDb = createReadDb();
   const score = drizzleSql<number>`1 - (${cosineDistance(
     image.embedding_jina_clip_v2,
     vector.embedding,
@@ -216,7 +205,7 @@ async function singleModelSearch(
     data: {
       eventType: "singleModelSearch",
       payload: {
-        appStage: runtime.env.APP_STAGE,
+        appStage: env.APP_STAGE,
         model: defaultModelName,
         q,
         results: final.length,
@@ -225,8 +214,6 @@ async function singleModelSearch(
         totalTime: timeC - timeA,
       },
     },
-    env: runtime.env,
-    ctx: runtime.ctx,
   });
 
   return final;
@@ -238,10 +225,10 @@ export const vectorSearchByString = createServerFn()
       q: z.string(),
     }),
   )
-  .handler(async ({ data, context }) => {
+  .handler(async ({ data }) => {
     if (data.q === "") {
       return [];
     }
 
-    return singleModelSearch(data.q, context!.cloudflare);
+    return singleModelSearch(data.q);
   });

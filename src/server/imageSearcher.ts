@@ -6,6 +6,7 @@ import { z } from "zod/v4";
 import { captureAnalyticsEvent } from "@/server/analyticsCore";
 import { image, openlibrary_work } from "@/db/schema";
 import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
+import { env } from "@/env.cloudflare";
 
 type SearchMode = "titleAuthor" | "title" | "author" | "query";
 type ReadDb = ReturnType<typeof createReadDb>;
@@ -70,7 +71,7 @@ export const coverSearch = createServerFn({ method: "GET" })
       const trimmedAuthor = author?.trim() ?? "";
 
       const start = performance.now();
-      const readDb = createReadDb(context!.cloudflare.env);
+      const readDb = createReadDb();
       const imageWorks = createImageWorks(readDb);
       let searchMode: SearchMode;
       let results: Array<z.infer<typeof DBImageDataValidator>>;
@@ -184,7 +185,7 @@ export const coverSearch = createServerFn({ method: "GET" })
         data: {
           eventType: "coverSearch",
           payload: {
-            appStage: context!.cloudflare.env.APP_STAGE,
+            appStage: env.APP_STAGE,
             title: trimmedTitle || "",
             author: trimmedAuthor || "",
             searchMode,
@@ -192,8 +193,6 @@ export const coverSearch = createServerFn({ method: "GET" })
             databaseTime: time,
           },
         },
-        env: context!.cloudflare.env,
-        ctx: context!.cloudflare.ctx,
       });
 
       return final;

@@ -3,9 +3,9 @@ import { ModelDefinition, EmbeddingOutput } from "./search";
 import { env } from "@/env.cloudflare";
 import { embed, embedMany } from "ai";
 
-function getVoyage(runtimeEnv?: Cloudflare.Env) {
+function getVoyage() {
   return createVoyage({
-    apiKey: runtimeEnv?.VOYAGE_API_KEY ?? env.VOYAGE_API_KEY,
+    apiKey: env.VOYAGE_API_KEY,
   });
 }
 
@@ -13,8 +13,8 @@ export const models = {
   "voyage-multimodal-3": {
     dimensions: 1024,
     dbColumn: "embedding_voyage_multimodal_3",
-    getTextEmbedding: async (input, env) => {
-      const voyage = getVoyage(env);
+    getTextEmbedding: async (input) => {
+      const voyage = getVoyage();
       const { embedding } = await embed({
         model: voyage.multimodalEmbeddingModel("voyage-multimodal-3"),
         value: input,
@@ -26,8 +26,8 @@ export const models = {
       });
       return { input, embedding };
     },
-    getImageEmbedding: async (input, env) => {
-      const voyage = getVoyage(env);
+    getImageEmbedding: async (input) => {
+      const voyage = getVoyage();
       const { embeddings } = await embedMany({
         model: voyage.multimodalEmbeddingModel("voyage-multimodal-3"),
         values: [input],
@@ -39,8 +39,8 @@ export const models = {
       });
       return { input, embedding: embeddings[0] };
     },
-    getImageEmbeddings: async (inputs, env) => {
-      const voyage = getVoyage(env);
+    getImageEmbeddings: async (inputs) => {
+      const voyage = getVoyage();
       const { embeddings } = await embedMany({
         model: voyage.multimodalEmbeddingModel("voyage-multimodal-3"),
         values: inputs,
@@ -59,8 +59,8 @@ export const models = {
   "voyage-multimodal-3.5": {
     dimensions: 1024,
     dbColumn: "embedding_voyage_multimodal_3_5",
-    getTextEmbedding: async (input, env) => {
-      const voyage = getVoyage(env);
+    getTextEmbedding: async (input) => {
+      const voyage = getVoyage();
       const { embedding } = await embed({
         model: voyage.multimodalEmbeddingModel("voyage-multimodal-3.5"),
         value: input,
@@ -72,8 +72,8 @@ export const models = {
       });
       return { input, embedding };
     },
-    getImageEmbedding: async (input, env) => {
-      const voyage = getVoyage(env);
+    getImageEmbedding: async (input) => {
+      const voyage = getVoyage();
       const { embeddings } = await embedMany({
         model: voyage.multimodalEmbeddingModel("voyage-multimodal-3.5"),
         values: [input],
@@ -85,8 +85,8 @@ export const models = {
       });
       return { input, embedding: embeddings[0] };
     },
-    getImageEmbeddings: async (inputs, env) => {
-      const voyage = getVoyage(env);
+    getImageEmbeddings: async (inputs) => {
+      const voyage = getVoyage();
       const { embeddings } = await embedMany({
         model: voyage.multimodalEmbeddingModel("voyage-multimodal-3.5"),
         values: inputs,

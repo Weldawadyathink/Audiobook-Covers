@@ -8,7 +8,6 @@ import formatNumber from "format-number";
 import { BQClient } from "./bq";
 import { S3Client } from "./s3";
 import { createPostgresWriteDb } from "@/db.node";
-import { env } from "@/env.node";
 import { streamTracker } from "./utils";
 
 const format = formatNumber({ round: 0 });
@@ -105,7 +104,7 @@ export const openLibrarySyncWorksForPostgresTask = schemaTask({
     console.log(`Syncing works_for_postgres rows for dump ${dumpDate}`);
     const bq = new BQClient();
     const s3 = new S3Client("etl");
-    const { sql } = createPostgresWriteDb(env);
+    const { sql } = createPostgresWriteDb();
     const exportPrefix = "exports/works-for-postgres/";
 
     const currentTable = `${bq.projectId}.${DATASET}.${CURRENT_TABLE}`;

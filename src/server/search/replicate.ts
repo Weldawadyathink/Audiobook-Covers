@@ -3,9 +3,9 @@ import { ModelDefinition } from "./search";
 import { z } from "zod/v4";
 import { env } from "@/env.cloudflare";
 
-function getReplicate(runtimeEnv?: Cloudflare.Env) {
+function getReplicate() {
   return new Replicate({
-    auth: runtimeEnv?.REPLICATE_API_TOKEN ?? env.REPLICATE_API_TOKEN,
+    auth: env.REPLICATE_API_TOKEN,
   });
 }
 
@@ -22,8 +22,8 @@ export const models = {
   "andreasjansson-clip": {
     dimensions: 768,
     dbColumn: "embedding_andreasjansson_clip",
-    getTextEmbedding: async (input, env) => {
-      const replicate = getReplicate(env);
+    getTextEmbedding: async (input) => {
+      const replicate = getReplicate();
       const result = await replicate.run(
         "andreasjansson/clip-features:75b33f253f7714a281ad3e9b28f63e3232d583716ef6718f2e46641077ea040a",
         {
@@ -35,8 +35,8 @@ export const models = {
       const validatedResult = replicateClipOutputValidator.parse(result);
       return validatedResult[0];
     },
-    getImageEmbedding: async (input, env) => {
-      const replicate = getReplicate(env);
+    getImageEmbedding: async (input) => {
+      const replicate = getReplicate();
       const result = await replicate.run(
         "andreasjansson/clip-features:75b33f253f7714a281ad3e9b28f63e3232d583716ef6718f2e46641077ea040a",
         {
@@ -48,8 +48,8 @@ export const models = {
       const validatedResult = replicateClipOutputValidator.parse(result);
       return validatedResult[0];
     },
-    getImageEmbeddings: async (inputs, env) => {
-      const replicate = getReplicate(env);
+    getImageEmbeddings: async (inputs) => {
+      const replicate = getReplicate();
       const results = await Promise.all(
         inputs.map((input) =>
           replicate.run(
