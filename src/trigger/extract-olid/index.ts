@@ -1,7 +1,7 @@
 import { schemaTask } from "@trigger.dev/sdk/v3";
 import { z } from "zod";
 import { z as zv4 } from "zod/v4";
-import { createPostgresWriteDb } from "@/db";
+import { createPostgresWriteDb } from "@/db.node";
 import { env } from "@/env.node";
 import { batchTriggerAndWaitSettled, triggerAndWait } from "../utils";
 import { extractOlidPhase1Task } from "./phase1";

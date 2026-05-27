@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import ImageCard from "@/components/ImageCard";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
-import { createReadDb } from "@/server/db";
+import { createReadDb } from "@/db.cloudflare";
 import { toast, Toaster } from "sonner";
 import { DBImageDataValidator, shapeImageData } from "@/server/imageData";
 import { setImageDeleted, setImageNotDeleted } from "@/server/crud";

@@ -1,19 +1,12 @@
 import { shapeImageDataArray, ImageData } from "@/server/imageData";
-import { createReadDb } from "@/server/db";
+import { createReadDb } from "@/db.cloudflare";
 import { getModel, defaultModelName } from "@/server/search/search";
 import { DBImageDataValidator } from "@/server/imageData";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
 import { captureAnalyticsEvent } from "@/server/analyticsCore";
 import { image, openlibrary_work } from "@/db/schema";
-import {
-  and,
-  desc,
-  eq,
-  gte,
-  ne,
-  sql as drizzleSql,
-} from "drizzle-orm";
+import { and, desc, eq, gte, ne, sql as drizzleSql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { cosineDistance } from "drizzle-orm/sql/functions/vector";
 

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { createReadDb } from "@/server/db";
+import { createReadDb } from "@/db.cloudflare";
 import StatCard from "@/components/StatCard";
 import { image } from "@/db/schema";
 import { desc, isNotNull, sql } from "drizzle-orm";

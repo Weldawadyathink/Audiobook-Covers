@@ -7,7 +7,7 @@ import prettyMilliseconds from "pretty-ms";
 import formatNumber from "format-number";
 import { BQClient } from "./bq";
 import { S3Client } from "./s3";
-import { createPostgresWriteDb } from "@/db";
+import { createPostgresWriteDb } from "@/db.node";
 import { env } from "@/env.node";
 import { streamTracker } from "./utils";
 

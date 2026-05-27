@@ -5,7 +5,7 @@ import { pipeline } from "node:stream/promises";
 import prettyMilliseconds from "pretty-ms";
 import formatNumber from "format-number";
 import { BQClient } from "./bq";
-import { createPostgresWriteDb } from "@/db";
+import { createPostgresWriteDb } from "@/db.node";
 import { env } from "@/env.node";
 import { streamTracker } from "./utils";
 

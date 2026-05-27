@@ -2,7 +2,6 @@ import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { z } from "zod/v4";
 import { logger } from "@/logger";
-import type { parseEnv } from "@/env";
 import { env as defaultEnv } from "@/env.node";
 import * as schema from "@/db/schema";
 
@@ -18,37 +17,54 @@ type PostgresTag = (
   ...values: unknown[]
 ) => PromiseLike<Row[]>;
 
-type ReadEnv = Pick<ReturnType<typeof parseEnv>, "DATABASE_READ_URL">;
-type WriteEnv = Pick<ReturnType<typeof parseEnv>, "DATABASE_WRITE_URL">;
+export interface Options {
+  env?: {
+    DATABASE_READ_URL: string;
+    DATABASE_WRITE_URL: string;
+  };
+  application_name?: string;
+}
 
-export function createReadDb(env: ReadEnv = defaultEnv) {
-  const { sql } = createPostgresReadDb(env);
+export function createReadDb(options?: Options) {
+  const { sql } = createPostgresReadDb(options);
   return drizzle({ client: sql, schema });
 }
 
-export function createWriteDb(env: WriteEnv = defaultEnv) {
-  const { sql } = createPostgresWriteDb(env);
+export function createWriteDb(options?: Options) {
+  const { sql } = createPostgresWriteDb(options);
   return drizzle({ client: sql, schema });
 }
 
-export function createPostgresWriteDb(env: WriteEnv = defaultEnv) {
+export function createPostgresWriteDb(options?: Options) {
   logger.info("Creating new db write connection");
-  const sql = postgres(env.DATABASE_WRITE_URL, {
-    max: 1,
-    fetch_types: false,
-    prepare: true,
-  });
+  const sql = postgres(
+    options?.env?.DATABASE_WRITE_URL || defaultEnv.DATABASE_WRITE_URL,
+    {
+      max: 1,
+      fetch_types: false,
+      prepare: true,
+      connection: {
+        application_name: options?.application_name || "postgres.js",
+      },
+    },
+  );
   const sqlTools = getSqlTools(sql);
   return { sql, sqlTools };
 }
 
-export function createPostgresReadDb(env: ReadEnv = defaultEnv) {
+export function createPostgresReadDb(options?: Options) {
   logger.info("Creating new db read connection");
-  const sql = postgres(env.DATABASE_READ_URL, {
-    max: 2,
-    fetch_types: false,
-    prepare: true,
-  });
+  const sql = postgres(
+    options?.env?.DATABASE_READ_URL || defaultEnv.DATABASE_READ_URL,
+    {
+      max: 2,
+      fetch_types: false,
+      prepare: true,
+      connection: {
+        application_name: options?.application_name || "postgres.js",
+      },
+    },
+  );
   const sqlTools = getSqlTools(sql);
   return { sql, sqlTools };
 }

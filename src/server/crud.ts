@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
 import { getIsAuthenticated } from "./auth";
-import { createWriteDb } from "@/server/db";
+import { createWriteDb } from "@/db.cloudflare";
 import { captureAnalyticsEvent } from "@/server/analyticsCore";
 import { image } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -34,10 +34,7 @@ export const setImageNotDeleted = createServerFn()
       throw new Error("Not authorized");
     }
     const writeDb = createWriteDb(context!.cloudflare.env);
-    await writeDb
-      .update(image)
-      .set({ deleted: false })
-      .where(eq(image.id, id));
+    await writeDb.update(image).set({ deleted: false }).where(eq(image.id, id));
     await captureAnalyticsEvent({
       data: {
         eventType: "imageUndeleted",

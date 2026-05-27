@@ -1,4 +1,4 @@
-import { createPostgresWriteDb } from "../db";
+import { createPostgresWriteDb } from "../db.node";
 
 const { sql } = createPostgresWriteDb();
 

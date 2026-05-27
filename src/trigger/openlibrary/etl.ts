@@ -6,7 +6,7 @@ import { getQueryForTarget, queries } from "./queries";
 import { batchTriggerAndWait, triggerAndWait } from "../utils";
 import { openLibrarySyncWorkSearchTask } from "./sync-work-search";
 import { openLibrarySyncWorksForPostgresTask } from "./sync-works-for-postgres";
-import { createPostgresWriteDb } from "@/db";
+import { createPostgresWriteDb } from "@/db.node";
 import { env } from "@/env.node";
 import { z } from "zod/v4";
 
