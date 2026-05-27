@@ -17,7 +17,6 @@ function imageResultSelection<TScore>(score: TScore) {
     source: image.source,
     extension: image.extension,
     blurhash: image.blurhash,
-    from_old_database: image.from_old_database,
     searchable: image.searchable,
     score,
     openlibrary_work_id: image.openlibrary_work_id,
@@ -34,7 +33,6 @@ export const getRandom = createServerFn().handler(async () => {
       id: image.id,
       source: image.source,
       extension: image.extension,
-      from_old_database: image.from_old_database,
       blurhash: image.blurhash,
     })
     .from(image)
@@ -70,7 +68,6 @@ export const getImageByIdAndSimilar = createServerFn({
         source: image.source,
         extension: image.extension,
         blurhash: image.blurhash,
-        from_old_database: image.from_old_database,
         searchable: image.searchable,
         openlibrary_work_id: image.openlibrary_work_id,
         openlibrary_work_id_confidence: image.openlibrary_work_id_confidence,
@@ -109,7 +106,6 @@ export const getImageByIdAndSimilar = createServerFn({
         source: similarImage.source,
         extension: similarImage.extension,
         blurhash: similarImage.blurhash,
-        from_old_database: similarImage.from_old_database,
         searchable: similarImage.searchable,
         openlibrary_work_id: similarImage.openlibrary_work_id,
         openlibrary_work_id_confidence:
@@ -144,33 +140,6 @@ export const getImageByIdAndSimilar = createServerFn({
     });
     return await shapeImageDataArray([target, ...results]);
   });
-
-// export async function getImageById(id: string) {
-//   console.log(`getImageById: ${id}`);
-//   const start = performance.now();
-//   const pool = await getDbPool();
-//   const results = await pool.maybeOne(
-//     sql.type(DBImageDataValidator)`
-//       SELECT
-//         id,
-//         source,
-//         extension,
-//         blurhash,
-//         from_old_database,
-//         searchable
-//       FROM image
-//       WHERE id = ${id}
-//         AND deleted IS FALSE
-//       LIMIT 1
-//     `,
-//   );
-//   const time = performance.now() - start;
-//   console.log(`getImageById database lookup in ${time.toFixed(1)}ms`);
-//   if (!results) {
-//     return;
-//   }
-//   return (await shapeImageDataArray([results]))[0];
-// }
 
 async function singleModelSearch(q: string): Promise<ImageData[]> {
   const model = getModel(defaultModelName);

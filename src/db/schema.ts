@@ -64,11 +64,8 @@ export const image = schema.table(
     reddit_post_id: text("reddit_post_id"),
     reddit_comment_id: uuid("reddit_comment_id"),
     extension: text("extension"),
-    old_hash: text("old_hash"),
     searchable: boolean("searchable").default(true),
     blurhash: text("blurhash"),
-    hash: text("hash"),
-    from_old_database: boolean("from_old_database").default(false),
     deleted: boolean("deleted").notNull().default(false),
     openlibrary_work_id: text("openlibrary_work_id"),
     openlibrary_work_id_confidence: text("openlibrary_work_id_confidence"),
@@ -78,7 +75,6 @@ export const image = schema.table(
     }),
   },
   (table) => [
-    index("idx_image_hash").using("btree", table.hash),
     index("idx_image_searchable").using("btree", table.searchable),
     foreignKey({
       columns: [table.reddit_post_id],
