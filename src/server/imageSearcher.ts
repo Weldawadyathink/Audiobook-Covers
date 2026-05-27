@@ -17,7 +17,7 @@ export const getRandom = createServerFn().handler(async () => {
       extension,
       from_old_database,
       blurhash
-    FROM image
+    FROM audiobookcovers.image
     WHERE searchable
       AND deleted IS FALSE
     ORDER BY RANDOM()
@@ -53,7 +53,7 @@ export const getImageByIdAndSimilar = createServerFn({
         blurhash,
         from_old_database,
         searchable
-      FROM image
+      FROM audiobookcovers.image
       WHERE id = ${id}
     `;
     if (!target) {
@@ -65,13 +65,13 @@ export const getImageByIdAndSimilar = createServerFn({
     const results = await sqlTools.many(DBImageDataValidator)`
       WITH searchable_images AS (
         SELECT *
-        FROM image
+        FROM audiobookcovers.image
         WHERE searchable IS TRUE
           AND deleted IS FALSE
       ),
       target AS (
         SELECT ${sql(model.dbColumn)} AS e
-        FROM image
+        FROM audiobookcovers.image
         WHERE id = ${id}
           AND deleted IS FALSE
       )
@@ -158,7 +158,7 @@ export const vectorSearchByString = createServerFn()
           from_old_database,
           searchable,
           ${sql(model.dbColumn)} <=> ${JSON.stringify(vector.embedding)} as distance
-        FROM image
+        FROM audiobookcovers.image
         WHERE searchable IS TRUE
           AND deleted IS FALSE
       )

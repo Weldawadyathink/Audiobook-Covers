@@ -19,7 +19,7 @@ export const logout = createServerFn({ method: "POST" }).handler(async () => {
         ).sessionId;
         const { sqlTools } = getDbWriteConnection();
         await sqlTools.query`
-          DELETE FROM session WHERE session_id = ${sessionId}
+          DELETE FROM audiobookcovers.session WHERE session_id = ${sessionId}
         `;
       } catch (e) {
         // If parsing fails, just continue with cookie removal

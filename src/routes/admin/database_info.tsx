@@ -18,7 +18,7 @@ const getDatabaseStats = createServerFn().handler(async () => {
       COUNT(*)::int AS total,
       COUNT(*) FILTER (WHERE deleted = TRUE)::int AS deleted,
       COUNT(*) FILTER (WHERE searchable = TRUE)::int AS searchable
-    FROM image
+    FROM audiobookcovers.image
   `;
 
   const extensionStats = await sqlTools.many(
@@ -30,7 +30,7 @@ const getDatabaseStats = createServerFn().handler(async () => {
     SELECT
       extension,
       COUNT(*)::int AS count
-    FROM image
+    FROM audiobookcovers.image
     WHERE extension IS NOT NULL
     GROUP BY extension
     ORDER BY count DESC

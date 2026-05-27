@@ -34,7 +34,7 @@ export const Route = createFileRoute("/api/login")({
           }),
         )`
           SELECT id, username, password_hash
-          FROM web_user
+          FROM audiobookcovers.web_user
           WHERE username = ${form.username}
         `;
         if (!result) {
@@ -64,7 +64,7 @@ export const Route = createFileRoute("/api/login")({
         }
         const sessionId = randomBytes(32).toString("hex");
         await sqlTools.query`
-          INSERT INTO session(session_id, user_id, expires_at)
+          INSERT INTO audiobookcovers.session(session_id, user_id, expires_at)
           VALUES(${sessionId}, ${result.id}, NOW() + INTERVAL '1 day')
         `;
         await logAnalyticsEvent({

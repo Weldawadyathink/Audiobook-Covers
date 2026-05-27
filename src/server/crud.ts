@@ -13,7 +13,7 @@ export const setImageDeleted = createServerFn()
     }
     const { sqlTools } = getDbWriteConnection();
     await sqlTools.query`
-      UPDATE image SET deleted = TRUE WHERE id = ${id}
+      UPDATE audiobookcovers.image SET deleted = TRUE WHERE id = ${id}
     `;
     await logAnalyticsEvent({
       data: {
@@ -33,7 +33,7 @@ export const setImageNotDeleted = createServerFn()
     }
     const { sqlTools } = getDbWriteConnection();
     await sqlTools.query`
-      UPDATE image SET deleted = FALSE WHERE id = ${id}
+      UPDATE audiobookcovers.image SET deleted = FALSE WHERE id = ${id}
     `;
     await logAnalyticsEvent({
       data: {
@@ -54,7 +54,7 @@ export const setImageSearchable = createServerFn()
     console.log("Setting image as searchable", id);
     const { sqlTools } = getDbWriteConnection();
     await sqlTools.query`
-      UPDATE image SET searchable = TRUE WHERE id = ${id}
+      UPDATE audiobookcovers.image SET searchable = TRUE WHERE id = ${id}
     `;
     await logAnalyticsEvent({
       data: {
@@ -75,7 +75,7 @@ export const setImageNotSearchable = createServerFn()
     console.log("Setting image as not searchable", id);
     const { sqlTools } = getDbWriteConnection();
     await sqlTools.query`
-      UPDATE image SET searchable = FALSE WHERE id = ${id}
+      UPDATE audiobookcovers.image SET searchable = FALSE WHERE id = ${id}
     `;
     await logAnalyticsEvent({
       data: {

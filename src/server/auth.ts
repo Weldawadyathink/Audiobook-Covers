@@ -67,8 +67,8 @@ export const getIsAuthenticated = createServerFn().handler(
       }),
     )`
       SELECT s.session_id AS session_id, u.username AS username
-      FROM session s
-      JOIN web_user u ON s.user_id = u.id
+      FROM audiobookcovers.session s
+      JOIN audiobookcovers.web_user u ON s.user_id = u.id
       WHERE session_id = ${auth.data.sessionId}
       AND expires_at > NOW()
       AND u.username = ${auth.data.username}
