@@ -12,7 +12,7 @@ tasks:
       APP_STAGE: local
       CLOUDFLARE_INCLUDE_PROCESS_ENV: "true"
     cmds:
-      - pnpm exec concurrently --raw --kill-others "pnpm exec vite dev" "pnpm dlx trigger.dev@latest dev --skip-update-check"
+      - pnpm exec concurrently --raw --kill-others "pnpm exec vite dev" "pnpm exec trigger dev"
 
   build:
     desc: Build the app and check for type errors
@@ -28,7 +28,7 @@ tasks:
     env:
       APP_STAGE: local
     cmds:
-      - pnpm dlx trigger.dev@latest dev
+      - pnpm exec trigger dev
 
   trigger:deploy:
     desc: Deploy Trigger.dev tasks to production

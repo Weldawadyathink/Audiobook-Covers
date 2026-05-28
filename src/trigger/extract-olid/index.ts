@@ -1,6 +1,5 @@
 import { schemaTask } from "@trigger.dev/sdk/v3";
-import { z } from "zod";
-import { z as zv4 } from "zod/v4";
+import { z } from "zod/v4";
 import { createPostgresWriteDb } from "@/db.node";
 import { batchTriggerAndWaitSettled, triggerAndWait } from "../utils";
 import { extractOlidPhase1Task } from "./phase1";
@@ -37,8 +36,8 @@ const ExtractOlidBatchPayload = z.object({
 
 type ExtractOlidModels = [string, string, string, string];
 
-const ImageIdRow = zv4.object({
-  id: zv4.string(),
+const ImageIdRow = z.object({
+  id: z.string(),
 });
 
 function resolveExtractOlidModels({

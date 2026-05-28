@@ -43,7 +43,22 @@ export const DBImageDataValidator = z.object({
   openlibrary_first_publish_year: z.number().int().nullish(),
 });
 
-export interface ImageDataBase {
+interface DBImageData {
+  id: string;
+  source: string | null;
+  extension: string | null;
+  blurhash: string | null;
+  searchable?: boolean | null;
+  score?: number | null;
+  openlibrary_work_id?: string | null;
+  openlibrary_work_id_confidence?: string | null;
+  openlibrary_title?: string | null;
+  openlibrary_subtitle?: string | null;
+  openlibrary_author_names?: string[] | null;
+  openlibrary_first_publish_year?: number | null;
+}
+
+export interface ImageData {
   id: string;
   url: string;
   blurhashUrl: string;
@@ -60,7 +75,6 @@ export interface ImageDataBase {
     1280: string;
   };
   score?: number;
-  from_old_database?: boolean;
   primaryColor: Awaited<ReturnType<typeof extractColors>>[number];
   openlibrary?: {
     workId: string;
@@ -72,8 +86,6 @@ export interface ImageDataBase {
     url: string;
   };
 }
-
-export type ImageData = ImageDataBase;
 
 const imageUrlPrefix = "https://images.audiobookcovers.com";
 
@@ -118,7 +130,7 @@ async function getPrimaryImageColor(
 }
 
 export async function shapeImageData(
-  image: Readonly<z.infer<typeof DBImageDataValidator>>,
+  image: Readonly<DBImageData>,
 ): Promise<ImageData> {
   const blurhashUrl = image.blurhash ? getBlurhashUrl(image.blurhash) : "";
   const primaryColor = await getPrimaryImageColor(blurhashUrl);
@@ -144,9 +156,6 @@ export async function shapeImageData(
     primaryColor,
     ...(image.searchable !== undefined ? { searchable: image.searchable } : {}),
     ...(image.score != null ? { score: image.score } : {}),
-    ...(image.from_old_database !== undefined
-      ? { from_old_database: image.from_old_database }
-      : {}),
   };
   switch (image.openlibrary_work_id_confidence) {
     case "UNCERTAIN":
@@ -175,7 +184,7 @@ export async function shapeImageData(
 }
 
 export function shapeImageDataArray(
-  data: Readonly<Array<z.infer<typeof DBImageDataValidator>>>,
+  data: Readonly<Array<DBImageData>>,
 ): Promise<ImageData[]> {
   return Promise.all(data.map(shapeImageData));
 }

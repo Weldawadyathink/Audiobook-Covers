@@ -1,4 +1,5 @@
 allowBuilds:
+  '@depot/cli': true
   core-js: true
   esbuild: true
   protobufjs: true
