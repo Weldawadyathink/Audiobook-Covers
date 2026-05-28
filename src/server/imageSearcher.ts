@@ -50,7 +50,6 @@ function resultSelection<TScore>(score: TScore) {
     source: image.source,
     extension: image.extension,
     blurhash: image.blurhash,
-    from_old_database: image.from_old_database,
     searchable: image.searchable,
     score,
     openlibrary_work_id: image.openlibrary_work_id,

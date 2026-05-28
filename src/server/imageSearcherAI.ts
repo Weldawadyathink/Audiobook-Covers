@@ -1,6 +1,6 @@
 import { shapeImageDataArray, ImageData } from "@/server/imageData";
 import { createReadDb } from "@/db.cloudflare";
-import { getModel, defaultModelName } from "@/server/search/search";
+import { getModel, defaultModelName } from "@/searchModels/models";
 import { DBImageDataValidator } from "@/server/imageData";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
@@ -61,6 +61,7 @@ export const getImageByIdAndSimilar = createServerFn({
   .handler(async ({ data: id }) => {
     console.log(`getImageByIdAndSimilar: ${id}`);
     const start = performance.now();
+    const model = getModel();
     const readDb = createReadDb();
     const [targetRow] = await readDb
       .select({
@@ -97,7 +98,7 @@ export const getImageByIdAndSimilar = createServerFn({
         .from(image)
         .where(and(eq(image.id, id), eq(image.deleted, false))),
     );
-    const score = drizzleSql<number>`1 - (${similarImage.embedding_jina_clip_v2} <=> ${targetEmbedding.e})`;
+    const score = drizzleSql<number>`1 - (${similarImage[model.dbColumn]} <=> ${targetEmbedding.e})`;
 
     const rows = await readDb
       .with(targetEmbedding)
@@ -146,12 +147,12 @@ async function singleModelSearch(q: string): Promise<ImageData[]> {
   const similarityThreshold = 0;
 
   const timeA = performance.now();
-  const vector = await model.getTextEmbedding(q);
+  const vector = await model.getTextEmbedding(q, env);
   const timeB = performance.now();
 
   const readDb = createReadDb();
   const score = drizzleSql<number>`1 - (${cosineDistance(
-    image.embedding_jina_clip_v2,
+    image[model.dbColumn],
     vector.embedding,
   )})`;
   const rows = await readDb

@@ -1,4 +1,4 @@
-import { modelMap, defaultModelName } from "./search";
+import { modelMap, defaultModelName } from "./models";
 import { createServerFn } from "@tanstack/react-start";
 import { staticFunctionMiddleware } from "@tanstack/start-static-server-functions";
 

@@ -2,7 +2,7 @@ import { z } from "zod/v4";
 import { createFileRoute } from "@tanstack/react-router";
 import { vectorSearchByString } from "@/server/imageSearcherAI";
 import { getReranker } from "@/server/rerankers/rerankers";
-import { defaultModelName } from "@/server/search/search";
+import { defaultModelName } from "@/searchModels/models";
 import type { ImageData } from "@/server/imageData";
 
 const searchSchema = z.object({

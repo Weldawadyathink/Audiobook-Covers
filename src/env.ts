@@ -59,10 +59,12 @@ const envSchema = z.object({
   ELASTICSEARCH_API_KEY: z.string(),
 });
 
+export type Env = z.infer<typeof envSchema>;
+
 // Allows the user to inject environment variables at runtime
 // Returns a proxy object so that missing environment variables are thrown when accessed, not at startup
 // Logs missing environment variables at startup
-export function parseEnv(inject: Record<string, unknown> = {}) {
+export function parseEnv(inject: Record<string, unknown> = {}): Env {
   const rawEnv = {
     ...inject,
   };

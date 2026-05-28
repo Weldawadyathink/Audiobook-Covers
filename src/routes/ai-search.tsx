@@ -7,7 +7,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { getIsAuthenticated } from "@/server/auth";
-import { getModels } from "@/server/search/getModels";
+import { getModels } from "@/searchModels/getModels";
 import { getRerankers } from "@/server/rerankers/getRerankers";
 
 const searchParameters = z.object({
