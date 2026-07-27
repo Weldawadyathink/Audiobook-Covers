@@ -54,7 +54,7 @@ export const rebuildEmbeddingTask = schemaTask({
 
     await db
       .update(schema.image)
-      .set({ [model.dbColumn]: embedding })
+      .set({ [model.dbColumn]: embedding.embedding })
       .where(eq(schema.image.id, id));
   },
 });
