@@ -5,7 +5,6 @@ import { Panel } from "@/components/Panel";
 import { SectionHeading } from "@/components/SectionHeading";
 import { Button } from "@/components/ui/button";
 import {
-  BadgeCheck,
   BookOpen,
   Download,
   ExternalLink,
@@ -14,14 +13,13 @@ import {
   Search,
   SearchCheck,
   SearchX,
-  Sparkles,
 } from "lucide-react";
 import { setImageNotSearchable, setImageSearchable } from "@/server/crud";
 import { toast, Toaster } from "sonner";
 import { getIsAuthenticated } from "@/server/auth";
 import { ClientOnly } from "@/components/ClientOnly";
 import { DownloadButton } from "@/components/DownloadButton";
-import { cn } from "@/lib/utils";
+import { MatchAttribution } from "@/components/MatchAttribution";
 import type { ReactNode } from "react";
 import type { ImageData } from "@/server/imageData";
 
@@ -38,22 +36,6 @@ export const Route = createFileRoute("/images/$id")({
 
 function formatList(values: string[]) {
   return values.filter(Boolean).join(", ");
-}
-
-const confidenceLabels = {
-  UNCERTAIN: "Uncertain",
-  LIKELY: "Likely",
-  CONFIRMED: "Confirmed",
-  HUMAN: "Human",
-} as const satisfies Record<
-  NonNullable<ImageData["openlibrary"]>["confidence"],
-  string
->;
-
-function formatConfidence(
-  confidence: NonNullable<ImageData["openlibrary"]>["confidence"],
-) {
-  return confidenceLabels[confidence];
 }
 
 function CoverShelf({
@@ -138,9 +120,6 @@ function RouteComponent() {
   }
 
   const openlibrary = image.openlibrary;
-  const openlibraryConfidence = openlibrary
-    ? formatConfidence(openlibrary.confidence)
-    : null;
   const openlibraryTitle =
     openlibrary &&
     [openlibrary.title, openlibrary.subtitle].filter(Boolean).join(": ");
@@ -148,13 +127,6 @@ function RouteComponent() {
     ? formatList(openlibrary.authorNames)
     : "";
   const primaryAuthor = openlibrary?.authorNames.filter(Boolean)[0];
-  const isHumanMatched = openlibrary?.confidence === "HUMAN";
-  const MatchSourceIcon = isHumanMatched ? BadgeCheck : Sparkles;
-  const matchDescription = isHumanMatched
-    ? "This match was confirmed by a human."
-    : openlibraryConfidence
-      ? `This ${openlibraryConfidence.toLowerCase()} match was made using AI.`
-      : "This match was made using AI.";
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
@@ -232,17 +204,7 @@ function RouteComponent() {
                 </a>
               </div>
 
-              <p
-                className={cn(
-                  "mt-4 flex items-start gap-2 rounded-xl border px-3 py-2 text-xs leading-snug",
-                  isHumanMatched
-                    ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-100"
-                    : "border-amber-400/25 bg-amber-400/10 text-amber-100",
-                )}
-              >
-                <MatchSourceIcon className="mt-0.5 size-3.5 shrink-0" />
-                {matchDescription}
-              </p>
+              <MatchAttribution confidence={openlibrary.confidence} />
             </div>
           ) : (
             <div>
