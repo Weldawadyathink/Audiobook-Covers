@@ -48,6 +48,16 @@ function pollIntervalMinutes(elapsedMinutes: number) {
 const SCHEDULE_LEAD_SECONDS = 120;
 
 /**
+ * Consecutive polls tolerated where pg_cron claims success but the object is
+ * absent and nothing appears to be running.
+ *
+ * Non-zero because the run log has been observed running ahead of reality; zero
+ * would turn that into an aborted build. Small because a genuinely finished job
+ * that produced nothing must still surface rather than poll forever.
+ */
+const SUCCEEDED_WITHOUT_OBJECT_LIMIT = 3;
+
+/**
  * GIN builds on ~30M rows are dominated by sort/merge memory. The 64MB default
  * makes them dramatically slower. `maintenance_work_mem` is USERSET and scoped
  * to the single pg_cron backend, so the blast radius is that one build — but it
@@ -96,6 +106,50 @@ async function withAdminDb<T>(
   } finally {
     await db.sql.end();
   }
+}
+
+/**
+ * Wraps the DDL and its session settings into a **single** statement.
+ *
+ * This is not cosmetic. Sending `SET a; SET b; ALTER TABLE …` gives pg_cron
+ * three results with three command tags, and `cron.job_run_details` then carries
+ * whichever one its version happens to record. In production a run was observed
+ * reporting `status = 'succeeded'` with `return_message = 'SET'` while the
+ * `ALTER TABLE` had not finished — so the orchestrator concluded the build had
+ * completed without creating anything and aborted a job that was minutes into
+ * real work. (Vanilla PG16 and PG18 with pg_cron 1.6 do not reproduce that, so
+ * it is specific to the deployed build; the fix is to remove the ambiguity
+ * rather than to depend on a version's result handling.)
+ *
+ * A `DO` block is one statement, produces exactly one result, and always reports
+ * the tag `DO`. `set_config(..., is_local => true)` is `SET LOCAL`, so both
+ * settings apply for the block's transaction and are discarded afterwards —
+ * verified not to leak into other sessions.
+ *
+ * Dollar quoting on both levels so neither the DDL nor the settings need escape
+ * handling; the tags are distinctive enough not to collide with index
+ * expressions.
+ */
+export function wrapAsSingleStatement({
+  command,
+  searchPath,
+}: {
+  command: string;
+  searchPath?: string;
+}) {
+  const settings = [
+    searchPath
+      ? `  PERFORM set_config('search_path', '"${searchPath.replaceAll('"', '""')}", public', true);`
+      : null,
+    `  PERFORM set_config('maintenance_work_mem', '${MAINTENANCE_WORK_MEM}', true);`,
+  ].filter(Boolean);
+
+  return `DO $openlibrary_etl$
+BEGIN
+${settings.join("\n")}
+  EXECUTE $openlibrary_etl_ddl$${command}$openlibrary_etl_ddl$;
+END
+$openlibrary_etl$`;
 }
 
 const JobRunDetail = z.object({
@@ -317,21 +371,16 @@ export async function runDetachedDdl({
   startTimeoutMinutes?: number;
   onWake?: () => Promise<void>;
 }): Promise<PgCronOutcome> {
-  // Both SETs apply only to the single pg_cron backend that runs this command,
-  // and only for its lifetime.
-  const prelude = [
-    searchPath
-      ? `SET search_path = "${searchPath.replaceAll('"', '""')}", public;`
-      : null,
-    `SET maintenance_work_mem = '${MAINTENANCE_WORK_MEM}';`,
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  const { jobid } = await scheduleOneShot(jobName, `${prelude} ${command}`);
+  const { jobid } = await scheduleOneShot(
+    jobName,
+    wrapAsSingleStatement({ command, searchPath }),
+  );
 
   const scheduledAt = Date.now();
   let observedStart = false;
+  let succeededWithoutObject = 0;
+  /** Terminal only once we know nothing is still running — see the finally. */
+  let jobIsFinished = false;
 
   try {
     for (;;) {
@@ -345,6 +394,7 @@ export async function runDetachedDdl({
         console.log(
           `pg_cron job "${jobName}" completed after ${elapsedMinutes.toFixed(0)} minutes`,
         );
+        jobIsFinished = true;
         return { state: "succeeded", message: null };
       }
 
@@ -354,18 +404,44 @@ export async function runDetachedDdl({
         console.error(
           `pg_cron job "${jobName}" failed: ${run.return_message ?? "no message"}`,
         );
+        jobIsFinished = true;
         return { state: "failed", message: run.return_message };
       }
 
       if (run?.status === "succeeded") {
-        // The log claims success but the object is not there. Reporting this as
-        // success would swap a table with a missing index into production, where
-        // it degrades every search to a sequential scan instead of failing.
+        // The log says done but the object is not there. Do NOT conclude failure
+        // from this — a production run reported `succeeded`/`SET` while its
+        // ALTER TABLE was still running, and treating that as fatal abandoned a
+        // build minutes deep. The run log is advisory; the object is the truth.
+        //
+        // Give it a grace window and keep watching. If real work is still in
+        // progress the next poll sees it; only a persistently "succeeded" job
+        // with no object and no visible progress is a genuine failure.
+        if (await hasStarted?.()) {
+          console.log(
+            `pg_cron job "${jobName}" reports succeeded (${run.return_message ?? "no tag"}) ` +
+              `but work is still in progress — the run log is ahead of reality, continuing to poll`,
+          );
+          observedStart = true;
+          continue;
+        }
+
+        succeededWithoutObject += 1;
+        if (succeededWithoutObject < SUCCEEDED_WITHOUT_OBJECT_LIMIT) {
+          console.log(
+            `pg_cron job "${jobName}" reports succeeded (${run.return_message ?? "no tag"}) ` +
+              `but the object is missing (${succeededWithoutObject}/${SUCCEEDED_WITHOUT_OBJECT_LIMIT}) — re-checking`,
+          );
+          continue;
+        }
+
+        jobIsFinished = true;
         return {
           state: "failed",
           message:
-            `pg_cron job "${jobName}" reported success but the object it should ` +
-            `have created is missing. Return message: ${run.return_message ?? "none"}`,
+            `pg_cron job "${jobName}" reported success (${run.return_message ?? "no tag"}) ` +
+            `but the object it should have created is still missing after ` +
+            `${succeededWithoutObject} checks, with no build in progress.`,
         };
       }
 
@@ -379,6 +455,7 @@ export async function runDetachedDdl({
       }
 
       if (!observedStart && elapsedMinutes > startTimeoutMinutes) {
+        jobIsFinished = true;
         return {
           state: "failed",
           message:
@@ -393,15 +470,31 @@ export async function runDetachedDdl({
       console.log(`pg_cron job "${jobName}" has not started yet`);
     }
   } finally {
-    // The year-out pin means a failure here is harmless, so this is best-effort
-    // rather than something worth failing the run over.
-    try {
-      await unschedule(jobid);
-    } catch (error) {
-      console.error(
-        `Failed to unschedule pg_cron job "${jobName}" (jobid ${jobid}). ` +
-          `It is pinned a year out, so it will not fire again before then.`,
-        error,
+    // Only unschedule a job we know has finished.
+    //
+    // `cron.unschedule` can cancel a job that is still running — that is what
+    // ended a production PK build 3m43s in, leaving `job canceled` in the run
+    // log. Leaving a stale schedule behind is nearly free by comparison: it is
+    // pinned a concrete day and month, so its next natural fire is a year away,
+    // and the next run drops any job of the same name before scheduling.
+    //
+    // So: tidy up on a clean finish, and on every other path leave the job alone
+    // rather than risk killing work in progress.
+    if (jobIsFinished) {
+      try {
+        await unschedule(jobid);
+      } catch (error) {
+        console.error(
+          `Failed to unschedule pg_cron job "${jobName}" (jobid ${jobid}). ` +
+            `It is pinned a year out, so it will not fire again before then.`,
+          error,
+        );
+      }
+    } else {
+      console.log(
+        `Leaving pg_cron job "${jobName}" (jobid ${jobid}) scheduled: it may still ` +
+          `be running, and unscheduling would cancel it. The next run replaces it ` +
+          `by name; its own next fire is a year away.`,
       );
     }
   }
