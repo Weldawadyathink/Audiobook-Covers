@@ -66,8 +66,13 @@ tasks:
       - pnpm exec drizzle-kit push --config=drizzle.config.ts --strict
 
   db:populate:
-    desc: Truncate the dev schema and repopulate it from prod
+    desc: >-
+      Truncate the dev schema and repopulate it from prod. Copies every table in
+      full except openlibrary_work, which keeps only the works referenced by
+      dev.image plus a random sample (default 1%, override with
+      OPENLIBRARY_SAMPLE_PERCENT).
     env:
       APP_STAGE: development
+      OPENLIBRARY_SAMPLE_PERCENT: '{{.OPENLIBRARY_SAMPLE_PERCENT | default "10"}}'
     cmds:
       - pnpm tsx src/scripts/populateDevDatabase.ts

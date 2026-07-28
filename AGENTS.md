@@ -23,10 +23,9 @@ All packages are managed using pnpm.
 
 Tasks that touch a real database or secret store (`task env`, `db:push:dev`, `db:push:prod`, `db:populate`) use 1Password and are for human use; agents should not run them.
 
-## Do not run the dev server
+## You may not need to run the dev server
 
-**In general Agents must not start or keep a dev server running.**
-You never need to start a dev server when interacting with a human. The human will have a dev server running, and if they do not, you can remind them to start one. When building a pull request without the help of a human, it can be helpful to run a dev server in certain circumstances. A dev server for tanstack start will automatically rebuild the generated routeTree.gen.ts file. You may need to run a dev server temporarily to rebuild this file.
+When interacting with a human, it is likely that they already have a dev server running. Check if they have a server running before starting your own.
 
 ## After making changes
 
