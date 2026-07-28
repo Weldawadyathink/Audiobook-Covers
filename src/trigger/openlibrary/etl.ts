@@ -1,23 +1,31 @@
 import { schedules } from "@trigger.dev/sdk/v3";
 import { resolveDumpDate } from "@/trigger/openlibrary/utils";
 import { BQClient } from "./bq";
+import { S3Client } from "./s3";
 import { getQueryForTarget, queries, renderSql } from "./queries";
 import { triggerAndWait } from "../utils";
 import { openLibraryDownloadToS3Task } from "./download-to-s3";
 import { openLibrarySyncWorksForPostgresTask } from "./sync-works-for-postgres";
+import {
+  acquireEtlLease,
+  completeEtlRun,
+  failEtlRun,
+  renewEtlLease,
+  LEASE_RENEW_INTERVAL_MS,
+} from "./etl-state";
 import { createPostgresWriteDb } from "@/db.node";
 import { env } from "@/env.node";
-import { z } from "zod/v4";
 
 const TARGET_QUERY = "works_search_ready";
 const DATASET = "openlibrary";
-
-// Retention for this key is enforced by a bucket lifecycle rule
-// (see infra/gcs-lifecycle.json), not by deleting it here — a failed run should
-// be able to retry the BigQuery stage without re-downloading ~12GB.
-const CSV_KEY = "openlibrary/all.csv";
-
 const DUMP_URL = "https://openlibrary.org/data/ol_dump_latest.txt.gz";
+
+// Keyed by dump date so a retry can tell whether the CSV already on disk is the
+// one it needs. Retention is a bucket lifecycle rule on the `openlibrary/`
+// prefix (see infra/gcs-lifecycle.json), not an inline delete.
+function csvKeyFor(dumpDate: string) {
+  return `openlibrary/${dumpDate}/all.csv`;
+}
 
 export const openLibraryEtlTask = schedules.task({
   id: "openlibrary-etl",
@@ -29,50 +37,89 @@ export const openLibraryEtlTask = schedules.task({
   queue: {
     concurrencyLimit: 1,
   },
-  run: async () => {
-    const bq = new BQClient();
-    const { sql, sqlTools } = createPostgresWriteDb();
-
-    const sqlVariables = {
-      project: bq.projectId,
-      dataset: DATASET,
-      bucket: env.ETL_S3_BUCKET,
-      csvKey: CSV_KEY,
-    };
+  run: async (_payload, { ctx }) => {
+    const runId = ctx.run.id;
+    const db = createPostgresWriteDb();
+    const { sql } = db;
 
     try {
       console.log("Resolving latest dump date from OpenLibrary...");
       const dumpDate = await resolveDumpDate(DUMP_URL);
       console.log(`Latest dump date: ${dumpDate}`);
 
-      const lastSuccessfulDumpDate = await sqlTools.one(
-        z.string(),
-      )`SELECT openlibrary_etl_state()`;
-      if (lastSuccessfulDumpDate === dumpDate) {
-        console.log(
-          `Skipping OpenLibrary ETL because dump ${dumpDate} already completed successfully`,
-        );
-        return;
+      const acquisition = await acquireEtlLease(db, { dumpDate, runId });
+      if (!acquisition.acquired) {
+        const { reason, state } = acquisition;
+        if (reason === "already_completed") {
+          console.log(
+            `Skipping: dump ${dumpDate} already completed at ${state.completed_at?.toISOString()}`,
+          );
+        } else {
+          console.log(
+            `Skipping: run ${state.active_run_id} is already processing dump ` +
+              `${state.active_dump_date} (lease valid until ${state.lease_expires_at?.toISOString()})`,
+          );
+        }
+        return { skipped: true as const, reason, dumpDate };
       }
 
       console.log(
-        `Previous ETL state: ${lastSuccessfulDumpDate}. Starting dump ${dumpDate}.`,
+        `Claimed ETL lease for dump ${dumpDate} ` +
+          `(previous completed dump: ${acquisition.state.completed_dump_date ?? "none"})`,
       );
-      await sql`SELECT openlibrary_etl_state(${"in_progress"})`;
+
+      const heartbeat = setInterval(() => {
+        void renewEtlLease(db, { runId })
+          .then((stillOurs) => {
+            if (!stillOurs) {
+              console.error(
+                `Lost the ETL lease — another run has taken over dump ${dumpDate}`,
+              );
+            }
+          })
+          .catch((error) => {
+            console.error(`Failed to renew ETL lease`, error);
+          });
+      }, LEASE_RENEW_INTERVAL_MS);
+      // Do not keep the process alive purely for the heartbeat.
+      heartbeat.unref?.();
 
       try {
-        console.log(`Downloading complete dump to google storage`);
-        await triggerAndWait({
-          task: openLibraryDownloadToS3Task,
-          payload: {
-            destinationKey: CSV_KEY,
-            sourceUrl: DUMP_URL,
-          },
-          options: {
-            machine: "medium-1x",
-          },
-        });
-        console.log(`Downloaded complete dump to google storage`);
+        const csvKey = csvKeyFor(dumpDate);
+        const bq = new BQClient();
+        const sqlVariables = {
+          project: bq.projectId,
+          dataset: DATASET,
+          bucket: env.ETL_S3_BUCKET,
+          csvKey,
+        };
+
+        const s3 = new S3Client("etl");
+        const existing = await s3.listObjects(csvKey);
+        const alreadyDownloaded = existing.some(
+          (object) => object.key === csvKey && (object.size ?? 0) > 0,
+        );
+
+        if (alreadyDownloaded) {
+          // A multipart upload only becomes visible once completed, so presence
+          // of the key means the download finished.
+          console.log(
+            `Reusing already-downloaded dump at s3://${s3.bucket}/${csvKey}`,
+          );
+        } else {
+          console.log(`Downloading complete dump to google storage`);
+          await triggerAndWait({
+            task: openLibraryDownloadToS3Task,
+            payload: {
+              destinationKey: csvKey,
+              sourceUrl: DUMP_URL,
+            },
+            options: {
+              machine: "medium-1x",
+            },
+          });
+          console.log(`Downloaded complete dump to google storage`);
+        }
 
         for (const runnableQueries of getQueryForTarget(
           queries,
@@ -100,17 +147,22 @@ export const openLibraryEtlTask = schedules.task({
           );
         }
 
-        await triggerAndWait({
+        console.log(`Completed BigQuery search table build: ${TARGET_QUERY}`);
+
+        const syncResult = await triggerAndWait({
           task: openLibrarySyncWorksForPostgresTask,
           payload: { dumpDate },
         });
 
-        await sql`SELECT openlibrary_etl_state(${dumpDate})`;
+        await completeEtlRun(db, { dumpDate, runId });
         console.log(`Recorded successful OpenLibrary dump ${dumpDate}`);
-        console.log(`Completed BigQuery search table build: ${TARGET_QUERY}`);
-      } catch (e) {
-        await sql`SELECT openlibrary_etl_state(${"failed"})`;
-        throw e;
+
+        return { skipped: false as const, ...syncResult };
+      } catch (error) {
+        await failEtlRun(db, { runId, error });
+        throw error;
+      } finally {
+        clearInterval(heartbeat);
       }
     } finally {
       await sql.end();

@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   foreignKey,
   index,
   integer,
@@ -124,6 +125,47 @@ export const openlibrary_work = schema.table(
     index("idx_openlibrary_work_author_names_search").using(
       "gin",
       sql`to_tsvector('simple'::regconfig, immutable_array_to_string(${table.author_names}, ' '))`,
+    ),
+  ],
+);
+
+/**
+ * Single-row lock + progress record for the monthly OpenLibrary ETL.
+ *
+ * `completed_dump_date` (what finished) and `status`/`active_*` (what is running
+ * now) are deliberately separate columns: the previous single `status TEXT`
+ * column had to encode both, so it could not represent "2025-01-01 completed,
+ * 2025-02-01 currently running".
+ *
+ * Mutual exclusion is a lease rather than `pg_advisory_lock` so that it survives
+ * a transaction-mode connection pooler, where session-scoped advisory locks are
+ * silently unsafe. A run that dies without releasing is reclaimed once
+ * `lease_expires_at` passes.
+ */
+export const openlibrary_etl_state = schema.table(
+  "openlibrary_etl_state",
+  {
+    id: boolean("id").primaryKey().default(true),
+    status: text("status").notNull().default("idle"),
+    /** Dump date of the most recent fully successful run. */
+    completed_dump_date: text("completed_dump_date"),
+    completed_at: timestamp("completed_at", { withTimezone: true }),
+    /** Dump date the in-flight (or most recently failed) run is processing. */
+    active_dump_date: text("active_dump_date"),
+    /** Trigger.dev run id holding the lease, for tracing a stuck run. */
+    active_run_id: text("active_run_id"),
+    started_at: timestamp("started_at", { withTimezone: true }),
+    lease_expires_at: timestamp("lease_expires_at", { withTimezone: true }),
+    last_error: text("last_error"),
+    updated_at: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check("openlibrary_etl_state_singleton", sql`${table.id}`),
+    check(
+      "openlibrary_etl_state_status",
+      sql`${table.status} IN ('idle', 'running', 'failed')`,
     ),
   ],
 );
