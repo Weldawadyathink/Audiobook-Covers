@@ -155,13 +155,6 @@ export async function openDuckDbSession(options?: {
 
     if (options?.attachPostgres !== false) {
       await connection.run("INSTALL postgres; LOAD postgres;");
-
-      // `pg_pool_max_connections` is deliberately left alone. Its default of 24
-      // looks alarming for a small instance, but it caps *cached* connections
-      // for parallel ctid scans; this session only ever streams one
-      // `INSERT ... SELECT`, and a load was measured to hold exactly one backend
-      // whether the pool was capped at 4 or left at 24. Setting it would be a
-      // knob that reads as a safeguard while doing nothing.
       await connection.run(
         `ATTACH ${quote(withRequiredSsl(env.DATABASE_WRITE_URL))} AS ${PG_ALIAS} (TYPE postgres)`,
       );

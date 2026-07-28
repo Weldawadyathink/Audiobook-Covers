@@ -248,30 +248,12 @@ that is expensive to rediscover; the file map says where each piece lives.
 `@duckdb/node-bindings` marked `external` in `trigger.config.ts` — the native
 addon resolves its `.node` binary relative to the wrong path if bundled.
 
-`load-postgres.ts` lists the export objects and triggers loaders one at a time
-(`LOADERS_PER_WAVE = 1`), each handling `FILES_PER_LOADER` shards read as one
-`read_parquet([...])`.
-
-**Serial, not parallel.** Concurrent loaders contended rather than scaled. It is
-worth being precise about why, because the obvious explanation is wrong: the
-extension's `pg_pool_max_connections` defaults to 24 per attached database, which
-looks like a connection storm waiting to happen, but a measured load held exactly
-**one** backend whether the pool was capped at 4 or left at its default — the
-write path is a single streaming COPY. The contention is over the work itself:
-every loader bulk-inserts into the same table and so serialises on the relation
-extension lock regardless of writer count, and one loader already saturates a
-deliberately low-CPU instance. Serialising therefore gives up much less
-throughput than the numbers suggest.
-
-Batching files per loader is still worthwhile, but for a different reason than
-parallelism: it amortises container start, extension load, the `ATTACH` and its
-TLS handshake across many small files. With `threads = 1` on these presets the
-reads are pipelined, not concurrent.
-
-`openLibraryLoadParquetTask` also carries `concurrencyLimit: 1` on its own queue,
-so serialisation survives a manual trigger or a future caller. Its queue is
-separate from the orchestrator's, so a parent waiting on a child cannot
-deadlock.
+`load-postgres.ts` lists the export objects and fans loaders out in waves of
+`LOADERS_PER_WAVE`, each handling `FILES_PER_LOADER` shards read as one
+`read_parquet([...])`. DuckDB parallelises those reads internally, which matters
+because BigQuery emits many small files and per-file HTTP overhead would
+otherwise dominate. Waves rather than one big fan-out because the task is
+suspended while a wave is in flight and cannot renew the lease until it returns.
 
 ```sql
 ATTACH 'dbname=… host=… user=… password=…' AS pg (TYPE postgres);
@@ -712,10 +694,7 @@ owns the name.
   question for `subjects`, which is unbounded per work.
 - What is the real delta ratio in a normal month? Sets the Path A/B threshold;
   10% is a starting guess, not a measurement.
-- Does any loader parallelism pay on this instance? Currently serial after
-  concurrent loaders contended. Revisit only with headroom evidence, and raise
-  `LOADERS_PER_WAVE` and the task's `concurrencyLimit` together — they must
-  agree.
+- How many parallel loaders before PlanetScale stops getting faster? Start at 4–8.
 
 ## Later
 

@@ -46,19 +46,6 @@ export const openLibraryLoadParquetTask = schemaTask({
   retry: {
     maxAttempts: 1,
   },
-  /**
-   * Serial by construction, not merely by how the orchestrator triggers it.
-   *
-   * Concurrent loaders contend rather than scale — see `LOADERS_PER_WAVE` in
-   * load-postgres.ts. Enforcing it on the task's own queue means a manual
-   * trigger, a retry, or a future caller cannot reintroduce the pile-up.
-   *
-   * Its own queue, separate from the orchestrator's, so a parent waiting here
-   * cannot deadlock against its child.
-   */
-  queue: {
-    concurrencyLimit: 1,
-  },
   run: async (
     { keys, schemaName, targetTable, includeChangeType },
     { ctx },
