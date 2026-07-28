@@ -20,7 +20,12 @@
       "Bash(do echo:*)",
       "Read(//Users/Spenser/Programming/Audiobook-Covers/**)",
       "Bash(done)",
-      "Bash(node *)"
+      "Bash(node *)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:planetscale.com)",
+      "Bash(git *)",
+      "WebFetch(domain:docs.cloud.google.com)",
+      "Bash(rg '\\(^|/\\)\\(gcs-lifecycle\\\\.json|database\\\\.sql|.*schema.*\\\\.sql\\)$|infra/')"
     ]
   }
 }
