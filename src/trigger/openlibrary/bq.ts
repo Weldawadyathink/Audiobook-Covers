@@ -38,4 +38,13 @@ export class BQClient {
     });
     return job;
   }
+
+  /** Runs a query to completion and returns its rows. For small result sets. */
+  async query<TRow>(query: string): Promise<TRow[]> {
+    const [rows] = await this.bq.query({
+      location: this.location,
+      query,
+    });
+    return rows as TRow[];
+  }
 }

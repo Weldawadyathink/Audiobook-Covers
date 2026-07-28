@@ -13,7 +13,19 @@ import { streamTracker } from "./utils";
 const format = formatNumber({ round: 0 });
 const DATASET = "openlibrary";
 const CURRENT_TABLE = "works_for_postgres";
-const SYNCED_TABLE = "works_for_postgres_synced";
+
+/**
+ * Checkpoint of what Postgres already has, as `(olid, row_hash)` only.
+ *
+ * The delta query reads the synced side for exactly two things: `olid` (to find
+ * deletes) and `row_hash` (to find changes). Carrying the other nine columns
+ * made this a full second copy of works_for_postgres that was rescanned on every
+ * run for no benefit.
+ *
+ * Named `_hashes` rather than reusing `works_for_postgres_synced` so the shape
+ * change is explicit — the old full-copy table is dropped by the ETL cleanup.
+ */
+const SYNCED_TABLE = "works_for_postgres_synced_hashes";
 
 const importedColumnNames = [
   "olid",
@@ -29,6 +41,16 @@ const importedColumnNames = [
   "canonical_score",
 ] as const;
 
+/**
+ * Columns that feed row_hash — everything carried to Postgres except the join
+ * key. Changing this list changes every hash, so the next run sees the whole
+ * table as modified and re-upserts it. That is correct (the payload really did
+ * change) but expensive; expect it when adding a column.
+ */
+const hashedColumnNames = importedColumnNames.filter(
+  (columnName) => columnName !== "olid",
+);
+
 const importedColumns = importedColumnNames.join(",\n      ");
 
 function qualifiedImportedColumns(tableAlias: string) {
@@ -37,21 +59,12 @@ function qualifiedImportedColumns(tableAlias: string) {
     .join(",\n              ");
 }
 
-function rowsWithHash(tableName: string) {
+function currentRowsWithHash(tableName: string) {
   return `
     SELECT
       ${importedColumns},
       TO_HEX(SHA256(TO_JSON_STRING(STRUCT(
-        title,
-        subtitle,
-        author_names,
-        author_aliases,
-        title_aliases,
-        subjects,
-        description,
-        first_publish_year,
-        edition_count,
-        canonical_score
+        ${hashedColumnNames.join(",\n        ")}
       )))) AS row_hash
     FROM \`${tableName}\`
   `;
@@ -119,14 +132,23 @@ export const openLibrarySyncWorksForPostgresTask = schemaTask({
 
       console.log(`Ensuring BigQuery checkpoint table ${syncedTable}`);
       const ensureCheckpointJob = await bq.createQueryJob(`
-        CREATE TABLE IF NOT EXISTS \`${syncedTable}\`
-        CLUSTER BY olid, title AS
-        SELECT
-          ${importedColumns}
-        FROM \`${currentTable}\`
-        WHERE FALSE
+        CREATE TABLE IF NOT EXISTS \`${syncedTable}\` (
+          olid STRING,
+          row_hash STRING
+        )
+        CLUSTER BY olid
       `);
       await ensureCheckpointJob.promise();
+
+      // An empty checkpoint means every row exports as an upsert. That is a
+      // legitimate first run, but it is also what a lost checkpoint looks like,
+      // so make the number visible before the write rather than after.
+      const [checkpointStats] = await bq.query<{ row_count: number }>(`
+        SELECT COUNT(*) AS row_count FROM \`${syncedTable}\`
+      `);
+      console.log(
+        `Checkpoint holds ${format(Number(checkpointStats?.row_count ?? 0))} previously synced rows`,
+      );
 
       console.log(`Exporting BigQuery works_for_postgres deltas`);
       const exportJob = await bq.createQueryJob(`
@@ -138,10 +160,10 @@ export const openLibrarySyncWorksForPostgresTask = schemaTask({
         ) AS
         WITH
           current_rows AS (
-            ${rowsWithHash(currentTable)}
+            ${currentRowsWithHash(currentTable)}
           ),
           synced_rows AS (
-            ${rowsWithHash(syncedTable)}
+            SELECT olid, row_hash FROM \`${syncedTable}\`
           ),
           upserts AS (
             SELECT
@@ -320,10 +342,11 @@ export const openLibrarySyncWorksForPostgresTask = schemaTask({
       console.log(`Advancing BigQuery checkpoint table ${syncedTable}`);
       const advanceCheckpointJob = await bq.createQueryJob(`
         CREATE OR REPLACE TABLE \`${syncedTable}\`
-        CLUSTER BY olid, title AS
-        SELECT
-          ${importedColumns}
-        FROM \`${currentTable}\`
+        CLUSTER BY olid AS
+        SELECT olid, row_hash
+        FROM (
+          ${currentRowsWithHash(currentTable)}
+        )
       `);
       await advanceCheckpointJob.promise();
 

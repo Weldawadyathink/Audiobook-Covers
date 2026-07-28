@@ -14,6 +14,12 @@ type QueryDefinition = {
   readonly name: string;
   readonly query: string;
   readonly requires?: readonly string[];
+  /**
+   * Whether this query creates a BigQuery table named after itself. Defaults to
+   * true — every query here follows that convention, which is what lets the ETL
+   * derive its cleanup list from the DAG instead of a hand-maintained list.
+   */
+  readonly producesTable?: boolean;
 };
 
 type QueryName<TQuery extends QueryDefinition> = TQuery["name"];
@@ -200,8 +206,30 @@ export const queries = defineQueries([
     // End target. Make all desired tables required by this target.
     requires: ["works_for_postgres"],
     query: worksSearchReadySql,
+    producesTable: false,
   },
 ]);
+
+/**
+ * Tables built on the way to `target`, in dependency order.
+ *
+ * These are pure intermediates: every one is rebuilt from scratch by the next
+ * run (`LOAD DATA OVERWRITE` / `CREATE OR REPLACE TABLE`), so keeping them
+ * between runs buys nothing and bills active storage on hundreds of GB. The ETL
+ * drops them once a run succeeds.
+ *
+ * The Postgres checkpoint table is deliberately not derivable here — it is not a
+ * query name, so it can never end up in this list.
+ */
+export function getProcessingTableNames<
+  const TQueries extends readonly QueryDefinition[],
+  const TTarget extends QueryNames<TQueries>,
+>(queries: TQueries, target: TTarget): string[] {
+  return [...getQueryForTarget(queries, target)]
+    .flat()
+    .filter((query) => query.producesTable !== false)
+    .map((query) => query.name);
+}
 
 /**
  * Substitutes `${name}` placeholders in a .sql file with concrete values.

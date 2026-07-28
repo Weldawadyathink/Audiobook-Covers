@@ -2,7 +2,12 @@ import { schedules } from "@trigger.dev/sdk/v3";
 import { resolveDumpDate } from "@/trigger/openlibrary/utils";
 import { BQClient } from "./bq";
 import { S3Client } from "./s3";
-import { getQueryForTarget, queries, renderSql } from "./queries";
+import {
+  getProcessingTableNames,
+  getQueryForTarget,
+  queries,
+  renderSql,
+} from "./queries";
 import { triggerAndWait } from "../utils";
 import { openLibraryDownloadToS3Task } from "./download-to-s3";
 import { openLibrarySyncWorksForPostgresTask } from "./sync-works-for-postgres";
@@ -25,6 +30,36 @@ const DUMP_URL = "https://openlibrary.org/data/ol_dump_latest.txt.gz";
 // prefix (see infra/gcs-lifecycle.json), not an inline delete.
 function csvKeyFor(dumpDate: string) {
   return `openlibrary/${dumpDate}/all.csv`;
+}
+
+/**
+ * Superseded tables that are not part of the query DAG, so cannot be derived
+ * from it. `works_for_postgres_synced` was the old full-copy checkpoint, since
+ * replaced by the `(olid, row_hash)` table in sync-works-for-postgres.
+ */
+const LEGACY_TABLES = ["works_for_postgres_synced"];
+
+/**
+ * Drops the intermediate tables once a run has succeeded. Best-effort: the data
+ * is already in Postgres and the checkpoint is advanced by this point, so a
+ * failure here is a storage-cost problem, not a correctness one.
+ *
+ * Only runs on success — a failed run leaves its tables in place to be inspected.
+ */
+async function dropProcessingTables(bq: BQClient, tables: string[]) {
+  const script = tables
+    .map(
+      (table) =>
+        `DROP TABLE IF EXISTS \`${bq.projectId}.${DATASET}.${table}\`;`,
+    )
+    .join("\n");
+
+  console.log(
+    `Dropping ${tables.length} processing tables: ${tables.join(", ")}`,
+  );
+  const job = await bq.createQueryJob(script);
+  await job.promise();
+  console.log(`Dropped processing tables`);
 }
 
 export const openLibraryEtlTask = schedules.task({
@@ -156,6 +191,20 @@ export const openLibraryEtlTask = schedules.task({
 
         await completeEtlRun(db, { dumpDate, runId });
         console.log(`Recorded successful OpenLibrary dump ${dumpDate}`);
+
+        // After completeEtlRun: the run is durably successful at this point, so
+        // a cleanup failure should not mark it failed and trigger a re-run.
+        try {
+          await dropProcessingTables(bq, [
+            ...getProcessingTableNames(queries, TARGET_QUERY),
+            ...LEGACY_TABLES,
+          ]);
+        } catch (error) {
+          console.error(
+            `Failed to drop processing tables — they will be replaced by the next run, but are billing storage until then`,
+            error,
+          );
+        }
 
         return { skipped: false as const, ...syncResult };
       } catch (error) {
