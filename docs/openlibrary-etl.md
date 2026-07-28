@@ -339,6 +339,13 @@ anyway, since building the PK in bulk beats maintaining it per row.
 All three index builds go through pg_cron, the primary key included: it is the
 same disconnect hazard, and a PK build on 30M rows is not fast.
 
+**The index builds must come after the old table is dropped.** Index names are
+unique per schema and renaming a table does not rename its indexes, so the
+outgoing table keeps holding `openlibrary_work_pkey` right up until step 2 drops
+it. Building indexes earlier to shorten the reduced-catalogue window is a
+tempting optimisation that fails with a bare `relation already exists` — after
+the 30M-row load. There is a test pinning this.
+
 `lock_timeout` so the `ACCESS EXCLUSIVE` grab fails fast instead of queueing
 behind a long reader and blocking every query on the table. `ANALYZE` before the
 swap — after replacing 30M rows the planner is working from stale statistics,
@@ -363,7 +370,34 @@ unschedule, verify the index exists, continue
 ```
 
 Polling `pg_stat_progress_create_index` makes each wake-up informative rather
-than blind, which matters for a step that may run an hour.
+than blind, which matters for a step that may run most of a day.
+
+**There is deliberately no completion deadline.** The build runs in a pg_cron
+backend this process does not own, so a timeout would not stop it — it would
+abandon a build that is still progressing, discard hours of work, and start the
+next attempt from zero. No constant chosen in advance can tell "slow on a
+low-CPU instance" from "stuck". A build that genuinely never ends is a human's
+problem; the loop just keeps polling and reporting so a human can see it. The
+poll interval backs off from 5 to 15 minutes after the first hour, since a
+tighter cadence over a very long build is only extra log noise.
+
+This is safe because trigger.dev's `maxDuration` is **compute** seconds, not
+wall-clock: it aborts on sampled `cpuTime` (`UsageTimeoutManager`), and a
+checkpointed `wait.for` accumulates none. A few seconds of CPU per wake against a
+12-hour compute budget is months of wall-clock.
+
+The one thing still bounded is whether the job ever **starts** — a different
+failure with a different cause (schedule never fired, missing `GRANT`, wrong
+database) that would otherwise hang forever with nothing to look at. Fifteen
+minutes against a schedule pinned ~90 seconds out.
+
+**Completion is decided by the object existing, not by the run log.**
+`cron.job_run_details` is advisory: `cron.log_run` can be disabled, leaving it
+permanently empty. Each build therefore carries an `existsSql` check against
+`pg_constraint` / `pg_index` (with `indisvalid`). A job that reports success
+while the object is missing is treated as a **failure** — swapping in a table
+whose index silently vanished would degrade every search to a sequential scan
+instead of failing loudly.
 
 #### Scheduling shape — avoiding overlapping fires
 
@@ -442,6 +476,15 @@ against `audiobookcovers`. Consequences:
 - Grant the `audiobookcovers` role access: `GRANT USAGE ON SCHEMA cron TO
 audiobookcovers;`. Non-superusers see only their own rows in
   `cron.job_run_details`, which is what we want.
+- The scheduled command sets its own `search_path` to `<schema>, public`. The
+  pg_cron backend is a fresh session that does not inherit the orchestrator's
+  path, and the author GIN expression calls the unqualified
+  `immutable_array_to_string`. That resolves today regardless — the function is
+  in `public`, which is on the default path, and this was verified rather than
+  assumed — so the `SET` is defence in depth against a database- or role-level
+  path that drops `public`, not a fix for a live failure. It does not affect
+  planner matching, which compares resolved function OIDs rather than definition
+  text.
 - **Self-unscheduling only works when the command runs in the same database as
   the `cron` schema.** A command running in `audiobookcovers` cannot call
   `cron.unschedule`, because that schema only exists in `postgres`. So the
@@ -553,6 +596,15 @@ The negative control matters as much as the positive one: with deliberately wron
 credentials the same call fails with `HTTP 403`, and with no secret at all it
 also fails with `403`. So a successful listing is real authentication rather than
 an empty-bucket false positive.
+
+**The pg_cron completion checks are verified too**, since a wrong one either
+hangs forever or fails falsely: they return `false` (not an exception) when the
+target table does not exist at all, flip to `true` only after their own build,
+ignore an index of the right name on the wrong table, and the index built through
+the command prelude is confirmed to be the one the planner chooses for the
+expression `work-search.ts` issues. The PK-name ordering invariant above is
+asserted directly — the build is confirmed to collide while the old table still
+owns the name.
 
 ## Open questions
 

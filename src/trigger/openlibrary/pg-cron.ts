@@ -21,8 +21,16 @@ import { env } from "@/env.node";
  * progress, and disconnects again.
  */
 
-/** How long the run sleeps between progress checks. Not billed. */
-const POLL_INTERVAL_MINUTES = 5;
+/**
+ * How long the run sleeps between progress checks. Not billed.
+ *
+ * Tightest early, when a job is most likely to fail outright or fail to start,
+ * then backing off — over a build that may run most of a day, a 5-minute cadence
+ * is hundreds of near-identical log lines for no extra information.
+ */
+function pollIntervalMinutes(elapsedMinutes: number) {
+  return elapsedMinutes < 60 ? 5 : 15;
+}
 
 /**
  * Lead time between scheduling a job and its single pinned fire.
@@ -220,64 +228,145 @@ export function formatIndexProgress(
 /**
  * Schedules `command` via pg_cron and sleeps until it finishes.
  *
- * `onWake` runs on every poll, awake and with no connection held by this
- * helper. It is where the caller renews the ETL lease — the run is suspended
- * between polls, so no timer-based heartbeat can fire, and this is the only
- * moment renewal is possible.
+ * **There is deliberately no completion deadline.** The work happens in a
+ * pg_cron backend this process does not own, so a timeout here would not stop
+ * anything — it would abandon a build that is still making progress and throw
+ * away hours of it, then start the next attempt from zero. A GIN build over ~30M
+ * rows on a low-CPU instance is legitimately measured in many hours, and no
+ * constant picked in advance can tell "slow" from "stuck". A build that really
+ * does run forever is a human's problem; this just keeps polling and reporting
+ * so a human can see it.
+ *
+ * The one thing that *is* bounded is whether the job ever **starts**. That is a
+ * different failure with a different cause — a schedule that never fired, a
+ * missing `GRANT`, a wrong database name — and it would otherwise hang silently
+ * and indefinitely with nothing to look at.
+ *
+ * `onWake` runs on every poll, awake and with no connection held by this helper.
+ * It is where the caller renews the ETL lease — the run is suspended between
+ * polls, so no timer-based heartbeat can fire, and this is the only moment
+ * renewal is possible.
  */
 export async function runDetachedDdl({
   jobName,
   command,
-  timeoutMinutes,
+  searchPath,
+  hasCompleted,
+  hasStarted,
+  startTimeoutMinutes = 15,
   onWake,
 }: {
   jobName: string;
   command: string;
-  timeoutMinutes: number;
+  /**
+   * Schema to put on the command's `search_path`, ahead of `public`.
+   *
+   * Defence in depth, not a fix for a live failure. The pg_cron backend is a
+   * fresh session that does not inherit the orchestrator's `search_path`, and
+   * the author GIN index expression calls the unqualified
+   * `immutable_array_to_string`. That resolves today because the function lives
+   * in `public` and `public` is on the default path — verified, not assumed.
+   *
+   * Setting it explicitly removes the dependency on that being true. A
+   * database- or role-level `search_path` that drops `public` would otherwise
+   * break the build *after* 30M rows had been loaded, which is an expensive
+   * place to discover a configuration change.
+   *
+   * It does not affect what the planner matches: expression indexes are compared
+   * by resolved function OID, not by the text of the definition.
+   */
+  searchPath?: string;
+  /**
+   * Authoritative check that the object now exists.
+   *
+   * Preferred over `cron.job_run_details`, which is only advisory: `cron.log_run`
+   * can be disabled, leaving the run log permanently empty. The object being
+   * there is the only thing that actually matters.
+   */
+  hasCompleted: () => Promise<boolean>;
+  /**
+   * Optional evidence the work is underway even when the run log is empty, so a
+   * cluster with `cron.log_run` off is not mistaken for one that never started.
+   */
+  hasStarted?: () => Promise<boolean>;
+  /** Bounds only "did it ever begin", never "how long may it take". */
+  startTimeoutMinutes?: number;
   onWake?: () => Promise<void>;
 }): Promise<PgCronOutcome> {
-  // The SET applies only to the single pg_cron backend that runs this command,
+  // Both SETs apply only to the single pg_cron backend that runs this command,
   // and only for its lifetime.
-  const { jobid } = await scheduleOneShot(
-    jobName,
-    `SET maintenance_work_mem = '${MAINTENANCE_WORK_MEM}'; ${command}`,
-  );
+  const prelude = [
+    searchPath
+      ? `SET search_path = "${searchPath.replaceAll('"', '""')}", public;`
+      : null,
+    `SET maintenance_work_mem = '${MAINTENANCE_WORK_MEM}';`,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
-  const deadline = Date.now() + timeoutMinutes * 60_000;
+  const { jobid } = await scheduleOneShot(jobName, `${prelude} ${command}`);
+
+  const scheduledAt = Date.now();
+  let observedStart = false;
 
   try {
     for (;;) {
-      await wait.for({ minutes: POLL_INTERVAL_MINUTES });
+      const elapsedMinutes = (Date.now() - scheduledAt) / 60_000;
+      await wait.for({ minutes: pollIntervalMinutes(elapsedMinutes) });
       await onWake?.();
+
+      // Authoritative check first: on the happy path the run log is never
+      // consulted at all.
+      if (await hasCompleted()) {
+        console.log(
+          `pg_cron job "${jobName}" completed after ${elapsedMinutes.toFixed(0)} minutes`,
+        );
+        return { state: "succeeded", message: null };
+      }
 
       const run = await readLatestRun(jobid);
 
-      if (!run) {
-        console.log(`pg_cron job "${jobName}" has not started yet`);
-      } else if (run.status === "succeeded") {
-        console.log(`pg_cron job "${jobName}" succeeded`);
-        return { state: "succeeded", message: run.return_message };
-      } else if (run.status === "failed") {
+      if (run?.status === "failed") {
         console.error(
           `pg_cron job "${jobName}" failed: ${run.return_message ?? "no message"}`,
         );
         return { state: "failed", message: run.return_message };
-      } else {
-        console.log(
-          `pg_cron job "${jobName}" is ${run.status} ` +
-            `(started ${run.start_time?.toISOString() ?? "unknown"})`,
-        );
       }
 
-      if (Date.now() > deadline) {
+      if (run?.status === "succeeded") {
+        // The log claims success but the object is not there. Reporting this as
+        // success would swap a table with a missing index into production, where
+        // it degrades every search to a sequential scan instead of failing.
         return {
           state: "failed",
           message:
-            `Timed out after ${timeoutMinutes} minutes waiting for pg_cron job ` +
-            `"${jobName}". The build may still be running in the database — ` +
-            `check cron.job_run_details before retrying.`,
+            `pg_cron job "${jobName}" reported success but the object it should ` +
+            `have created is missing. Return message: ${run.return_message ?? "none"}`,
         };
       }
+
+      if (run || (await hasStarted?.())) {
+        observedStart = true;
+        console.log(
+          `pg_cron job "${jobName}" is ${run?.status ?? "running"} after ` +
+            `${elapsedMinutes.toFixed(0)} minutes`,
+        );
+        continue;
+      }
+
+      if (!observedStart && elapsedMinutes > startTimeoutMinutes) {
+        return {
+          state: "failed",
+          message:
+            `pg_cron job "${jobName}" never started: no run recorded and no work ` +
+            `in progress ${elapsedMinutes.toFixed(0)} minutes after scheduling it ` +
+            `(it was pinned to fire within ~2 minutes). Check that the ` +
+            `audiobookcovers role may call cron.schedule_in_database, that ` +
+            `cron.job still holds the job, and that cron.database_name is correct.`,
+        };
+      }
+
+      console.log(`pg_cron job "${jobName}" has not started yet`);
     }
   } finally {
     // The year-out pin means a failure here is harmless, so this is best-effort

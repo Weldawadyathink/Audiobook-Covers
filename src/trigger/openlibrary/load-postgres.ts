@@ -55,17 +55,6 @@ const LOADERS_PER_WAVE = 6;
 /** Rows per committed statement in the delta merge. */
 const MERGE_CHUNK_SIZE = 25_000;
 
-/**
- * Exists to surface a hang, not to bound normal work.
- *
- * Deliberately far above any plausible honest build time. A GIN build over ~30M
- * rows on a low-CPU PlanetScale instance is measured in hours, and giving up on
- * one that is still making progress is strictly worse than waiting: the build is
- * detached in a pg_cron backend, so timing out here abandons it rather than
- * stopping it, and the next attempt starts from zero.
- */
-const INDEX_BUILD_TIMEOUT_MINUTES = 18 * 60;
-
 type Db = ReturnType<typeof createPostgresWriteDb>;
 type Sql = Db["sql"];
 
@@ -256,16 +245,23 @@ async function loadDelta({
 
 /**
  * Runs one index build detached via pg_cron, sleeping between progress checks.
+ *
+ * There is no completion deadline — see {@link runDetachedDdl}. Completion is
+ * decided by the object actually existing, not by what pg_cron's run log claims.
  */
 async function runIndexDdl({
   jobName,
   label,
   command,
+  existsSql,
+  schemaName,
   renewLease,
 }: {
   jobName: string;
   label: string;
   command: string;
+  existsSql: string;
+  schemaName: string;
   renewLease: () => Promise<void>;
 }) {
   console.log(`Building ${label} via pg_cron`);
@@ -274,11 +270,21 @@ async function runIndexDdl({
   const outcome = await runDetachedDdl({
     jobName,
     command,
-    timeoutMinutes: INDEX_BUILD_TIMEOUT_MINUTES,
+    searchPath: schemaName,
+    hasCompleted: () =>
+      // Each check opens a connection, reads, and closes it again. Holding one
+      // open across the sleep is exactly the cost this design avoids.
+      withShortLivedDb(async ({ sql }) => {
+        const [row] = await sql.unsafe<{ present: boolean }[]>(existsSql);
+        return row?.present === true;
+      }),
+    hasStarted: () =>
+      withShortLivedDb(
+        async ({ sqlTools }) =>
+          (await readIndexProgress({ sqlTools })) !== null,
+      ),
     onWake: async () => {
       await renewLease();
-      // Each poll opens a connection, reads, and closes it again. Holding one
-      // open across the sleep is exactly the cost this design avoids.
       await withShortLivedDb(async ({ sqlTools }) => {
         const progress = await readIndexProgress({ sqlTools });
         console.log(`${label}: ${formatIndexProgress(progress)}`);
@@ -377,7 +383,7 @@ async function loadFull({
   console.log(`Loaded ${format(rowsLoaded)} rows into ${NEW_TABLE}`);
 
   for (const index of rebuildIndexCommands(schemaName)) {
-    await runIndexDdl({ ...index, renewLease });
+    await runIndexDdl({ ...index, schemaName, renewLease });
   }
 
   console.log(`Analyzing ${NEW_TABLE} before the swap`);
@@ -412,6 +418,14 @@ export const openLibraryLoadPostgresTask = schemaTask({
     exportPrefix: z.string(),
   }),
   machine: "small-1x",
+  /**
+   * Compute seconds, not wall-clock. trigger.dev aborts on sampled `cpuTime`
+   * (see `UsageTimeoutManager`), and a checkpointed `wait.for` accumulates none
+   * — the process is gone. So this does not cap how long an index build may
+   * take: the polling loop burns a few seconds of CPU per wake, which against 12
+   * hours of compute is months of wall-clock. Do not "fix" this by raising it
+   * for a slow build; it is not the thing bounding one.
+   */
   maxDuration: 12 * 60 * 60,
   retry: {
     maxAttempts: 1,

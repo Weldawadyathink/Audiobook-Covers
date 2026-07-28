@@ -213,6 +213,14 @@ export function dropOldTableSql(schemaName: string) {
  * `openlibrary_work_new_pkey` and would survive the rename, drifting from what
  * `db/schema.ts` declares.
  *
+ * **These must run only after the old table has been dropped.** Index names are
+ * unique per schema, renaming a table does *not* rename its indexes, so the
+ * outgoing table keeps holding `openlibrary_work_pkey` until it is dropped —
+ * Path B's shrink-swap-drop frees the name just in time. Building indexes
+ * earlier to shorten the reduced-catalogue window looks tempting and fails with
+ * a bare "relation already exists", after the 30M-row load. There is a test
+ * pinning this.
+ *
  * The GIN expressions must match `db/schema.ts` **verbatim**. Postgres only uses
  * an expression index when the query expression matches exactly, so a difference
  * here does not fail — it silently degrades search to a sequential scan over
@@ -225,6 +233,7 @@ export function rebuildIndexCommands(schemaName: string) {
       jobName: "openlibrary-etl-pkey",
       label: "primary key",
       command: `ALTER TABLE ${table} ADD CONSTRAINT "${TARGET_TABLE}_pkey" PRIMARY KEY (olid)`,
+      existsSql: constraintExistsSql(schemaName, `${TARGET_TABLE}_pkey`),
     },
     {
       jobName: "openlibrary-etl-title-gin",
@@ -232,6 +241,7 @@ export function rebuildIndexCommands(schemaName: string) {
       command:
         `CREATE INDEX "${TITLE_INDEX}" ON ${table} ` +
         `USING gin (to_tsvector('simple'::regconfig, COALESCE(title, '')))`,
+      existsSql: indexExistsSql(schemaName, TITLE_INDEX),
     },
     {
       jobName: "openlibrary-etl-author-gin",
@@ -239,8 +249,49 @@ export function rebuildIndexCommands(schemaName: string) {
       command:
         `CREATE INDEX "${AUTHOR_INDEX}" ON ${table} ` +
         `USING gin (to_tsvector('simple'::regconfig, immutable_array_to_string(author_names, ' ')))`,
+      existsSql: indexExistsSql(schemaName, AUTHOR_INDEX),
     },
   ];
+}
+
+/**
+ * Whether a named constraint exists on the rebuild target.
+ *
+ * `to_regclass` rather than `::regclass`: the cast throws when the relation is
+ * absent, and this runs on a polling loop where an exception is far worse than
+ * `false`. A missing relation yields NULL, and `conrelid = NULL` is never true.
+ *
+ * A non-`CONCURRENTLY` build that fails rolls its catalogue entry back with the
+ * aborted transaction, so existence here genuinely implies success.
+ */
+export function constraintExistsSql(
+  schemaName: string,
+  constraintName: string,
+) {
+  return `
+SELECT EXISTS (
+  SELECT 1 FROM pg_constraint
+  WHERE conrelid = to_regclass('"${schemaName}"."${NEW_TABLE}"')
+    AND conname = '${constraintName}'
+) AS present`.trim();
+}
+
+/**
+ * Whether a named index exists on the rebuild target *and is valid*.
+ *
+ * `indisvalid` is belt-and-braces for a non-concurrent build, which cannot leave
+ * an invalid index behind — but an invalid index is exactly the thing that would
+ * be silently ignored by the planner after being swapped into production.
+ */
+export function indexExistsSql(schemaName: string, indexName: string) {
+  return `
+SELECT EXISTS (
+  SELECT 1
+  FROM pg_index i
+  WHERE i.indexrelid = to_regclass('"${schemaName}"."${indexName}"')
+    AND i.indrelid = to_regclass('"${schemaName}"."${NEW_TABLE}"')
+    AND i.indisvalid
+) AS present`.trim();
 }
 
 /**
