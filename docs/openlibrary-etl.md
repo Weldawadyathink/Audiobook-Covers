@@ -541,19 +541,45 @@ perfectly preserved checkpoint would have to ship it. Trigger
 stop the run anyway and say so, since the checkpoint change is exactly the
 "legitimate schema change" case it exists to catch.
 
-**Human actions still required.** None of these are things an agent should run:
+**Human actions still required.** None of these are things an agent should run.
+Status below is from a preflight against the live database on 2026-07-28.
 
-- `task db:push:dev` / `task db:push:prod` for the new `catalogue_state` column
-  and its check constraint.
+- **BLOCKING — grant pg_cron scheduling.** The `audiobookcovers` role has
+  `USAGE` on schema `cron`, `SELECT` on `cron.job` / `cron.job_run_details`, and
+  `EXECUTE` on `cron.schedule` and `cron.unschedule` — but **not** on
+  `cron.schedule_in_database`, which is the one the ETL needs. Plain
+  `cron.schedule()` is not a substitute: it schedules into the database the call
+  was made from (`postgres`), and pg_cron is not installed in `audiobookcovers`,
+  so the DDL would run where the tables do not exist. A superuser must run:
+
+  ```sql
+  -- in the postgres database
+  GRANT EXECUTE ON FUNCTION
+    cron.schedule_in_database(text, text, text, text, text, boolean)
+    TO audiobookcovers;
+  ```
+
+  Only Path B needs this. The delta path never touches pg_cron.
+
+- ✅ Schema push landed: both `prod` and `dev` carry the full 11-column
+  `openlibrary_etl_state` and `openlibrary_work` with `subjects` / `description`.
+- ✅ `DATABASE_WRITE_URL` names `audiobookcovers` in its path, and the
+  `postgres` database is reachable with the same credentials.
 - Apply the GCS lifecycle rule from `infra/gcs-lifecycle.json` if it is not
   already applied.
-- `GRANT USAGE ON SCHEMA cron TO audiobookcovers;` in the `postgres` database,
-  and confirm the role may call `cron.schedule_in_database`.
-- Confirm `DATABASE_WRITE_URL` names the application database in its path — the
-  pg_cron helper derives both the admin URL and the target database name from
-  it.
-- Drop the superseded `openlibrary_etl_state()` SQL functions (no-arg and
-  `text`). Drizzle does not manage functions.
+- Drop the superseded `openlibrary_etl_state()` SQL functions — still present in
+  the legacy `audiobookcovers` schema as `()` and `(p_status text)`. Drizzle does
+  not manage functions.
+- `pg_trgm` is **not** installed (the app database has `hypopg`, `plpgsql`,
+  `vector`). Only relevant to the "Later" item below.
+
+**Schema layout.** The database carries a legacy `audiobookcovers` schema from
+the previous implementation alongside the current `dev` / `prod` schemas. The
+ETL is raw SQL and resolves unqualified names through `search_path`, while
+Drizzle resolves through `APP_STAGE` — two independent sources of truth for the
+same decision. `assertTargetSchema()` runs before anything expensive and refuses
+to start unless they agree, because the failure is otherwise silent: the ETL
+would write to one schema while the website reads another.
 
 **Unverified against real infrastructure.** The load SQL, the DuckDB transport
 and GCS access are all verified (below). Two things could only be reasoned about:

@@ -1,5 +1,6 @@
 import { z } from "zod/v4";
 import type { createPostgresWriteDb } from "@/db.node";
+import { schemaName } from "@/db/schema";
 
 type WriteDb = ReturnType<typeof createPostgresWriteDb>;
 
@@ -53,6 +54,60 @@ export type AcquireResult =
       reason: "already_completed" | "run_in_progress";
       state: EtlState;
     };
+
+/**
+ * Refuses to run if the connection resolves to a different schema than Drizzle.
+ *
+ * The schema comes from {@link schemaName} (i.e. `APP_STAGE`), which is what
+ * Drizzle — and therefore the website — uses. It deliberately does *not* come
+ * from `current_schema()`, which follows the role's `search_path` and is a
+ * separate, independently-settable source of truth.
+ *
+ * The check exists because the two really can diverge, and did: this database
+ * still carries a legacy `audiobookcovers` schema from the previous layout, and
+ * the role's `search_path` pointed at it. Under that configuration the raw SQL
+ * in `etl-state.ts` and `work-search.ts` — which has no schema qualification and
+ * resolves through `search_path` — silently addressed the *old* tables while
+ * Drizzle addressed the new ones. Failing loudly here is far better than writing
+ * 40M rows into a schema nobody reads.
+ */
+export async function assertTargetSchema({ sqlTools }: WriteDb): Promise<void> {
+  const row = await sqlTools.one(
+    z.object({
+      schema_name: z.string().nullable(),
+      work_schema: z.string().nullable(),
+    }),
+  )`
+    SELECT
+      current_schema() AS schema_name,
+      -- The namespace of whatever an unqualified reference actually resolves
+      -- to. Not to_regclass(...)::text, which renders the name *relative to*
+      -- search_path and so returns a bare "openlibrary_work" in exactly the
+      -- case that is correct.
+      (
+        SELECT n.nspname
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.oid = to_regclass('openlibrary_work')
+      ) AS work_schema
+  `;
+
+  if (row.schema_name !== schemaName) {
+    throw new Error(
+      `Schema mismatch: APP_STAGE resolves to "${schemaName}" but the connection's ` +
+        `search_path resolves to "${row.schema_name}". Unqualified SQL elsewhere in ` +
+        `the ETL follows search_path, so these must agree. Fix the role's search_path ` +
+        `(ALTER ROLE … SET search_path TO "${schemaName}", public) or APP_STAGE.`,
+    );
+  }
+
+  if (row.work_schema !== schemaName) {
+    throw new Error(
+      `Unqualified "openlibrary_work" resolves to schema ` +
+        `"${row.work_schema ?? "(not found)"}", not "${schemaName}".`,
+    );
+  }
+}
 
 /**
  * Reads current state, creating the singleton row on first use.

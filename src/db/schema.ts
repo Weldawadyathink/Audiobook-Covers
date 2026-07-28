@@ -17,6 +17,18 @@ import {
 } from "drizzle-orm/pg-core";
 import { env } from "@/env.node";
 
+/**
+ * The one place that decides which schema this process talks to.
+ *
+ * Exported as a plain string because the ETL is raw SQL, not Drizzle, and would
+ * otherwise have to re-derive this. It previously used `current_schema()`, which
+ * is a *different* source of truth: `current_schema()` follows the role's
+ * `search_path`, while everything Drizzle emits follows `APP_STAGE`. When those
+ * disagree the ETL writes to one schema and the website reads from another, and
+ * nothing errors — the site just silently shows a stale catalogue.
+ */
+export const schemaName = env.APP_STAGE === "production" ? "prod" : "dev";
+
 export const schema =
   env.APP_STAGE === "production"
     ? pgSchema("prod")

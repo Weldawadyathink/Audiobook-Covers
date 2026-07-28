@@ -35,10 +35,17 @@ function pollIntervalMinutes(elapsedMinutes: number) {
 /**
  * Lead time between scheduling a job and its single pinned fire.
  *
- * pg_cron evaluates schedules at the top of each minute, so this has to clear a
- * whole minute boundary. 90 seconds guarantees at least 60 seconds of lead.
+ * pg_cron evaluates schedules at the top of each minute, and the pinned minute
+ * is `floor((now + lead) / 60)`. The *actual* lead is therefore
+ * `lead - (seconds past the minute)` rounded up to the next boundary, whose
+ * worst case is `lead mod 60`. At 90 seconds that bottoms out around 30 seconds
+ * of real lead — enough in practice, but uncomfortably tight for a job whose
+ * only alternative to firing is a year's wait.
+ *
+ * 120 makes the worst case a full 60 seconds. The cost is up to two minutes of
+ * extra latency on a build measured in hours.
  */
-const SCHEDULE_LEAD_SECONDS = 90;
+const SCHEDULE_LEAD_SECONDS = 120;
 
 /**
  * GIN builds on ~30M rows are dominated by sort/merge memory. The 64MB default
@@ -123,12 +130,29 @@ export type PgCronOutcome =
  */
 async function scheduleOneShot(jobName: string, command: string) {
   return await withAdminDb(async ({ sqlTools }) => {
+    // `cron.timezone` is superuser-only: on PlanetScale even
+    // `current_setting('cron.timezone', true)` raises "permission denied to
+    // examine", despite the missing_ok argument — that flag covers *undefined*
+    // settings, not unreadable ones. So probe it and fall back to pg_cron's own
+    // default rather than letting the read abort the whole schedule.
+    let cronTimezone = "GMT";
+    try {
+      const row = await sqlTools.maybeOne(
+        z.object({ tz: z.string().nullable() }),
+      )`SELECT current_setting('cron.timezone', true) AS tz`;
+      cronTimezone = row?.tz ?? "GMT";
+    } catch {
+      console.log(
+        `Cannot read cron.timezone (superuser-only); assuming pg_cron's default of GMT`,
+      );
+    }
+
     // Computed from the *server's* clock in the *cron* timezone, not from
     // Node's. A pinned schedule derived from a clock or zone the scheduler does
     // not share fires at the wrong time, or up to a year late.
     const { schedule } = await sqlTools.one(z.object({ schedule: z.string() }))`
       SELECT to_char(
-        (now() AT TIME ZONE COALESCE(current_setting('cron.timezone', true), 'GMT'))
+        (now() AT TIME ZONE ${cronTimezone})
           + make_interval(secs => ${SCHEDULE_LEAD_SECONDS}),
         'MI HH24 DD MM'
       ) || ' *' AS schedule

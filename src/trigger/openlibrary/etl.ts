@@ -26,6 +26,7 @@ import {
 } from "./export";
 import {
   acquireEtlLease,
+  assertTargetSchema,
   completeEtlRun,
   failEtlRun,
   renewEtlLease,
@@ -195,6 +196,13 @@ export const openLibraryEtlTask = schemaTask({
     };
 
     try {
+      // Before anything expensive. Unqualified SQL in this pipeline resolves
+      // through search_path, and this database still carries a legacy
+      // `audiobookcovers` schema from the previous layout — landing in it would
+      // be silent, not an error. Cheaper to find out now than after a 12GB
+      // download and an hour of BigQuery.
+      await assertTargetSchema(db);
+
       console.log("Resolving latest dump date from OpenLibrary...");
       const dumpDate = await resolveDumpDate(DUMP_URL);
       console.log(`Latest dump date: ${dumpDate}`);

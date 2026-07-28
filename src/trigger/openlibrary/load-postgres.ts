@@ -3,6 +3,7 @@ import { z } from "zod";
 import formatNumber from "format-number";
 import prettyMilliseconds from "pretty-ms";
 import { createPostgresWriteDb } from "@/db.node";
+import { schemaName } from "@/db/schema";
 import { env } from "@/env.node";
 import { S3Client } from "./s3";
 import {
@@ -24,7 +25,11 @@ import {
 } from "./load-sql";
 import { openLibraryLoadParquetTask } from "./load-parquet";
 import { batchTriggerAndWait } from "../utils";
-import { renewEtlLease, setCatalogueState } from "./etl-state";
+import {
+  assertTargetSchema,
+  renewEtlLease,
+  setCatalogueState,
+} from "./etl-state";
 import {
   formatIndexProgress,
   readIndexProgress,
@@ -63,23 +68,6 @@ type ChunkResult = {
   chunk_size: number;
   applied_count: number;
 };
-
-/**
- * The application's tables live in a stage-specific schema (`prod` / `dev`)
- * selected by `search_path` in the connection URL. Every statement here is
- * schema-qualified explicitly rather than trusting `search_path`, because the
- * DuckDB loader has to be told a concrete schema anyway — it opens its own libpq
- * session and addresses tables as `pg."<schema>"."<table>"`.
- */
-async function currentSchema(sql: Sql): Promise<string> {
-  const [row] = await sql<{ schema_name: string }[]>`
-    SELECT current_schema() AS schema_name
-  `;
-  if (!row?.schema_name) {
-    throw new Error("Could not resolve current_schema() for the ETL target");
-  }
-  return row.schema_name;
-}
 
 /**
  * Fans the export out across loader runs, in waves.
@@ -463,7 +451,8 @@ export const openLibraryLoadPostgresTask = schemaTask({
         );
       }
 
-      const schemaName = await currentSchema(sql);
+      // Validates that search_path and APP_STAGE agree before anything writes.
+      await assertTargetSchema(db);
       const startedAt = performance.now();
       console.log(
         `Loading ${keys.length} shards for dump ${dumpDate} into ` +
