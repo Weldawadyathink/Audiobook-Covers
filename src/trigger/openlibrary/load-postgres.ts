@@ -53,14 +53,24 @@ const format = formatNumber({ round: 0 });
 const FILES_PER_LOADER = 40;
 
 /**
- * Loaders in flight at once. The bottleneck is PlanetScale, not the workers, so
- * this is about finding the point where more writers stop making it faster —
- * see the open question in docs/openlibrary-etl.md.
+ * Loaders in flight at once. **One — the loaders run serially.**
  *
- * It also bounds how long this task is blocked in `batchTriggerAndWait`, which
- * is the longest stretch during which the ETL lease cannot be renewed.
+ * Parallel loaders contended rather than scaled. Each loader holds a single
+ * Postgres backend (measured — not the connection storm the extension's
+ * `pg_pool_max_connections = 24` default suggests), so the contention is over
+ * the work itself: every loader bulk-inserts into the *same* table, which
+ * serialises on the relation extension lock no matter how many writers there
+ * are, and each one saturates a deliberately low-CPU instance on its own.
+ *
+ * Serial therefore costs much less throughput than it appears to. The instance
+ * is the bottleneck either way; six writers queueing on one lock is close to one
+ * writer holding it, minus the contention.
+ *
+ * `openLibraryLoadParquetTask` also carries `concurrencyLimit: 1`, so this holds
+ * even if something triggers it directly. Raise both together, and only with
+ * evidence the database has headroom.
  */
-const LOADERS_PER_WAVE = 6;
+const LOADERS_PER_WAVE = 1;
 
 /** Rows per committed statement in the delta merge. */
 const MERGE_CHUNK_SIZE = 25_000;
@@ -102,10 +112,16 @@ async function loadShards({
   const waveCount = Math.ceil(batches.length / LOADERS_PER_WAVE);
   console.log(
     `Loading ${keys.length} shards into ${schemaName}.${targetTable} as ` +
-      `${batches.length} loader runs across ${waveCount} waves`,
+      `${batches.length} loader runs, ` +
+      (LOADERS_PER_WAVE === 1
+        ? `one at a time`
+        : `${LOADERS_PER_WAVE} at a time across ${waveCount} waves`),
   );
 
+  const startedAt = performance.now();
   let rowsInserted = 0;
+  let completed = 0;
+
   for (let index = 0; index < batches.length; index += LOADERS_PER_WAVE) {
     const wave = batches.slice(index, index + LOADERS_PER_WAVE);
     const results = await batchTriggerAndWait(
@@ -124,10 +140,18 @@ async function loadShards({
       (total, result) => total + result.rowsInserted,
       0,
     );
+    completed += wave.length;
     await renewLease();
+
+    // Serial means this is the only progress signal for a load that can run for
+    // hours, so make each line carry a rate and an estimate rather than a count.
+    const elapsed = performance.now() - startedAt;
+    const remaining = (elapsed / completed) * (batches.length - completed);
     console.log(
-      `Wave ${index / LOADERS_PER_WAVE + 1}/${waveCount} done — ` +
-        `${format(rowsInserted)} rows loaded so far`,
+      `Loader ${completed}/${batches.length} done — ${format(rowsInserted)} rows ` +
+        `in ${prettyMilliseconds(elapsed)} ` +
+        `(${format((rowsInserted / elapsed) * 1000)} rows/sec, ` +
+        `~${prettyMilliseconds(remaining)} remaining)`,
     );
   }
 
