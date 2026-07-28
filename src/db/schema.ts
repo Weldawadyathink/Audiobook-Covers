@@ -89,6 +89,13 @@ export const image = schema.table(
   },
   (table) => [
     index("idx_image_searchable").using("btree", table.searchable),
+    // The cover page groups by work ("more covers for this book") and the
+    // title/author search joins images to their work, both of which are
+    // openlibrary_work_id lookups rather than scans.
+    index("idx_image_openlibrary_work_id").using(
+      "btree",
+      table.openlibrary_work_id,
+    ),
     foreignKey({
       columns: [table.reddit_post_id],
       foreignColumns: [reddit_post.id],

@@ -3,11 +3,13 @@ import { Download } from "lucide-react";
 import useDownloader from "react-use-downloader";
 import { ReactNode } from "react";
 import { logAnalyticsEvent } from "@/server/analytics";
+import { cn } from "@/lib/utils";
 import type { ImageData } from "@/server/imageData";
 
 export function DownloadButton(props: {
   image: ImageData;
   children?: ReactNode;
+  className?: string;
 }) {
   const { download, isInProgress } = useDownloader();
 
@@ -24,7 +26,11 @@ export function DownloadButton(props: {
   }
 
   return (
-    <Button className="w-full" onClick={handleDownload} disabled={isInProgress}>
+    <Button
+      className={cn("w-full", props.className)}
+      onClick={handleDownload}
+      disabled={isInProgress}
+    >
       {props.children ? (
         props.children
       ) : (

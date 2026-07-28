@@ -1,200 +1,596 @@
-import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  useNavigate,
+  useRouterState,
+} from "@tanstack/react-router";
 import { z } from "zod/v4";
 import { zodValidator } from "@tanstack/zod-adapter";
 import ImageCard from "@/components/ImageCard";
+import { Panel } from "@/components/Panel";
+import { SectionHeading } from "@/components/SectionHeading";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { getIsAuthenticated } from "@/server/auth";
 import { coverSearch } from "@/server/imageSearcher";
+import { vectorSearchByString } from "@/server/imageSearcherAI";
+import { getRerankers } from "@/server/rerankers/getRerankers";
 import {
+  ArrowRight,
   BookOpenText,
   Search,
-  SlidersHorizontal,
+  Sparkles,
   UserRound,
+  Wand2,
 } from "lucide-react";
 
 const searchParameters = z.object({
+  /**
+   * Which search engine runs. Book (title/author full-text) is the default and
+   * covers the vast majority of searches; visual (CLIP embedding) is the
+   * fallback for "I only know what it looks like".
+   */
+  mode: z.enum(["book", "visual"]).optional(),
   title: z.string().optional(),
   author: z.string().optional(),
+  /** Free-text description, visual mode only. */
+  q: z.string().optional(),
+  reranker: z.string().optional(),
   showScore: z.boolean().optional(),
 });
+
+type SearchParameters = z.infer<typeof searchParameters>;
+type Mode = "book" | "visual";
+
+const bookExamples = [
+  { title: "Project Hail Mary" },
+  { title: "Dune", author: "Frank Herbert" },
+  { author: "Brandon Sanderson" },
+];
+
+const visualExamples = [
+  "a lone astronaut on a red desert planet",
+  "moody watercolor forest at dusk",
+  "art deco skyline in gold and black",
+];
 
 export const Route = createFileRoute("/search")({
   component: RouteComponent,
   validateSearch: zodValidator(searchParameters),
   loaderDeps: ({ search }) => ({ search }),
-  loader: async ({ deps: data }) => {
-    const [auth, images] = await Promise.all([
+  loader: async ({ deps: { search } }) => {
+    const mode: Mode = search.mode === "visual" ? "visual" : "book";
+    const title = search.title?.trim() ?? "";
+    const author = search.author?.trim() ?? "";
+    const q = search.q?.trim() ?? "";
+
+    const [auth, rerankerNames, images] = await Promise.all([
       getIsAuthenticated(),
-      coverSearch({
-        data: {
-          title: data.search.title,
-          author: data.search.author,
-        },
-      }),
+      getRerankers(),
+      mode === "visual"
+        ? vectorSearchByString({ data: { q, reranker: search.reranker } })
+        : coverSearch({ data: { title, author } }),
     ]);
+
     return {
-      query: data.search,
+      mode,
+      title,
+      author,
+      q,
+      reranker: search.reranker ?? "",
+      showScore: search.showScore ?? false,
+      rerankerNames,
       images,
       isAuthenticated: auth.isAuthenticated,
     };
   },
 });
 
-function RouteComponent() {
-  const { query, images, isAuthenticated } = Route.useLoaderData();
-  const navigate = useNavigate();
-  const [titleQuery, setTitleQuery] = useState(query.title ?? "");
-  const [authorQuery, setAuthorQuery] = useState(query.author ?? "");
-  const [showScore, setShowScore] = useState(query.showScore ?? false);
-  const hasSearch = !!query.title || !!query.author;
+const fieldClass =
+  "h-12 rounded-2xl border-white/15 bg-white/8 px-4 text-base text-white shadow-inner shadow-slate-950/20 placeholder:text-slate-500";
 
-  const submitForm = () => {
+function RouteComponent() {
+  const {
+    mode,
+    title,
+    author,
+    q,
+    reranker,
+    showScore: initialShowScore,
+    rerankerNames,
+    images,
+    isAuthenticated,
+  } = Route.useLoaderData();
+  const navigate = useNavigate();
+  const isLoading = useRouterState({ select: (s) => s.isLoading });
+
+  const [titleQuery, setTitleQuery] = useState(title);
+  const [authorQuery, setAuthorQuery] = useState(author);
+  const [visualQuery, setVisualQuery] = useState(q);
+  const [selectedReranker, setSelectedReranker] = useState(reranker);
+  const [showScore, setShowScore] = useState(initialShowScore);
+
+  const hasSearch = mode === "visual" ? !!q : !!title || !!author;
+
+  const runSearch = (overrides: Partial<SearchParameters> = {}) => {
+    const next: SearchParameters = {
+      mode: mode === "visual" ? "visual" : undefined,
+      title: titleQuery.trim() || undefined,
+      author: authorQuery.trim() || undefined,
+      q: visualQuery.trim() || undefined,
+      reranker: selectedReranker || undefined,
+      showScore: showScore || undefined,
+      ...overrides,
+    };
+    navigate({ to: "/search", search: next });
+  };
+
+  /**
+   * Switching modes carries the text across rather than dropping it — someone
+   * who struck out searching for "Dune" by title should land in visual search
+   * with "Dune" already run, not an empty box.
+   */
+  const switchMode = (next: Mode) => {
+    if (next === "visual") {
+      const carried =
+        visualQuery.trim() ||
+        [titleQuery.trim(), authorQuery.trim()].filter(Boolean).join(" ");
+      setVisualQuery(carried);
+      runSearch({ mode: "visual", q: carried || undefined });
+    } else {
+      const carried = titleQuery.trim() || visualQuery.trim();
+      setTitleQuery(carried);
+      runSearch({ mode: undefined, title: carried || undefined, q: undefined });
+    }
+  };
+
+  const clearSearch = () => {
+    setTitleQuery("");
+    setAuthorQuery("");
+    setVisualQuery("");
     navigate({
       to: "/search",
-      search: {
-        title: titleQuery.trim() || undefined,
-        author: authorQuery.trim() || undefined,
-        showScore: showScore || undefined,
-      },
+      search: { mode: mode === "visual" ? "visual" : undefined },
     });
   };
 
+  const summary =
+    mode === "visual"
+      ? `“${q}”`
+      : [title && `“${title}”`, author && `by ${author}`]
+          .filter(Boolean)
+          .join(" ");
+
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-3 pb-10 sm:px-6">
-      <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/45 shadow-2xl shadow-slate-950/30 backdrop-blur">
-        <div className="relative isolate px-5 py-7 sm:px-8 lg:px-10">
-          <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.24),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(168,85,247,0.2),transparent_32%)]" />
-          <div className="absolute inset-x-0 top-0 -z-10 h-px bg-linear-to-r from-transparent via-cyan-200/70 to-transparent" />
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-6">
+      <Panel className="overflow-hidden">
+        <div
+          className={cn(
+            "relative isolate px-5 py-7 sm:px-8 lg:px-10",
+            "before:absolute before:inset-x-0 before:top-0 before:-z-10 before:h-px",
+            mode === "visual"
+              ? "before:bg-linear-to-r before:from-transparent before:via-violet-300/70 before:to-transparent"
+              : "before:bg-linear-to-r before:from-transparent before:via-cyan-200/70 before:to-transparent",
+          )}
+        >
+          <div
+            className={cn(
+              "absolute inset-0 -z-10",
+              mode === "visual"
+                ? "bg-[radial-gradient(circle_at_top_left,rgba(167,139,250,0.22),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(236,72,153,0.14),transparent_36%)]"
+                : "bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.2),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(167,139,250,0.14),transparent_36%)]",
+            )}
+          />
 
-          <div className="mb-7 max-w-3xl">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-cyan-200/20 bg-cyan-200/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-cyan-100">
-              <Search className="size-3.5" />
-              Cover Search
-            </div>
-            <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              Find audiobook covers by book details
-            </h1>
-            <p className="mt-3 text-sm leading-6 text-slate-300 sm:text-base">
-              Search the catalog with a title, an author, or both. Combining both
-              fields usually gives the tightest matches.
-            </p>
-          </div>
+          {mode === "book" ? (
+            <BookSearchForm
+              titleQuery={titleQuery}
+              authorQuery={authorQuery}
+              setTitleQuery={setTitleQuery}
+              setAuthorQuery={setAuthorQuery}
+              onSubmit={() => runSearch()}
+              onSwitchMode={() => switchMode("visual")}
+            />
+          ) : (
+            <VisualSearchForm
+              visualQuery={visualQuery}
+              setVisualQuery={setVisualQuery}
+              onSubmit={() => runSearch()}
+              onSwitchMode={() => switchMode("book")}
+            />
+          )}
 
-          <form
-            className="grid gap-5"
-            onSubmit={(e) => {
-              e.preventDefault();
-              submitForm();
-            }}
-          >
-            <div className="grid gap-4 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
-              <label className="group block">
-                <span className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-100">
-                  <BookOpenText className="size-4 text-cyan-200" />
-                  Title
-                </span>
-                <Input
-                  type="text"
-                  value={titleQuery}
-                  placeholder="The Fellowship of the Ring"
-                  className="h-12 rounded-2xl border-white/15 bg-white/10 px-4 text-base text-white shadow-inner shadow-slate-950/20 placeholder:text-slate-400 focus-visible:border-cyan-200 focus-visible:ring-cyan-200/30"
-                  onChange={(e) => setTitleQuery(e.target.value)}
-                />
-                <span className="mt-2 block text-xs text-slate-400">
-                  Book title, subtitle, or series text.
-                </span>
-              </label>
+          {isAuthenticated && (
+            <AdvancedOptions
+              mode={mode}
+              rerankerNames={rerankerNames}
+              selectedReranker={selectedReranker}
+              showScore={showScore}
+              onRerankerChange={(value) => {
+                setSelectedReranker(value);
+                runSearch({ reranker: value || undefined });
+              }}
+              onShowScoreChange={(value) => {
+                setShowScore(value);
+                runSearch({ showScore: value || undefined });
+              }}
+            />
+          )}
+        </div>
+      </Panel>
 
-              <label className="group block">
-                <span className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-100">
-                  <UserRound className="size-4 text-violet-200" />
-                  Author
-                </span>
-                <Input
-                  type="text"
-                  value={authorQuery}
-                  placeholder="J. R. R. Tolkien"
-                  className="h-12 rounded-2xl border-white/15 bg-white/10 px-4 text-base text-white shadow-inner shadow-slate-950/20 placeholder:text-slate-400 focus-visible:border-violet-200 focus-visible:ring-violet-200/30"
-                  onChange={(e) => setAuthorQuery(e.target.value)}
-                />
-                <span className="mt-2 block text-xs text-slate-400">
-                  Author, narrator, or credited creator.
-                </span>
-              </label>
+      {!hasSearch && (
+        <ExampleSearches
+          mode={mode}
+          onPickBook={(example) => {
+            setTitleQuery(example.title ?? "");
+            setAuthorQuery(example.author ?? "");
+            runSearch({
+              title: example.title,
+              author: example.author,
+              q: undefined,
+            });
+          }}
+          onPickVisual={(example) => {
+            setVisualQuery(example);
+            runSearch({ mode: "visual", q: example });
+          }}
+        />
+      )}
 
+      {hasSearch && (
+        <>
+          <SectionHeading
+            eyebrow="Results"
+            title={
+              isLoading
+                ? "Searching…"
+                : `${images.length} cover${images.length === 1 ? "" : "s"}`
+            }
+            description={summary ? `Matching ${summary}` : undefined}
+            action={
               <Button
-                type="submit"
-                className="h-12 rounded-2xl bg-cyan-200 px-7 font-bold text-slate-950 shadow-lg shadow-cyan-950/30 hover:bg-cyan-100"
+                type="button"
+                variant="ghost"
+                onClick={clearSearch}
+                className="self-start rounded-full border border-white/10 text-slate-300 hover:bg-white/10 hover:text-white"
               >
-                <Search className="size-4" />
-                Search
+                Clear search
               </Button>
-            </div>
+            }
+          />
 
-            <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-3 text-sm text-slate-300 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2">
-                <SlidersHorizontal className="size-4 text-slate-400" />
-                <span>Search results are ranked by title and author relevance.</span>
-              </div>
-              <label className="flex cursor-pointer items-center gap-2 text-slate-200">
-                <input
-                  type="checkbox"
-                  checked={showScore}
-                  className="size-4 rounded border-white/20 bg-white/10 accent-cyan-200"
-                  onChange={(e) => setShowScore(e.target.checked)}
+          {!isLoading && images.length === 0 && <NoResults mode={mode} />}
+
+          {images.length > 0 && (
+            <div
+              className={cn(
+                "grid grid-cols-2 gap-4 transition-opacity duration-200 sm:grid-cols-3 sm:gap-6 lg:grid-cols-4",
+                isLoading && "opacity-40",
+              )}
+            >
+              {images.map((image) => (
+                <ImageCard
+                  key={image.id}
+                  imageData={image}
+                  showScore={showScore}
+                  showDataset={isAuthenticated}
                 />
-                Show score
-              </label>
+              ))}
             </div>
-          </form>
-        </div>
-      </section>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">
-            Results
-          </p>
-          <h2 className="mt-1 text-2xl font-bold text-white">
-            {hasSearch
-              ? `${images.length} cover${images.length === 1 ? "" : "s"} found`
-              : "Start a search"}
-          </h2>
-        </div>
-        {hasSearch && (query.title || query.author) && (
-          <p className="max-w-xl text-sm text-slate-300 sm:text-right">
-            Showing matches for{" "}
-            {[query.title, query.author].filter(Boolean).join(" by ")}.
-          </p>
-        )}
+function ModeSwitchLink({
+  onClick,
+  children,
+  accent,
+}: {
+  onClick: () => void;
+  children: React.ReactNode;
+  accent: "cyan" | "violet";
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "group flex w-full items-start gap-2 rounded-full py-1 text-left text-sm font-medium transition-colors sm:w-auto sm:items-center",
+        accent === "violet"
+          ? "text-violet-200 hover:text-violet-100"
+          : "text-cyan-200 hover:text-cyan-100",
+      )}
+    >
+      {accent === "violet" ? (
+        <Sparkles className="mt-0.5 size-4 shrink-0 sm:mt-0" />
+      ) : (
+        <BookOpenText className="mt-0.5 size-4 shrink-0 sm:mt-0" />
+      )}
+      <span className="underline-offset-4 group-hover:underline">
+        {children}
+        <ArrowRight className="ml-1.5 inline size-3.5 align-[-2px] transition-transform group-hover:translate-x-0.5" />
+      </span>
+    </button>
+  );
+}
+
+function BookSearchForm({
+  titleQuery,
+  authorQuery,
+  setTitleQuery,
+  setAuthorQuery,
+  onSubmit,
+  onSwitchMode,
+}: {
+  titleQuery: string;
+  authorQuery: string;
+  setTitleQuery: (value: string) => void;
+  setAuthorQuery: (value: string) => void;
+  onSubmit: () => void;
+  onSwitchMode: () => void;
+}) {
+  return (
+    <>
+      <div className="mb-6 max-w-3xl">
+        <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+          Find a cover for your audiobook
+        </h1>
+        <p className="mt-3 text-sm leading-6 text-slate-300 sm:text-base">
+          Search the archive by book. A title on its own usually works; add the
+          author to narrow it down.
+        </p>
       </div>
 
-      {hasSearch && images.length === 0 && (
-        <div className="rounded-3xl border border-white/10 bg-white/5 px-6 py-12 text-center shadow-xl shadow-slate-950/20">
-          <p className="text-lg font-semibold text-white">No images found</p>
-          <p className="mt-2 text-sm text-slate-300">
-            Try a shorter title, remove punctuation, or search with just the author.
-          </p>
-        </div>
-      )}
-
-      {images.length > 0 && (
-        <div className="grid grid-cols-1 justify-center gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {images.map((image) => (
-            <ImageCard
-              showScore={showScore}
-              showDataset={isAuthenticated}
-              key={image.id}
-              imageData={image}
-              className="max-w-96"
+      <form
+        className="grid gap-5"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit();
+        }}
+      >
+        <div className="grid gap-4 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
+          <label className="block">
+            <span className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-100">
+              <BookOpenText className="size-4 text-cyan-200" />
+              Title
+            </span>
+            <Input
+              type="text"
+              value={titleQuery}
+              placeholder="The Fellowship of the Ring"
+              autoFocus={!titleQuery && !authorQuery}
+              className={cn(
+                fieldClass,
+                "focus-visible:border-cyan-200 focus-visible:ring-cyan-200/30",
+              )}
+              onChange={(e) => setTitleQuery(e.target.value)}
             />
-          ))}
-        </div>
-      )}
+          </label>
 
-      <Outlet />
+          <label className="block">
+            <span className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-100">
+              <UserRound className="size-4 text-violet-200" />
+              Author
+              <span className="font-normal text-slate-500">optional</span>
+            </span>
+            <Input
+              type="text"
+              value={authorQuery}
+              placeholder="J. R. R. Tolkien"
+              className={cn(
+                fieldClass,
+                "focus-visible:border-violet-200 focus-visible:ring-violet-200/30",
+              )}
+              onChange={(e) => setAuthorQuery(e.target.value)}
+            />
+          </label>
+
+          <Button
+            type="submit"
+            className="h-12 rounded-2xl bg-cyan-200 px-7 text-base font-bold text-slate-950 shadow-lg shadow-cyan-950/30 hover:bg-cyan-100"
+          >
+            <Search className="size-4" />
+            Search
+          </Button>
+        </div>
+      </form>
+
+      <div className="mt-5 border-t border-white/8 pt-4">
+        <ModeSwitchLink accent="violet" onClick={onSwitchMode}>
+          Only know what the artwork looks like? Try visual search
+        </ModeSwitchLink>
+      </div>
+    </>
+  );
+}
+
+function VisualSearchForm({
+  visualQuery,
+  setVisualQuery,
+  onSubmit,
+  onSwitchMode,
+}: {
+  visualQuery: string;
+  setVisualQuery: (value: string) => void;
+  onSubmit: () => void;
+  onSwitchMode: () => void;
+}) {
+  return (
+    <>
+      <div className="mb-6 max-w-3xl">
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-violet-200/20 bg-violet-200/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-violet-100">
+          <Sparkles className="size-3.5" />
+          Visual search
+        </div>
+        <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+          Describe the artwork
+        </h1>
+        <p className="mt-3 text-sm leading-6 text-slate-300 sm:text-base">
+          This searches what the covers <em>look like</em> rather than which
+          book they belong to. Describe the scene, the colors, or the mood.
+        </p>
+      </div>
+
+      <form
+        className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit();
+        }}
+      >
+        <label className="block">
+          <span className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-100">
+            <Wand2 className="size-4 text-violet-200" />
+            Description
+          </span>
+          <Input
+            type="text"
+            value={visualQuery}
+            placeholder="a lighthouse under a stormy purple sky"
+            autoFocus={!visualQuery}
+            className={cn(
+              fieldClass,
+              "focus-visible:border-violet-200 focus-visible:ring-violet-200/30",
+            )}
+            onChange={(e) => setVisualQuery(e.target.value)}
+          />
+        </label>
+
+        <Button
+          type="submit"
+          className="h-12 rounded-2xl bg-violet-300 px-7 text-base font-bold text-slate-950 shadow-lg shadow-violet-950/30 hover:bg-violet-200"
+        >
+          <Sparkles className="size-4" />
+          Search
+        </Button>
+      </form>
+
+      <div className="mt-5 border-t border-white/8 pt-4">
+        <ModeSwitchLink accent="cyan" onClick={onSwitchMode}>
+          Know the book? Search by title and author
+        </ModeSwitchLink>
+      </div>
+    </>
+  );
+}
+
+function AdvancedOptions({
+  mode,
+  rerankerNames,
+  selectedReranker,
+  showScore,
+  onRerankerChange,
+  onShowScoreChange,
+}: {
+  mode: Mode;
+  rerankerNames: string[];
+  selectedReranker: string;
+  showScore: boolean;
+  onRerankerChange: (value: string) => void;
+  onShowScoreChange: (value: boolean) => void;
+}) {
+  return (
+    <details className="group mt-5 rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
+      <summary className="cursor-pointer list-none font-medium text-slate-300 transition-colors marker:content-none hover:text-white">
+        Admin options
+      </summary>
+      <div className="mt-3 flex flex-wrap items-center gap-5 border-t border-white/8 pt-3">
+        {mode === "visual" && (
+          <label className="flex items-center gap-2">
+            <span className="text-slate-400">Reranker</span>
+            <select
+              className="rounded-lg border border-white/15 bg-slate-900 px-2 py-1 text-sm text-slate-100"
+              value={selectedReranker}
+              onChange={(e) => onRerankerChange(e.target.value)}
+            >
+              <option value="">None</option>
+              {rerankerNames.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        <label className="flex cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            checked={showScore}
+            className="size-4 rounded border-white/20 bg-white/10 accent-cyan-200"
+            onChange={(e) => onShowScoreChange(e.target.checked)}
+          />
+          Show score
+        </label>
+      </div>
+    </details>
+  );
+}
+
+function ExampleSearches({
+  mode,
+  onPickBook,
+  onPickVisual,
+}: {
+  mode: Mode;
+  onPickBook: (example: { title?: string; author?: string }) => void;
+  onPickVisual: (example: string) => void;
+}) {
+  const chipClass =
+    "rounded-full border border-white/12 bg-white/5 px-4 py-2 text-sm text-slate-200 transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white";
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+        Try one of these
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {mode === "book"
+          ? bookExamples.map((example) => (
+              <button
+                key={`${example.title ?? ""}-${example.author ?? ""}`}
+                type="button"
+                className={chipClass}
+                onClick={() => onPickBook(example)}
+              >
+                {[example.title, example.author].filter(Boolean).join(" · ")}
+              </button>
+            ))
+          : visualExamples.map((example) => (
+              <button
+                key={example}
+                type="button"
+                className={chipClass}
+                onClick={() => onPickVisual(example)}
+              >
+                {example}
+              </button>
+            ))}
+      </div>
     </div>
+  );
+}
+
+function NoResults({ mode }: { mode: Mode }) {
+  return (
+    <Panel className="px-6 py-12 text-center">
+      <p className="text-lg font-semibold text-white">No covers found</p>
+      {mode === "book" ? (
+        <p className="mx-auto mt-2 max-w-md text-sm text-slate-400">
+          Try a shorter title, drop the subtitle or punctuation, or search by
+          the author alone. Not every book in the archive has been matched to a
+          title yet — visual search reaches those too.
+        </p>
+      ) : (
+        <p className="mx-auto mt-2 max-w-md text-sm text-slate-400">
+          Try describing the scene more plainly — colors, objects, and mood work
+          better than book titles here.
+        </p>
+      )}
+    </Panel>
   );
 }
