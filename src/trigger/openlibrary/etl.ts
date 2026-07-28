@@ -397,7 +397,7 @@ export const openLibraryEtlTask = schemaTask({
  */
 export const openLibraryEtlScheduleTask = schedules.task({
   id: "openlibrary-etl-schedule",
-  cron: "0 0 1 1 *",
+  cron: "36 */4 * * *",
   run: async () => {
     const handle = await openLibraryEtlTask.trigger({ fullRebuild: false });
     console.log(`Triggered OpenLibrary ETL run ${handle.id}`);
