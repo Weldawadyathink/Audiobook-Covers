@@ -55,8 +55,16 @@ const LOADERS_PER_WAVE = 6;
 /** Rows per committed statement in the delta merge. */
 const MERGE_CHUNK_SIZE = 25_000;
 
-/** Exists to surface a hang, not to bound normal work. */
-const INDEX_BUILD_TIMEOUT_MINUTES = 4 * 60;
+/**
+ * Exists to surface a hang, not to bound normal work.
+ *
+ * Deliberately far above any plausible honest build time. A GIN build over ~30M
+ * rows on a low-CPU PlanetScale instance is measured in hours, and giving up on
+ * one that is still making progress is strictly worse than waiting: the build is
+ * detached in a pg_cron backend, so timing out here abandons it rather than
+ * stopping it, and the next attempt starts from zero.
+ */
+const INDEX_BUILD_TIMEOUT_MINUTES = 18 * 60;
 
 type Db = ReturnType<typeof createPostgresWriteDb>;
 type Sql = Db["sql"];

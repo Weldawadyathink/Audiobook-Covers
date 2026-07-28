@@ -40,9 +40,21 @@ export type DuckDbSession = {
 /**
  * Opens an in-memory DuckDB with GCS credentials and Postgres attached.
  *
- * The GCS secret uses the same HMAC key pair as the S3-compatible client
- * elsewhere in the ETL — `TYPE GCS` is DuckDB's name for exactly that, so no
- * additional credential is needed.
+ * **The `ETL_S3_*` credentials are already the GCS credentials.** The bucket
+ * BigQuery exports to is Google Cloud Storage, reached through its
+ * S3-compatible interoperability API: `ETL_S3_ENDPOINT` is
+ * `https://storage.googleapis.com` and `ETL_S3_ACCESS_KEY_ID` is a `GOOG…` HMAC
+ * key. DuckDB's `TYPE GCS` secret is exactly an S3 secret pinned to that API, so
+ * it consumes the same key pair directly — nothing extra to provision, and no
+ * service-account JSON involved.
+ *
+ * `ENDPOINT` and `USE_SSL` are passed explicitly rather than leaning on the
+ * type's built-in default, so `ETL_S3_ENDPOINT` stays the single source of truth
+ * and repointing it moves DuckDB with it instead of silently diverging.
+ *
+ * Note the scheme matters: a `TYPE GCS` secret serves `gs://` and `gcs://` URIs
+ * only. The same bucket addressed as `s3://` finds no matching secret and fails
+ * with a 404 against the wrong endpoint, so {@link gcsUris} always emits `gs://`.
  */
 export async function openDuckDbSession(options?: {
   /** Attach Postgres read-write. Set false for a read-only session. */
@@ -58,11 +70,15 @@ export async function openDuckDbSession(options?: {
 
   try {
     await connection.run("INSTALL httpfs; LOAD httpfs;");
+
+    const endpoint = new URL(env.ETL_S3_ENDPOINT);
     await connection.run(`
       CREATE OR REPLACE SECRET openlibrary_gcs (
         TYPE GCS,
         KEY_ID ${quote(env.ETL_S3_ACCESS_KEY_ID)},
-        SECRET ${quote(env.ETL_S3_SECRET_ACCESS_KEY)}
+        SECRET ${quote(env.ETL_S3_SECRET_ACCESS_KEY)},
+        ENDPOINT ${quote(endpoint.host)},
+        USE_SSL ${endpoint.protocol === "https:"}
       )
     `);
 
@@ -80,7 +96,13 @@ export async function openDuckDbSession(options?: {
   return { connection, close };
 }
 
-/** `gs://bucket/key` URI list for `read_parquet`. */
+/**
+ * `gs://bucket/key` URI list for `read_parquet`.
+ *
+ * `gs://`, not `s3://`. The bucket answers on both, but a `TYPE GCS` secret is
+ * only matched for the `gs`/`gcs` schemes — addressing it as `s3://` finds no
+ * secret and fails with a 404 against the default AWS endpoint.
+ */
 export function gcsUris(bucket: string, keys: string[]) {
   return keys.map((key) => `gs://${bucket}/${key}`);
 }
@@ -89,5 +111,3 @@ export function gcsUris(bucket: string, keys: string[]) {
 export function uriListLiteral(uris: string[]) {
   return `[${uris.map(quote).join(", ")}]`;
 }
-
-export { quote as quoteSqlString };

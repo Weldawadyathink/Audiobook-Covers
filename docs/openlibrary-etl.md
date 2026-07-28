@@ -125,6 +125,15 @@ it puts the encoding in the database rather than in a hand-rolled literal parser
 that mangles a title containing a comma. (`src/server/imageData.ts` predates this
 and hand-rolls the parser; it is the thing to avoid, not the pattern to copy.)
 
+**The `ETL_S3_*` credentials are already the GCS credentials.** The export bucket
+is Google Cloud Storage reached through its S3-compatible interoperability API —
+`ETL_S3_ENDPOINT` is `https://storage.googleapis.com` and the key id is a `GOOG…`
+HMAC key. DuckDB's `TYPE GCS` secret is an S3 secret pinned to that API, so it
+takes the same pair directly; there is no service-account JSON in this path. The
+scheme is load-bearing, though: a `TYPE GCS` secret is only matched for `gs://`
+and `gcs://`, and the same bucket addressed as `s3://` finds no secret and 404s
+against the default AWS endpoint.
+
 **A raw backtick inside a tagged SQL template ends the string.** The same hazard
 that drove BigQuery SQL out of TypeScript applies to the `sqlTools` templates
 that remain. Markdown-style prose in a `--` comment inside one of those templates
@@ -404,12 +413,16 @@ well, which made its firing unreliable regardless. In its place:
 - Renewal **throws** when the lease is no longer ours, so a run that has been
   taken over stops before writing anything further rather than racing the new
   owner.
-- `LEASE_DURATION_SECONDS` is one hour. That is far more than a heartbeat design
-  would need, because the TTL has to cover the longest gap between two _awake_
-  moments — a wave of Parquet loaders, during which the task is suspended. This
-  job runs monthly, so a crashed run blocking retries for up to an hour costs
-  nothing, while a TTL that expires mid-run lets a second run write alongside the
-  first.
+- `LEASE_DURATION_SECONDS` is **24 hours**. That is far more than a heartbeat
+  design would need, because the TTL has to cover the longest gap between two
+  _awake_ moments — a wave of Parquet loaders, during which the task is
+  suspended. Crucially that gap is set by PlanetScale's throughput, not by
+  anything in this code: the instance is deliberately low-CPU and past runs have
+  taken many hours, so a TTL derived from the code's structure rather than from
+  the database's speed is guaranteed to be wrong eventually. The job runs monthly
+  and a human can clear the row in seconds, so a crashed run blocking retries for
+  a day costs nothing; a TTL expiring mid-run lets a second run write alongside
+  the first.
 - The lease belongs to the _pipeline for one dump_, not to a single trigger.dev
   run. `openLibraryLoadPostgresTask` therefore takes the orchestrator's run id as
   `leaseRunId` and renews on its behalf, since the orchestrator is suspended in
@@ -499,10 +512,15 @@ stop the run anyway and say so, since the checkpoint change is exactly the
 - Drop the superseded `openlibrary_etl_state()` SQL functions (no-arg and
   `text`). Drizzle does not manage functions.
 
-**Unverified against real infrastructure.** The load SQL and the DuckDB
-transport are verified (below), but three things could only be reasoned about:
-the BigQuery Parquet export itself, DuckDB reading `gs://` with an HMAC GCS
-secret, and pg_cron on PlanetScale specifically. A first run should be watched.
+**Unverified against real infrastructure.** The load SQL, the DuckDB transport
+and GCS access are all verified (below). Two things could only be reasoned about:
+the BigQuery Parquet export itself, and pg_cron on PlanetScale specifically. A
+first run should still be watched.
+
+One residual risk worth naming: the loader runs `INSTALL httpfs` / `INSTALL postgres`
+at startup, which fetches from `extensions.duckdb.org`. That is fine on a
+trigger.dev worker with outbound internet, but it is a runtime network dependency
+rather than something baked into the deploy.
 
 ## Verification
 
@@ -523,6 +541,18 @@ expression `work-search.ts` issues.
 Separately, the rendered BigQuery SQL is checked for unsubstituted placeholders
 and for the `r'\d{4}'` escape surviving — the regression that made
 `first_publish_year` NULL for most works.
+
+**GCS access is verified against the real bucket.** `openDuckDbSession()` was run
+with the real `ETL_S3_*` credentials and `attachPostgres: false`, so nothing
+touched the production database: a Parquet file was written to `gs://`, read back
+through the exact projection `duckdbInsertSql()` produces, and deleted. Types
+survived intact, including a `text[]` element containing a comma
+(`Le Guin, Ursula K.`), empty arrays, a NULL `subtitle`, and INT64 narrowing.
+
+The negative control matters as much as the positive one: with deliberately wrong
+credentials the same call fails with `HTTP 403`, and with no secret at all it
+also fails with `403`. So a successful listing is real authentication rather than
+an empty-bucket false positive.
 
 ## Open questions
 

@@ -8,19 +8,25 @@ type WriteDb = ReturnType<typeof createPostgresWriteDb>;
  * loses its machine leaves `status = 'running'` behind; once the lease lapses the
  * next scheduled run reclaims it instead of refusing forever.
  *
- * An hour, which is far longer than a heartbeat-based lease would need, because
+ * 24 hours, which is far longer than a heartbeat-based lease would need, because
  * this run does not heartbeat. `wait.for` checkpoints the run — the whole point,
  * since sleeping that way is not billed — and a suspended run cannot renew
  * anything. Renewal therefore happens only at points where the run is awake and
  * holding a connection: after each BigQuery batch, between loader waves, and on
- * every poll wake-up. The TTL has to cover the longest gap between two of those,
- * which is a wave of Parquet loaders.
+ * every poll wake-up. The TTL has to cover the longest gap between two of those.
  *
- * The cost of being generous is bounded: this job runs monthly, so a crashed run
- * blocking retries for up to an hour changes nothing, while a TTL that expires
- * mid-run would let a second run start writing alongside the first.
+ * That gap is set by PlanetScale, not by this code. The instance is deliberately
+ * low-CPU, and past runs have taken many hours; a single wave of Parquet loaders
+ * writing into a saturated database can be slow enough that any TTL picked from
+ * the *code's* structure rather than from the *database's* throughput is wrong.
+ *
+ * The asymmetry makes a generous value the easy call. The job runs monthly, so a
+ * crashed run blocking retries for a day costs nothing — and a human can clear
+ * the row in seconds. A TTL that expires mid-run, by contrast, lets a second run
+ * start writing alongside the first, which is the failure this exists to
+ * prevent.
  */
-export const LEASE_DURATION_SECONDS = 60 * 60;
+export const LEASE_DURATION_SECONDS = 24 * 60 * 60;
 
 export const CatalogueState = z.enum(["full", "reduced"]);
 export type CatalogueState = z.infer<typeof CatalogueState>;
