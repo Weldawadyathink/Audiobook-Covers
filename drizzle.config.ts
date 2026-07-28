@@ -10,10 +10,5 @@ export default defineConfig({
     url: env.DATABASE_WRITE_URL,
   },
   schemaFilter: env.APP_STAGE === "production" ? ["prod"] : ["dev"],
-  migrations: {
-    table: "__drizzle_migrations",
-    schema: env.APP_STAGE === "production" ? "prod" : "dev",
-  },
-  breakpoints: true,
   strict: true,
 });

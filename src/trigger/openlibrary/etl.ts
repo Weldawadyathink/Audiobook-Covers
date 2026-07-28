@@ -47,13 +47,6 @@ function csvKeyFor(dumpDate: string) {
 }
 
 /**
- * Superseded tables that are not part of the query DAG, so cannot be derived
- * from it. `works_for_postgres_synced` was the old full-copy checkpoint, since
- * replaced by the `(olid, row_hash)` table.
- */
-const LEGACY_TABLES = ["works_for_postgres_synced"];
-
-/**
  * Drops the intermediate tables once a run has succeeded. Best-effort: the data
  * is already in Postgres and the checkpoint is advanced by this point, so a
  * failure here is a storage-cost problem, not a correctness one.
@@ -365,10 +358,10 @@ export const openLibraryEtlTask = schemaTask({
         // After completeEtlRun: the run is durably successful at this point, so
         // a cleanup failure should not mark it failed and trigger a re-run.
         try {
-          await dropProcessingTables(bq, [
-            ...getProcessingTableNames(queries, TARGET_QUERY),
-            ...LEGACY_TABLES,
-          ]);
+          await dropProcessingTables(
+            bq,
+            getProcessingTableNames(queries, TARGET_QUERY),
+          );
         } catch (error) {
           console.error(
             `Failed to drop processing tables — they will be replaced by the next run, but are billing storage until then`,

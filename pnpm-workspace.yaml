@@ -10,16 +10,11 @@ nodeLinker: hoisted
 
 onlyBuiltDependencies:
   - '@parcel/watcher'
-  - '@playwright/browser-chromium'
   - '@tailwindcss/oxide'
-  - argon2
-  - aws-sdk
-  - core-js
   - '@duckdb/node-api'
+  - core-js
   - esbuild
   - protobufjs
-  - sharp
-  - unix-dgram
   - workerd
 
 packageImportMethod: clone-or-copy
