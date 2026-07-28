@@ -55,8 +55,6 @@ const envSchema = z.object({
   ETL_S3_REGION: z.string(),
   ETL_S3_ENDPOINT: z.string(),
   BIGQUERY_CREDENTIALS_JSON: bigQueryCredentialsSchema,
-  ELASTICSEARCH_URL: z.url(),
-  ELASTICSEARCH_API_KEY: z.string(),
 });
 
 export type Env = z.infer<typeof envSchema>;

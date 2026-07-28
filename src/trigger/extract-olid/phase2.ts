@@ -2,6 +2,7 @@ import { schemaTask } from "@trigger.dev/sdk/v3";
 import { z } from "zod";
 import {
   callOpenRouter,
+  closeOpenLibraryWorkSearch,
   parseSearchOpenLibraryToolArguments,
   searchOpenLibrary,
   phase2SystemPrompt,
@@ -39,58 +40,62 @@ export const extractOlidPhase2Task = schemaTask({
     let searchCallCount = 0;
     let forceFinalAnswer = false;
 
-    while (true) {
-      const response = await callOpenRouter(
-        phase2Messages,
-        model,
-        forceFinalAnswer ? undefined : [searchOpenLibraryTool],
-      );
-      usage.promptTokens += response.usage?.prompt_tokens ?? 0;
-      usage.completionTokens += response.usage?.completion_tokens ?? 0;
-      usage.cost += response.usage?.cost ?? 0;
+    try {
+      while (true) {
+        const response = await callOpenRouter(
+          phase2Messages,
+          model,
+          forceFinalAnswer ? undefined : [searchOpenLibraryTool],
+        );
+        usage.promptTokens += response.usage?.prompt_tokens ?? 0;
+        usage.completionTokens += response.usage?.completion_tokens ?? 0;
+        usage.cost += response.usage?.cost ?? 0;
 
-      const message = response.choices[0]?.message;
-      if (!message) break;
+        const message = response.choices[0]?.message;
+        if (!message) break;
 
-      const toolCalls = message.tool_calls;
+        const toolCalls = message.tool_calls;
 
-      if (!toolCalls || toolCalls.length === 0) {
-        phase2FinalContent = message.content ?? "";
-        break;
-      }
+        if (!toolCalls || toolCalls.length === 0) {
+          phase2FinalContent = message.content ?? "";
+          break;
+        }
 
-      phase2Messages.push({
-        role: "assistant",
-        content: message.content ?? "",
-        tool_calls: toolCalls,
-      });
+        phase2Messages.push({
+          role: "assistant",
+          content: message.content ?? "",
+          tool_calls: toolCalls,
+        });
 
-      for (const toolCall of toolCalls) {
-        if (toolCall.function.name !== "search_openlibrary") continue;
+        for (const toolCall of toolCalls) {
+          if (toolCall.function.name !== "search_openlibrary") continue;
 
-        if (searchCallCount >= MAX_PHASE2_SEARCH_CALLS) {
+          if (searchCallCount >= MAX_PHASE2_SEARCH_CALLS) {
+            phase2Messages.push({
+              role: "tool",
+              tool_call_id: toolCall.id,
+              content:
+                "Search limit reached. Use the search results already gathered and provide your final candidate research summary now.",
+            });
+            forceFinalAnswer = true;
+            continue;
+          }
+
+          const { query, limit } = parseSearchOpenLibraryToolArguments(
+            toolCall.function.arguments,
+          );
+          const searchResultJson = await searchOpenLibrary(query, limit);
+          searchCallCount++;
+
           phase2Messages.push({
             role: "tool",
             tool_call_id: toolCall.id,
-            content:
-              "Search limit reached. Use the search results already gathered and provide your final candidate research summary now.",
+            content: searchResultJson,
           });
-          forceFinalAnswer = true;
-          continue;
         }
-
-        const { query, limit } = parseSearchOpenLibraryToolArguments(
-          toolCall.function.arguments,
-        );
-        const searchResultJson = await searchOpenLibrary(query, limit);
-        searchCallCount++;
-
-        phase2Messages.push({
-          role: "tool",
-          tool_call_id: toolCall.id,
-          content: searchResultJson,
-        });
       }
+    } finally {
+      await closeOpenLibraryWorkSearch();
     }
 
     console.log(

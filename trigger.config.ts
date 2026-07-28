@@ -1,6 +1,28 @@
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import { defineConfig } from "@trigger.dev/sdk/v3";
 import { syncEnvVars } from "@trigger.dev/build/extensions/core";
+import { esbuildPlugin } from "@trigger.dev/build/extensions";
 import { env } from "./src/env.node";
+
+// Teaches the Trigger.dev bundler to resolve `import sql from "./x.sql?raw"` as
+// a text import, matching Vite's built-in `?raw` behaviour so the same import
+// works in both builds. BigQuery SQL is full of backticked table identifiers and
+// regex backslashes, neither of which survive a JS template literal intact.
+const sqlRawPlugin = esbuildPlugin({
+  name: "sql-raw",
+  setup(build) {
+    build.onResolve({ filter: /\.sql\?raw$/ }, (args) => ({
+      path: resolve(args.resolveDir, args.path.replace(/\?raw$/, "")),
+      namespace: "sql-raw",
+    }));
+
+    build.onLoad({ filter: /.*/, namespace: "sql-raw" }, async (args) => ({
+      contents: await readFile(args.path, "utf8"),
+      loader: "text" as const,
+    }));
+  },
+});
 
 export default defineConfig({
   project: "proj_ysabtzlyltotwctspqpi",
@@ -25,6 +47,7 @@ export default defineConfig({
     // duckdb is a native addon — exclude from bundle and deploy as a package
     external: ["@duckdb/node-api", "@duckdb/node-bindings"],
     extensions: [
+      sqlRawPlugin,
       syncEnvVars(async (_) => {
         return Object.entries(env).map(([name, value]) => ({
           name,

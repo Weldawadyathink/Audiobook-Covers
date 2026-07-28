@@ -22,6 +22,8 @@ const importedColumnNames = [
   "author_names",
   "author_aliases",
   "title_aliases",
+  "subjects",
+  "description",
   "first_publish_year",
   "edition_count",
   "canonical_score",
@@ -45,6 +47,8 @@ function rowsWithHash(tableName: string) {
         author_names,
         author_aliases,
         title_aliases,
+        subjects,
+        description,
         first_publish_year,
         edition_count,
         canonical_score
@@ -157,6 +161,8 @@ export const openLibrarySyncWorksForPostgresTask = schemaTask({
               CAST([] AS ARRAY<STRING>) AS author_names,
               CAST([] AS ARRAY<STRING>) AS author_aliases,
               CAST([] AS ARRAY<STRING>) AS title_aliases,
+              CAST([] AS ARRAY<STRING>) AS subjects,
+              CAST(NULL AS STRING) AS description,
               CAST(NULL AS INT64) AS first_publish_year,
               CAST(NULL AS INT64) AS edition_count,
               CAST(NULL AS INT64) AS canonical_score
@@ -243,6 +249,10 @@ export const openLibrarySyncWorksForPostgresTask = schemaTask({
               ARRAY(
                 SELECT jsonb_array_elements_text(COALESCE(payload->'title_aliases', '[]'::jsonb))
               ) AS title_aliases,
+              ARRAY(
+                SELECT jsonb_array_elements_text(COALESCE(payload->'subjects', '[]'::jsonb))
+              ) AS subjects,
+              payload->>'description' AS description,
               (payload->>'first_publish_year')::int AS first_publish_year,
               (payload->>'edition_count')::int AS edition_count,
               (payload->>'canonical_score')::int AS canonical_score
@@ -256,6 +266,8 @@ export const openLibrarySyncWorksForPostgresTask = schemaTask({
             author_names,
             author_aliases,
             title_aliases,
+            subjects,
+            description,
             first_publish_year,
             edition_count,
             canonical_score
@@ -267,27 +279,26 @@ export const openLibrarySyncWorksForPostgresTask = schemaTask({
             author_names,
             author_aliases,
             title_aliases,
+            subjects,
+            description,
             first_publish_year,
             edition_count,
             canonical_score
           FROM upsert_rows
+          -- No WHERE guard here: the BigQuery export already diffed on row_hash,
+          -- so every staged upsert is known to differ. Guarding again only made
+          -- upsertResult.count under-report what was applied.
           ON CONFLICT (olid) DO UPDATE SET
             title = EXCLUDED.title,
             subtitle = EXCLUDED.subtitle,
             author_names = EXCLUDED.author_names,
             author_aliases = EXCLUDED.author_aliases,
             title_aliases = EXCLUDED.title_aliases,
+            subjects = EXCLUDED.subjects,
+            description = EXCLUDED.description,
             first_publish_year = EXCLUDED.first_publish_year,
             edition_count = EXCLUDED.edition_count,
             canonical_score = EXCLUDED.canonical_score
-          WHERE openlibrary_work.title IS DISTINCT FROM EXCLUDED.title
-             OR openlibrary_work.subtitle IS DISTINCT FROM EXCLUDED.subtitle
-             OR openlibrary_work.author_names IS DISTINCT FROM EXCLUDED.author_names
-             OR openlibrary_work.author_aliases IS DISTINCT FROM EXCLUDED.author_aliases
-             OR openlibrary_work.title_aliases IS DISTINCT FROM EXCLUDED.title_aliases
-             OR openlibrary_work.first_publish_year IS DISTINCT FROM EXCLUDED.first_publish_year
-             OR openlibrary_work.edition_count IS DISTINCT FROM EXCLUDED.edition_count
-             OR openlibrary_work.canonical_score IS DISTINCT FROM EXCLUDED.canonical_score
         `);
         console.log(`Upsert complete`);
 
@@ -325,14 +336,10 @@ export const openLibrarySyncWorksForPostgresTask = schemaTask({
         deletesApplied: result.deletedCount ?? 0,
       };
     } finally {
-      try {
-        console.log(
-          `Deleting exported works_for_postgres files from s3://${s3.bucket}/${exportPrefix}`,
-        );
-        await s3.clearDirectory(exportPrefix);
-      } finally {
-        await sql.end();
-      }
+      // Exported shards are swept by the bucket lifecycle rule (see
+      // infra/gcs-lifecycle.json) rather than deleted here, so a failed run can
+      // be retried against the already-exported delta.
+      await sql.end();
     }
   },
 });

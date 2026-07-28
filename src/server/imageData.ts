@@ -134,7 +134,7 @@ export async function shapeImageData(
 ): Promise<ImageData> {
   const blurhashUrl = image.blurhash ? getBlurhashUrl(image.blurhash) : "";
   const primaryColor = await getPrimaryImageColor(blurhashUrl);
-  const base: ImageDataBase = {
+  const base: Omit<ImageData, "openlibrary"> = {
     id: image.id,
     blurhashUrl,
     source:
@@ -154,7 +154,7 @@ export async function shapeImageData(
       1280: `${imageUrlPrefix}/webp/1280/${image.id}.webp`,
     },
     primaryColor,
-    ...(image.searchable !== undefined ? { searchable: image.searchable } : {}),
+    ...(image.searchable != null ? { searchable: image.searchable } : {}),
     ...(image.score != null ? { score: image.score } : {}),
   };
   switch (image.openlibrary_work_id_confidence) {

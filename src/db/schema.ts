@@ -107,6 +107,11 @@ export const openlibrary_work = schema.table(
       .array()
       .notNull()
       .default(sql`'{}'::text[]`),
+    subjects: text("subjects")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    description: text("description"),
     first_publish_year: integer("first_publish_year"),
     edition_count: integer("edition_count"),
     canonical_score: integer("canonical_score"),

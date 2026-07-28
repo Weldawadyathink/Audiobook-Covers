@@ -14,6 +14,9 @@ const PART_RETRY_BASE_DELAY_MS = 1_000;
 export const openLibraryDownloadToS3Task = schemaTask({
   id: "openlibrary-download-to-s3",
   machine: "micro",
+  // The dump is ~12GB compressed and is fetched in sequential 64MB ranges, so
+  // this comfortably exceeds the 1h default from trigger.config.ts.
+  maxDuration: 12 * 60 * 60,
   retry: {
     maxAttempts: 1,
   },

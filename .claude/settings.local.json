@@ -19,7 +19,8 @@
       "Bash(for f:*)",
       "Bash(do echo:*)",
       "Read(//Users/Spenser/Programming/Audiobook-Covers/**)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(node *)"
     ]
   }
 }

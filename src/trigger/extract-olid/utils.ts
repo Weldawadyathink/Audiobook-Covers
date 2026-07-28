@@ -3,7 +3,10 @@ import zodToJsonSchema from "zod-to-json-schema";
 import { jsonrepair } from "jsonrepair";
 import ky, { HTTPError } from "ky";
 import { env } from "@/env.node";
-import { Elastic } from "../elastic";
+import {
+  searchOpenLibraryWorks,
+  type OpenLibraryWorkSearchRow,
+} from "../openlibrary/work-search";
 
 // --- Types ---
 
@@ -201,12 +204,7 @@ export async function callOpenRouter(
 
 // --- OpenLibrary search ---
 
-let elastic: Elastic | null = null;
-
-function getElastic() {
-  elastic ??= new Elastic();
-  return elastic;
-}
+export { closeOpenLibraryWorkSearch } from "../openlibrary/work-search";
 
 export function parseSearchOpenLibraryToolArguments(argumentsJson: string) {
   try {
@@ -231,16 +229,13 @@ export async function searchOpenLibrary(
     return "No results.";
   }
 
-  const results = await getElastic().searchOpenLibraryWorks(
-    trimmedQuery,
-    limit,
-  );
+  const results = await searchOpenLibraryWorks(trimmedQuery, limit);
 
   console.log(`  [extract-olid] found ${results.length} results`);
   return formatOpenLibrarySearchResults(results);
 }
 
-function compactList(values: string[] | undefined, limit: number) {
+function compactList(values: string[] | null | undefined, limit: number) {
   return Array.from(new Set(values?.map((value) => value.trim()) ?? []))
     .filter((value) => value.length > 0)
     .slice(0, limit);
@@ -259,9 +254,7 @@ function trimDescription(description: string | null) {
   return `${normalized.slice(0, 217).trimEnd()}...`;
 }
 
-function formatOpenLibrarySearchResults(
-  results: Awaited<ReturnType<Elastic["searchOpenLibraryWorks"]>>,
-) {
+function formatOpenLibrarySearchResults(results: OpenLibraryWorkSearchRow[]) {
   if (results.length === 0) {
     return "No results.";
   }
@@ -279,12 +272,19 @@ function formatOpenLibrarySearchResults(
         lines.push(`Authors: ${authors.join("; ")}`);
       }
 
-      const aliases = compactList(
-        [...(result.title_aliases ?? []), ...(result.other_titles ?? [])],
-        4,
-      );
+      const aliases = compactList(result.title_aliases, 4);
       if (aliases.length > 0) {
         lines.push(`Aliases: ${aliases.join("; ")}`);
+      }
+
+      const published = [
+        result.first_publish_year
+          ? `First published: ${result.first_publish_year}`
+          : null,
+        result.edition_count ? `Editions: ${result.edition_count}` : null,
+      ].filter((part) => part !== null);
+      if (published.length > 0) {
+        lines.push(published.join(" | "));
       }
 
       const subjects = compactList(result.subjects, 5);
