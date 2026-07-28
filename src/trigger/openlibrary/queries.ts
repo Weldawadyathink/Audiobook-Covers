@@ -1,7 +1,6 @@
 import rawSql from "./sql/raw.sql?raw";
 import authorsNormalizedSql from "./sql/authors_normalized.sql?raw";
 import editionsNormalizedSql from "./sql/editions_normalized.sql?raw";
-import redirectsNormalizedSql from "./sql/redirects_normalized.sql?raw";
 import worksNormalizedSql from "./sql/works_normalized.sql?raw";
 import workAuthorLinksSql from "./sql/work_author_links.sql?raw";
 import workAuthorAggregatesSql from "./sql/work_author_aggregates.sql?raw";
@@ -163,11 +162,6 @@ export const queries = defineQueries([
     query: editionsNormalizedSql,
   },
   {
-    name: "redirects_normalized",
-    requires: ["raw"],
-    query: redirectsNormalizedSql,
-  },
-  {
     name: "works_normalized",
     requires: ["raw"],
     query: worksNormalizedSql,
@@ -258,13 +252,6 @@ function buildQueryMap<const TQueries extends readonly QueryDefinition[]>(
   return new Map<QueryNames<TQueries>, TQueries[number]>(
     queries.map((query) => [query.name, query]),
   );
-}
-
-export function isQueryName<const TQueries extends readonly QueryDefinition[]>(
-  queries: TQueries,
-  value: string,
-): value is QueryNames<TQueries> {
-  return buildQueryMap(queries).has(value as QueryNames<TQueries>);
 }
 
 function getRequires<const TQueries extends readonly QueryDefinition[]>(

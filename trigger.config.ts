@@ -44,8 +44,6 @@ export default defineConfig({
   },
   dirs: ["./src/trigger"],
   build: {
-    // duckdb is a native addon — exclude from bundle and deploy as a package
-    external: ["@duckdb/node-api", "@duckdb/node-bindings"],
     extensions: [
       sqlRawPlugin,
       syncEnvVars(async (_) => {
