@@ -9,7 +9,6 @@ import { zodValidator } from "@tanstack/zod-adapter";
 const legacyParameters = z.object({
   q: z.string().optional(),
   model: z.string().optional(),
-  reranker: z.string().optional(),
   showScore: z.boolean().optional(),
 });
 
@@ -21,7 +20,6 @@ export const Route = createFileRoute("/ai-search")({
       search: {
         mode: "visual" as const,
         q: search.q || undefined,
-        reranker: search.reranker,
         showScore: search.showScore,
       },
       replace: true,

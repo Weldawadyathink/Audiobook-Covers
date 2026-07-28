@@ -15,7 +15,6 @@ import { cn } from "@/lib/utils";
 import { getIsAuthenticated } from "@/server/auth";
 import { coverSearch } from "@/server/imageSearcher";
 import { vectorSearchByString } from "@/server/imageSearcherAI";
-import { getRerankers } from "@/server/rerankers/getRerankers";
 import {
   ArrowRight,
   BookOpenText,
@@ -36,7 +35,6 @@ const searchParameters = z.object({
   author: z.string().optional(),
   /** Free-text description, visual mode only. */
   q: z.string().optional(),
-  reranker: z.string().optional(),
   showScore: z.boolean().optional(),
 });
 
@@ -65,11 +63,10 @@ export const Route = createFileRoute("/search")({
     const author = search.author?.trim() ?? "";
     const q = search.q?.trim() ?? "";
 
-    const [auth, rerankerNames, images] = await Promise.all([
+    const [auth, images] = await Promise.all([
       getIsAuthenticated(),
-      getRerankers(),
       mode === "visual"
-        ? vectorSearchByString({ data: { q, reranker: search.reranker } })
+        ? vectorSearchByString({ data: { q } })
         : coverSearch({ data: { title, author } }),
     ]);
 
@@ -78,9 +75,7 @@ export const Route = createFileRoute("/search")({
       title,
       author,
       q,
-      reranker: search.reranker ?? "",
       showScore: search.showScore ?? false,
-      rerankerNames,
       images,
       isAuthenticated: auth.isAuthenticated,
     };
@@ -96,9 +91,7 @@ function RouteComponent() {
     title,
     author,
     q,
-    reranker,
     showScore: initialShowScore,
-    rerankerNames,
     images,
     isAuthenticated,
   } = Route.useLoaderData();
@@ -108,7 +101,6 @@ function RouteComponent() {
   const [titleQuery, setTitleQuery] = useState(title);
   const [authorQuery, setAuthorQuery] = useState(author);
   const [visualQuery, setVisualQuery] = useState(q);
-  const [selectedReranker, setSelectedReranker] = useState(reranker);
   const [showScore, setShowScore] = useState(initialShowScore);
 
   const hasSearch = mode === "visual" ? !!q : !!title || !!author;
@@ -119,7 +111,6 @@ function RouteComponent() {
       title: titleQuery.trim() || undefined,
       author: authorQuery.trim() || undefined,
       q: visualQuery.trim() || undefined,
-      reranker: selectedReranker || undefined,
       showScore: showScore || undefined,
       ...overrides,
     };
@@ -202,15 +193,8 @@ function RouteComponent() {
           )}
 
           {isAuthenticated && (
-            <AdvancedOptions
-              mode={mode}
-              rerankerNames={rerankerNames}
-              selectedReranker={selectedReranker}
+            <AdminOptions
               showScore={showScore}
-              onRerankerChange={(value) => {
-                setSelectedReranker(value);
-                runSearch({ reranker: value || undefined });
-              }}
               onShowScoreChange={(value) => {
                 setShowScore(value);
                 runSearch({ showScore: value || undefined });
@@ -479,55 +463,26 @@ function VisualSearchForm({
   );
 }
 
-function AdvancedOptions({
-  mode,
-  rerankerNames,
-  selectedReranker,
+function AdminOptions({
   showScore,
-  onRerankerChange,
   onShowScoreChange,
 }: {
-  mode: Mode;
-  rerankerNames: string[];
-  selectedReranker: string;
   showScore: boolean;
-  onRerankerChange: (value: string) => void;
   onShowScoreChange: (value: boolean) => void;
 }) {
   return (
-    <details className="group mt-5 rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
-      <summary className="cursor-pointer list-none font-medium text-slate-300 transition-colors marker:content-none hover:text-white">
-        Admin options
-      </summary>
-      <div className="mt-3 flex flex-wrap items-center gap-5 border-t border-white/8 pt-3">
-        {mode === "visual" && (
-          <label className="flex items-center gap-2">
-            <span className="text-slate-400">Reranker</span>
-            <select
-              className="rounded-lg border border-white/15 bg-slate-900 px-2 py-1 text-sm text-slate-100"
-              value={selectedReranker}
-              onChange={(e) => onRerankerChange(e.target.value)}
-            >
-              <option value="">None</option>
-              {rerankerNames.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        <label className="flex cursor-pointer items-center gap-2">
-          <input
-            type="checkbox"
-            checked={showScore}
-            className="size-4 rounded border-white/20 bg-white/10 accent-cyan-200"
-            onChange={(e) => onShowScoreChange(e.target.checked)}
-          />
-          Show score
-        </label>
-      </div>
-    </details>
+    <div className="mt-5 flex flex-wrap items-center gap-5 rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
+      <span className="text-slate-500">Admin</span>
+      <label className="flex cursor-pointer items-center gap-2">
+        <input
+          type="checkbox"
+          checked={showScore}
+          className="size-4 rounded border-white/20 bg-white/10 accent-cyan-200"
+          onChange={(e) => onShowScoreChange(e.target.checked)}
+        />
+        Show score
+      </label>
+    </div>
   );
 }
 

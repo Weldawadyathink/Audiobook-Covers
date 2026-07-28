@@ -1,7 +1,6 @@
 import { shapeImageDataArray, ImageData } from "@/server/imageData";
 import { createReadDb } from "@/db.cloudflare";
 import { getModel, defaultModelName } from "@/searchModels/models";
-import { getReranker } from "@/server/rerankers/rerankers";
 import { DBImageDataValidator } from "@/server/imageData";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
@@ -340,7 +339,6 @@ export const vectorSearchByString = createServerFn()
   .inputValidator(
     z.object({
       q: z.string(),
-      reranker: z.string().optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -348,10 +346,5 @@ export const vectorSearchByString = createServerFn()
       return [];
     }
 
-    const images = await singleModelSearch(data.q);
-    const reranker = getReranker(data.reranker);
-    if (!reranker) {
-      return images;
-    }
-    return reranker.rerank(data.q, images);
+    return singleModelSearch(data.q);
   });

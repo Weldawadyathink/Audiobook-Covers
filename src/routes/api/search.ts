@@ -1,14 +1,12 @@
 import { z } from "zod/v4";
 import { createFileRoute } from "@tanstack/react-router";
 import { vectorSearchByString } from "@/server/imageSearcherAI";
-import { getReranker } from "@/server/rerankers/rerankers";
 import { defaultModelName } from "@/searchModels/models";
 import type { ImageData } from "@/server/imageData";
 
 const searchSchema = z.object({
   q: z.string().min(1),
   model: z.string().optional(),
-  reranker: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 
@@ -37,16 +35,9 @@ function mapImage(image: ImageData) {
 async function runSearch(
   params: z.infer<typeof searchSchema>,
 ): Promise<ImageData[]> {
-  const { q, reranker, limit } = params;
+  const { q, limit } = params;
 
-  let images = await vectorSearchByString({ data: { q } });
-
-  if (reranker) {
-    const rerankerInstance = getReranker(reranker);
-    if (rerankerInstance) {
-      images = await rerankerInstance.rerank(q, images);
-    }
-  }
+  const images = await vectorSearchByString({ data: { q } });
 
   return images.slice(0, limit);
 }
@@ -75,7 +66,6 @@ export const Route = createFileRoute("/api/search")({
         const parsed = searchSchema.safeParse({
           q: sp.get("q") ?? undefined,
           model: sp.get("model") ?? undefined,
-          reranker: sp.get("reranker") ?? undefined,
           limit: sp.has("limit") ? sp.get("limit") : undefined,
         });
 
