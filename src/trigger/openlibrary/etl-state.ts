@@ -5,6 +5,20 @@ import { schemaName } from "@/db/schema";
 type WriteDb = ReturnType<typeof createPostgresWriteDb>;
 
 /**
+ * Qualified name of the state table, derived from `APP_STAGE` via
+ * {@link schemaName} — the same source Drizzle uses.
+ *
+ * Interpolated through postgres.js's identifier helper (`sql(...)`), which
+ * escapes on `.` and so renders `"prod"."openlibrary_etl_state"`. Every
+ * statement here is qualified for one reason: this database still carries a
+ * legacy `audiobookcovers` schema whose `openlibrary_etl_state` has a different,
+ * smaller shape. An unqualified reference follows the role's `search_path`, so
+ * it silently addressed the wrong table depending on server-side role
+ * configuration this code cannot see.
+ */
+const ETL_STATE_TABLE = `${schemaName}.openlibrary_etl_state`;
+
+/**
  * How long a claim stays valid without renewal. A run that is OOM-killed or
  * loses its machine leaves `status = 'running'` behind; once the lease lapses the
  * next scheduled run reclaims it instead of refusing forever.
@@ -56,55 +70,41 @@ export type AcquireResult =
     };
 
 /**
- * Refuses to run if the connection resolves to a different schema than Drizzle.
+ * Verifies the tables this ETL targets actually exist in the expected schema.
  *
- * The schema comes from {@link schemaName} (i.e. `APP_STAGE`), which is what
- * Drizzle — and therefore the website — uses. It deliberately does *not* come
- * from `current_schema()`, which follows the role's `search_path` and is a
- * separate, independently-settable source of truth.
- *
- * The check exists because the two really can diverge, and did: this database
- * still carries a legacy `audiobookcovers` schema from the previous layout, and
- * the role's `search_path` pointed at it. Under that configuration the raw SQL
- * in `etl-state.ts` and `work-search.ts` — which has no schema qualification and
- * resolves through `search_path` — silently addressed the *old* tables while
- * Drizzle addressed the new ones. Failing loudly here is far better than writing
- * 40M rows into a schema nobody reads.
+ * Every statement in the pipeline is schema-qualified from `APP_STAGE`, so this
+ * is no longer about `search_path` — it cannot be wrong-by-configuration any
+ * more. What it still catches is the schema push not having been applied to the
+ * stage this process is pointed at, which would otherwise surface as a relation
+ * error somewhere deep in the run, after the dump download and the BigQuery
+ * transform.
  */
-export async function assertTargetSchema({ sqlTools }: WriteDb): Promise<void> {
+export async function assertTargetSchema({
+  sql,
+  sqlTools,
+}: WriteDb): Promise<void> {
   const row = await sqlTools.one(
     z.object({
-      schema_name: z.string().nullable(),
-      work_schema: z.string().nullable(),
+      work: z.string().nullable(),
+      state: z.string().nullable(),
+      image: z.string().nullable(),
     }),
   )`
     SELECT
-      current_schema() AS schema_name,
-      -- The namespace of whatever an unqualified reference actually resolves
-      -- to. Not to_regclass(...)::text, which renders the name *relative to*
-      -- search_path and so returns a bare "openlibrary_work" in exactly the
-      -- case that is correct.
-      (
-        SELECT n.nspname
-        FROM pg_class c
-        JOIN pg_namespace n ON n.oid = c.relnamespace
-        WHERE c.oid = to_regclass('openlibrary_work')
-      ) AS work_schema
+      to_regclass(${`${schemaName}.openlibrary_work`})::text AS work,
+      to_regclass(${ETL_STATE_TABLE})::text AS state,
+      to_regclass(${`${schemaName}.image`})::text AS image
   `;
+  void sql;
 
-  if (row.schema_name !== schemaName) {
-    throw new Error(
-      `Schema mismatch: APP_STAGE resolves to "${schemaName}" but the connection's ` +
-        `search_path resolves to "${row.schema_name}". Unqualified SQL elsewhere in ` +
-        `the ETL follows search_path, so these must agree. Fix the role's search_path ` +
-        `(ALTER ROLE … SET search_path TO "${schemaName}", public) or APP_STAGE.`,
-    );
-  }
+  const missing = Object.entries(row)
+    .filter(([, value]) => value === null)
+    .map(([name]) => name);
 
-  if (row.work_schema !== schemaName) {
+  if (missing.length > 0) {
     throw new Error(
-      `Unqualified "openlibrary_work" resolves to schema ` +
-        `"${row.work_schema ?? "(not found)"}", not "${schemaName}".`,
+      `Schema "${schemaName}" (from APP_STAGE) is missing: ${missing.join(", ")}. ` +
+        `Run the Drizzle push for this stage before starting the ETL.`,
     );
   }
 }
@@ -118,11 +118,14 @@ export async function assertTargetSchema({ sqlTools }: WriteDb): Promise<void> {
  * SELECT ...`), where the insert is invisible to the reading statement — so the
  * very first call always returned zero rows and threw.
  */
-export async function readEtlState({ sqlTools }: WriteDb): Promise<EtlState> {
+export async function readEtlState({
+  sql,
+  sqlTools,
+}: WriteDb): Promise<EtlState> {
   return await sqlTools.one(EtlState)`
-    INSERT INTO openlibrary_etl_state (id, status)
+    INSERT INTO ${sql(ETL_STATE_TABLE)} AS state (id, status)
     VALUES (true, 'idle')
-    ON CONFLICT (id) DO UPDATE SET id = openlibrary_etl_state.id
+    ON CONFLICT (id) DO UPDATE SET id = state.id
     RETURNING
       status,
       completed_dump_date,
@@ -149,10 +152,10 @@ export async function acquireEtlLease(
   db: WriteDb,
   { dumpDate, runId }: { dumpDate: string; runId: string },
 ): Promise<AcquireResult> {
-  const { sqlTools } = db;
+  const { sql, sqlTools } = db;
 
   const claimed = await sqlTools.any(EtlState)`
-    INSERT INTO openlibrary_etl_state (
+    INSERT INTO ${sql(ETL_STATE_TABLE)} AS state (
       id, status, active_dump_date, active_run_id,
       started_at, lease_expires_at, last_error, updated_at
     )
@@ -169,11 +172,11 @@ export async function acquireEtlLease(
       last_error = NULL,
       updated_at = now()
     WHERE
-      openlibrary_etl_state.completed_dump_date IS DISTINCT FROM ${dumpDate}
+      state.completed_dump_date IS DISTINCT FROM ${dumpDate}
       AND (
-        openlibrary_etl_state.status <> 'running'
-        OR openlibrary_etl_state.lease_expires_at IS NULL
-        OR openlibrary_etl_state.lease_expires_at < now()
+        state.status <> 'running'
+        OR state.lease_expires_at IS NULL
+        OR state.lease_expires_at < now()
       )
     RETURNING
       status,
@@ -210,11 +213,11 @@ export async function acquireEtlLease(
  * Returns false if the lease is no longer ours.
  */
 export async function renewEtlLease(
-  { sqlTools }: WriteDb,
+  { sql, sqlTools }: WriteDb,
   { runId }: { runId: string },
 ): Promise<boolean> {
   const renewed = await sqlTools.any(z.object({ id: z.boolean() }))`
-    UPDATE openlibrary_etl_state
+    UPDATE ${sql(ETL_STATE_TABLE)}
     SET
       lease_expires_at = now() + make_interval(secs => ${LEASE_DURATION_SECONDS}),
       updated_at = now()
@@ -237,11 +240,11 @@ export async function renewEtlLease(
  * until a later run rebuilds it.
  */
 export async function setCatalogueState(
-  { sqlTools }: WriteDb,
+  { sql, sqlTools }: WriteDb,
   { runId, catalogueState }: { runId: string; catalogueState: CatalogueState },
 ): Promise<boolean> {
   const updated = await sqlTools.any(z.object({ id: z.boolean() }))`
-    UPDATE openlibrary_etl_state
+    UPDATE ${sql(ETL_STATE_TABLE)}
     SET
       catalogue_state = ${catalogueState},
       updated_at = now()
@@ -258,23 +261,24 @@ export async function setCatalogueState(
  * absent row means no ETL has ever run, so nothing has been reduced.
  */
 export async function readCatalogueState({
+  sql,
   sqlTools,
-}: Pick<WriteDb, "sqlTools">): Promise<CatalogueState> {
+}: Pick<WriteDb, "sql" | "sqlTools">): Promise<CatalogueState> {
   const row = await sqlTools.maybeOne(
     z.object({ catalogue_state: CatalogueState }),
   )`
-    SELECT catalogue_state FROM openlibrary_etl_state WHERE id = true
+    SELECT catalogue_state FROM ${sql(ETL_STATE_TABLE)} WHERE id = true
   `;
   return row?.catalogue_state ?? "full";
 }
 
 /** Marks the claimed dump as fully applied and drops the lease. */
 export async function completeEtlRun(
-  { sqlTools }: WriteDb,
+  { sql, sqlTools }: WriteDb,
   { dumpDate, runId }: { dumpDate: string; runId: string },
 ): Promise<boolean> {
   const released = await sqlTools.any(z.object({ id: z.boolean() }))`
-    UPDATE openlibrary_etl_state
+    UPDATE ${sql(ETL_STATE_TABLE)}
     SET
       status = 'idle',
       completed_dump_date = ${dumpDate},
@@ -296,12 +300,12 @@ export async function completeEtlRun(
  * rather than waiting out the lease.
  */
 export async function failEtlRun(
-  { sqlTools }: WriteDb,
+  { sql, sqlTools }: WriteDb,
   { runId, error }: { runId: string; error: unknown },
 ): Promise<boolean> {
   const message = error instanceof Error ? error.message : String(error);
   const released = await sqlTools.any(z.object({ id: z.boolean() }))`
-    UPDATE openlibrary_etl_state
+    UPDATE ${sql(ETL_STATE_TABLE)}
     SET
       status = 'failed',
       active_run_id = NULL,

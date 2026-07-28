@@ -573,13 +573,23 @@ Status below is from a preflight against the live database on 2026-07-28.
 - `pg_trgm` is **not** installed (the app database has `hypopg`, `plpgsql`,
   `vector`). Only relevant to the "Later" item below.
 
-**Schema layout.** The database carries a legacy `audiobookcovers` schema from
-the previous implementation alongside the current `dev` / `prod` schemas. The
-ETL is raw SQL and resolves unqualified names through `search_path`, while
-Drizzle resolves through `APP_STAGE` — two independent sources of truth for the
-same decision. `assertTargetSchema()` runs before anything expensive and refuses
-to start unless they agree, because the failure is otherwise silent: the ETL
-would write to one schema while the website reads another.
+**Schema layout.** The project is moving from an `audiobookcovers` _schema_ to an
+`audiobookcovers` _database_ with `dev` / `prod` schemas, so the legacy schema
+still sits alongside the current ones — including an `openlibrary_etl_state` of
+the old, smaller shape.
+
+Every statement in the ETL is therefore **schema-qualified from `APP_STAGE`**,
+via the `schemaName` export in `db/schema.ts` — the same source Drizzle uses.
+Nothing in the pipeline resolves through `search_path` any more. This matters
+because the role's `search_path` is server-side configuration this code cannot
+see or control, and getting it wrong was silent rather than loud: unqualified
+SQL happily addressed the legacy tables while Drizzle addressed the new ones, so
+the ETL would write where the website never reads.
+
+Qualification goes through postgres.js's identifier helper (``sql(`${schemaName}.openlibrary_work`)``),
+which escapes on `.` and renders `"prod"."openlibrary_work"`. `assertTargetSchema()`
+now only confirms the three tables exist in the expected schema, which catches a
+push that was applied to the wrong stage.
 
 **Unverified against real infrastructure.** The load SQL, the DuckDB transport
 and GCS access are all verified (below). Two things could only be reasoned about:
@@ -610,6 +620,14 @@ expression `work-search.ts` issues.
 Separately, the rendered BigQuery SQL is checked for unsubstituted placeholders
 and for the `r'\d{4}'` escape surviving — the regression that made
 `first_publish_year` NULL for most works.
+
+**Schema independence is verified.** The state helpers and `searchOpenLibraryWorks()`
+were run against a throwaway Postgres holding _both_ a legacy
+`audiobookcovers.openlibrary_etl_state` (old shape) and a current
+`prod.openlibrary_etl_state`, with the role's `search_path` deliberately pointed
+at the legacy schema. All of it — lease acquire/renew/complete, catalogue state,
+and full-text search — resolved to `prod`, and the legacy table was confirmed to
+have zero rows written to it afterwards.
 
 **GCS access is verified against the real bucket.** `openDuckDbSession()` was run
 with the real `ETL_S3_*` credentials and `attachPostgres: false`, so nothing

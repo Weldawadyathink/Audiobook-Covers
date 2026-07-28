@@ -1,6 +1,7 @@
 // zod/v4 to match the validator surface `sqlTools` expects (see src/db.ts).
 import { z } from "zod/v4";
 import { createPostgresReadDb } from "@/db.node";
+import { schemaName } from "@/db/schema";
 import { readCatalogueState } from "./etl-state";
 
 export const OpenLibraryWorkSearchRow = z.object({
@@ -20,6 +21,13 @@ export const OpenLibraryWorkSearchRow = z.object({
 export type OpenLibraryWorkSearchRow = z.infer<typeof OpenLibraryWorkSearchRow>;
 
 const MAX_LIMIT = 25;
+
+/**
+ * Qualified from `APP_STAGE`, not left to `search_path`. The database still
+ * carries a legacy `audiobookcovers` schema, and an unqualified name resolves
+ * against whatever the role happens to be configured with.
+ */
+const WORK_TABLE = `${schemaName}.openlibrary_work`;
 
 let db: ReturnType<typeof createPostgresReadDb> | null = null;
 
@@ -67,14 +75,14 @@ export async function searchOpenLibraryWorks(query: string, limit = 10) {
     return [];
   }
 
-  const { sqlTools } = getDb();
+  const { sql, sqlTools } = getDb();
 
   // Throw rather than return [] when the catalogue is mid-rebuild. An empty
   // result is indistinguishable from "no such book" to the caller, and the
   // caller's response to that is to write a null or guessed OLID into `image` —
   // silent data corruption that outlives the rebuild window. A single-row
   // primary key lookup is free next to a full-text scan of ~30M rows.
-  if ((await readCatalogueState({ sqlTools })) === "reduced") {
+  if ((await readCatalogueState({ sql, sqlTools })) === "reduced") {
     throw new Error(
       "OpenLibrary catalogue is mid-rebuild (catalogue_state = 'reduced'); " +
         "search is unavailable until the ETL finishes",
@@ -100,7 +108,7 @@ export async function searchOpenLibraryWorks(query: string, limit = 10) {
       work.first_publish_year,
       work.edition_count,
       work.canonical_score
-    FROM openlibrary_work work, q
+    FROM ${sql(WORK_TABLE)} work, q
     WHERE to_tsvector('simple'::regconfig, COALESCE(work.title, '')) @@ q.tsq
        OR to_tsvector('simple'::regconfig, immutable_array_to_string(work.author_names, ' ')) @@ q.tsq
     ORDER BY
