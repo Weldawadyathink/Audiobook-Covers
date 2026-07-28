@@ -125,6 +125,20 @@ it puts the encoding in the database rather than in a hand-rolled literal parser
 that mangles a title containing a comma. (`src/server/imageData.ts` predates this
 and hand-rolls the parser; it is the thing to avoid, not the pattern to copy.)
 
+**DuckDB needs a writable `HOME` before it can install an extension.** A
+trigger.dev container has none, so DuckDB resolves it to `''` and the first
+`INSTALL httpfs` dies with `IO Error: Can't find the home directory at ''`.
+`home_directory` and `temp_directory` are passed as _instance config_ at
+`DuckDBInstance.create()` rather than as `SET` statements, so the home is in
+place before anything can need it. A fixed path under `os.tmpdir()` rather than a
+per-run directory, so repeated runs on one machine reuse the downloaded
+extension.
+
+**Derive DuckDB's `memory_limit` from `ctx.machine`, never `os.totalmem()`.**
+Inside a container `os.totalmem()` reports the _host's_ memory, not the cgroup
+limit, so a budget derived from it sits far above what the container may actually
+use — turning a graceful spill to `temp_directory` into an OOM kill.
+
 **The `ETL_S3_*` credentials are already the GCS credentials.** The export bucket
 is Google Cloud Storage reached through its S3-compatible interoperability API —
 `ETL_S3_ENDPOINT` is `https://storage.googleapis.com` and the key id is a `GOOG…`
@@ -567,6 +581,21 @@ Status below is from a preflight against the live database on 2026-07-28.
   `postgres` database is reachable with the same credentials.
 - Apply the GCS lifecycle rule from `infra/gcs-lifecycle.json` if it is not
   already applied.
+
+**Testing shortcut.** `openLibraryEtlTask` accepts an optional `dumpDate`
+(`YYYY-MM-DD`). The download step already no-ops when that dump's CSV is in GCS,
+so pinning an already-downloaded date turns the >1h download into a lookup while
+everything downstream runs for real:
+
+```json
+{ "fullRebuild": true, "dumpDate": "2026-06-30" }
+```
+
+There is no test-only branch to remove — omit the field and the run resolves the
+latest dump normally. The lease still refuses a date already in
+`completed_dump_date`, so repeat test runs against one date need that column
+cleared first.
+
 - Drop the superseded `openlibrary_etl_state()` SQL functions — still present in
   the legacy `audiobookcovers` schema as `()` and `(p_status text)`. Drizzle does
   not manage functions.
@@ -628,6 +657,12 @@ were run against a throwaway Postgres holding _both_ a legacy
 at the legacy schema. All of it — lease acquire/renew/complete, catalogue state,
 and full-text search — resolved to `prod`, and the legacy table was confirmed to
 have zero rows written to it afterwards.
+
+**The home-directory fix is verified with `HOME` unset**, which reproduces the
+original error exactly (confirmed: it fails without the config and succeeds with
+it). The full path then ran against real GCS — write Parquet, read it back
+through the loader's own projection — plus the derived `memory_limit` / `threads`
+for both `small-1x` and `small-2x`.
 
 **GCS access is verified against the real bucket.** `openDuckDbSession()` was run
 with the real `ETL_S3_*` credentials and `attachPostgres: false`, so nothing

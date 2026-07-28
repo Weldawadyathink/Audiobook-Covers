@@ -41,9 +41,14 @@ const format = formatNumber({ round: 0 });
 /**
  * Shards handed to a single loader run, read as one `read_parquet([...])`.
  *
- * BigQuery emits a large number of very small Parquet files. One run per file
- * would spend most of its life on trigger.dev scheduling and HTTP round-trips
- * rather than on the load.
+ * BigQuery emits a large number of very small Parquet files. Batching amortises
+ * the fixed cost of a run — container start, extension load, the Postgres
+ * `ATTACH` and its TLS handshake — across many files instead of paying it per
+ * file, and it makes the whole wave a single `INSERT` rather than N of them.
+ *
+ * Not, on these machine presets, about read parallelism: DuckDB runs with
+ * `threads = 1` on a sub-2 vCPU container (see `resourceSettings`), so the reads
+ * are pipelined rather than genuinely concurrent.
  */
 const FILES_PER_LOADER = 40;
 

@@ -164,6 +164,30 @@ export const openLibraryEtlTask = schemaTask({
      * checkpoint, and for the first run.
      */
     fullRebuild: z.boolean().default(false),
+    /**
+     * TESTING ONLY — pin the dump date instead of resolving it from
+     * openlibrary.org.
+     *
+     * The download step is already skipped when the CSV for a dump date is
+     * present in GCS, so pinning the date of a dump that has already been
+     * downloaded reuses it and turns a >1h download into a no-op. Everything
+     * downstream runs for real against that CSV.
+     *
+     * Nothing to undo: leave it out and the run resolves the latest dump as
+     * normal. There is no test-only branch in the code below.
+     *
+     * ```
+     * { "fullRebuild": true, "dumpDate": "2026-06-30" }
+     * ```
+     *
+     * Note the lease refuses a dump date already in `completed_dump_date`, so a
+     * second test run with the same date is skipped as `already_completed`
+     * unless that column is cleared first.
+     */
+    dumpDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "dumpDate must be YYYY-MM-DD")
+      .optional(),
   }),
   machine: "small-1x",
   maxDuration: 12 * 60 * 60,
@@ -173,7 +197,7 @@ export const openLibraryEtlTask = schemaTask({
   queue: {
     concurrencyLimit: 1,
   },
-  run: async ({ fullRebuild }, { ctx }) => {
+  run: async ({ fullRebuild, dumpDate: pinnedDumpDate }, { ctx }) => {
     const runId = ctx.run.id;
     const db = createPostgresWriteDb({ application_name: "openlibrary-etl" });
     const { sql } = db;
@@ -203,9 +227,19 @@ export const openLibraryEtlTask = schemaTask({
       // download and an hour of BigQuery.
       await assertTargetSchema(db);
 
-      console.log("Resolving latest dump date from OpenLibrary...");
-      const dumpDate = await resolveDumpDate(DUMP_URL);
-      console.log(`Latest dump date: ${dumpDate}`);
+      let dumpDate: string;
+      if (pinnedDumpDate) {
+        dumpDate = pinnedDumpDate;
+        console.warn(
+          `Dump date pinned to ${dumpDate} instead of resolving the latest from ` +
+            `OpenLibrary. If that dump is already in GCS the download is reused; ` +
+            `otherwise it is downloaded as normal.`,
+        );
+      } else {
+        console.log("Resolving latest dump date from OpenLibrary...");
+        dumpDate = await resolveDumpDate(DUMP_URL);
+        console.log(`Latest dump date: ${dumpDate}`);
+      }
 
       const acquisition = await acquireEtlLease(db, { dumpDate, runId });
       if (!acquisition.acquired) {

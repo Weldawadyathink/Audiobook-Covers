@@ -32,12 +32,24 @@ export const openLibraryLoadParquetTask = schemaTask({
     /** Delta exports carry `change_type`; full exports do not. */
     includeChangeType: z.boolean(),
   }),
-  machine: "small-1x",
+  /**
+   * `small-2x` (1 vCPU / 1GB) rather than `small-1x` (0.5 / 0.5GB).
+   *
+   * DuckDB's buffer manager, the native addon and libpq's own buffers all share
+   * the container's cgroup limit, and 0.5GB leaves DuckDB roughly 350MB once
+   * Node is resident. The extra cost is small in practice because this task is
+   * bounded by how fast PlanetScale accepts writes, not by local CPU — the wall
+   * clock is much the same either way, and an OOM here fails a whole wave.
+   */
+  machine: "small-2x",
   maxDuration: 3 * 60 * 60,
   retry: {
     maxAttempts: 1,
   },
-  run: async ({ keys, schemaName, targetTable, includeChangeType }) => {
+  run: async (
+    { keys, schemaName, targetTable, includeChangeType },
+    { ctx },
+  ) => {
     const uris = gcsUris(env.ETL_S3_BUCKET, keys);
     const insertSql = duckdbInsertSql({
       pgAlias: PG_ALIAS,
@@ -49,10 +61,14 @@ export const openLibraryLoadParquetTask = schemaTask({
     const startedAt = performance.now();
 
     console.log(
-      `Loading ${keys.length} Parquet shards into ${schemaName}.${targetTable}`,
+      `Loading ${keys.length} Parquet shards into ${schemaName}.${targetTable} ` +
+        `on ${ctx.machine?.name ?? "unknown"} ` +
+        `(${ctx.machine?.cpu ?? "?"} vCPU, ${ctx.machine?.memory ?? "?"}GB)`,
     );
 
-    const { connection, close } = await openDuckDbSession();
+    const { connection, close } = await openDuckDbSession({
+      machine: ctx.machine,
+    });
     try {
       const result = await connection.run(insertSql);
 
