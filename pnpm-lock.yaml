@@ -17,6 +17,9 @@ importers:
       '@aws-sdk/lib-storage':
         specifier: ^3.1048.0
         version: 3.1048.0(@aws-sdk/client-s3@3.1048.0)
+      '@duckdb/node-api':
+        specifier: 1.5.5-r.2
+        version: 1.5.5-r.2
       '@google-cloud/bigquery':
         specifier: ^8.3.1
         version: 8.3.1
@@ -616,6 +619,56 @@ packages:
 
   '@drizzle-team/brocli@0.10.2':
     resolution: {integrity: sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w==}
+
+  '@duckdb/node-api@1.5.5-r.2':
+    resolution: {integrity: sha512-PhpjvblIQV36IlnWGOWcLCVhCBPALJ+gu2d4MR5VIveVS57Bx1Hpvoe9BZqPcMzMeqWc3sQOpcr8DoZ/hKB2PQ==}
+
+  '@duckdb/node-bindings-darwin-arm64@1.5.5-r.2':
+    resolution: {integrity: sha512-huZfnM/awM62hpPlK7ckx0u0twW3zc00Bs0qfY8ldhjwVn+Jf764pxFdMmUujYWtMdsSZIk4FvMy8ZQijALOPg==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@duckdb/node-bindings-darwin-x64@1.5.5-r.2':
+    resolution: {integrity: sha512-/TlqNBOqg2EbBJ2MjVDkJg6IKQHE1SkCC41cn4e5CaJVxj7re1A77W6o1V7Xa/25jftO1HxvGBlHGP15dmjMxQ==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@duckdb/node-bindings-linux-arm64-musl@1.5.5-r.2':
+    resolution: {integrity: sha512-78lhr3GBzscZXA3iHqOIIo5+zRbtSA+lNHUBHZPLUICn0+boeGic4JP/KE3Y2MTNAe4OqG4ctfl8CX1tBArjQA==}
+    cpu: [arm64]
+    os: [linux]
+    libc: [musl]
+
+  '@duckdb/node-bindings-linux-arm64@1.5.5-r.2':
+    resolution: {integrity: sha512-hlyuOvjOShhgsTguCGv9A6M5QZf9NiFW/fmq9aZO7lhlz0P0cBVOiCca+CAhcnePrbZmzeGZ21fwiBs6T12StA==}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  '@duckdb/node-bindings-linux-x64-musl@1.5.5-r.2':
+    resolution: {integrity: sha512-eKvMBSEyd3Vq4CiPGTXAb4Ww+l9XPuTR3WzXbHQMwJjEEGbnFhnHaqjtLyr3Chqg0iDWe41empP3IC7XWPBpiQ==}
+    cpu: [x64]
+    os: [linux]
+    libc: [musl]
+
+  '@duckdb/node-bindings-linux-x64@1.5.5-r.2':
+    resolution: {integrity: sha512-e8SypIiYX3wzvB2CfEr3zTfoCOqkqt0zvcc025ukVno95W+hnH37NJOEdhC7RfSCEwgaPrkWGChhZ3x3EVZsTg==}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  '@duckdb/node-bindings-win32-arm64@1.5.5-r.2':
+    resolution: {integrity: sha512-87wuGkEjc4VwcDZI09rSm6FXc8F9oHZWYE7so8p2l4qtmGCfsoLwSSlnhi9MHGefGqUBxshfJ0O9Zvg7A0//ag==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@duckdb/node-bindings-win32-x64@1.5.5-r.2':
+    resolution: {integrity: sha512-r5V6Q0zcv5HSHGDXsd6M+t3jakhm6S11TNH5vydKGeq8JBWj4v3ZTof/mF3R8Rly+90Z205KoI9ujblg/jN04g==}
+    cpu: [x64]
+    os: [win32]
+
+  '@duckdb/node-bindings@1.5.5-r.2':
+    resolution: {integrity: sha512-sdLrfvfOxhFA6igCMiToaYSYaffd7D5j00ooy7Y1ACJ1PZKTVENwHV91RfECyNrlGGZItNbfqVR/yHL1jiHMcQ==}
 
   '@electric-sql/client@1.0.14':
     resolution: {integrity: sha512-LtPAfeMxXRiYS0hyDQ5hue2PjljUiK9stvzsVyVb4nwxWQxfOWTSF42bHTs/o5i3x1T4kAQ7mwHpxa4A+f8X7Q==}
@@ -6235,6 +6288,47 @@ snapshots:
       '@depot/cli-win32-x64': 0.0.1-cli.2.80.0
 
   '@drizzle-team/brocli@0.10.2': {}
+
+  '@duckdb/node-api@1.5.5-r.2':
+    dependencies:
+      '@duckdb/node-bindings': 1.5.5-r.2
+
+  '@duckdb/node-bindings-darwin-arm64@1.5.5-r.2':
+    optional: true
+
+  '@duckdb/node-bindings-darwin-x64@1.5.5-r.2':
+    optional: true
+
+  '@duckdb/node-bindings-linux-arm64-musl@1.5.5-r.2':
+    optional: true
+
+  '@duckdb/node-bindings-linux-arm64@1.5.5-r.2':
+    optional: true
+
+  '@duckdb/node-bindings-linux-x64-musl@1.5.5-r.2':
+    optional: true
+
+  '@duckdb/node-bindings-linux-x64@1.5.5-r.2':
+    optional: true
+
+  '@duckdb/node-bindings-win32-arm64@1.5.5-r.2':
+    optional: true
+
+  '@duckdb/node-bindings-win32-x64@1.5.5-r.2':
+    optional: true
+
+  '@duckdb/node-bindings@1.5.5-r.2':
+    dependencies:
+      detect-libc: 2.1.2
+    optionalDependencies:
+      '@duckdb/node-bindings-darwin-arm64': 1.5.5-r.2
+      '@duckdb/node-bindings-darwin-x64': 1.5.5-r.2
+      '@duckdb/node-bindings-linux-arm64': 1.5.5-r.2
+      '@duckdb/node-bindings-linux-arm64-musl': 1.5.5-r.2
+      '@duckdb/node-bindings-linux-x64': 1.5.5-r.2
+      '@duckdb/node-bindings-linux-x64-musl': 1.5.5-r.2
+      '@duckdb/node-bindings-win32-arm64': 1.5.5-r.2
+      '@duckdb/node-bindings-win32-x64': 1.5.5-r.2
 
   '@electric-sql/client@1.0.14':
     dependencies:

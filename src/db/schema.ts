@@ -156,6 +156,22 @@ export const openlibrary_etl_state = schema.table(
     active_run_id: text("active_run_id"),
     started_at: timestamp("started_at", { withTimezone: true }),
     lease_expires_at: timestamp("lease_expires_at", { withTimezone: true }),
+    /**
+     * Whether `openlibrary_work` currently holds the whole catalogue.
+     *
+     * A rebuild swaps in a table containing only OLIDs referenced by `image`,
+     * builds the full table beside it at 1x storage, then swaps again. In
+     * between, the website is fine — it only ever looks up OLIDs it already
+     * stores — but the agentic OLID workflow would search a near-empty
+     * catalogue, find nothing, and write wrong or null OLIDs back into `image`.
+     *
+     * Deliberately not folded into `status`, which is wrong in both directions:
+     * `running` covers hours of BigQuery work during which the catalogue is
+     * completely intact, and a run that dies mid-swap leaves `failed` while the
+     * catalogue is still reduced and must stay blocked. The two facts are
+     * independent.
+     */
+    catalogue_state: text("catalogue_state").notNull().default("full"),
     last_error: text("last_error"),
     updated_at: timestamp("updated_at", { withTimezone: true })
       .notNull()
@@ -166,6 +182,10 @@ export const openlibrary_etl_state = schema.table(
     check(
       "openlibrary_etl_state_status",
       sql`${table.status} IN ('idle', 'running', 'failed')`,
+    ),
+    check(
+      "openlibrary_etl_state_catalogue_state",
+      sql`${table.catalogue_state} IN ('full', 'reduced')`,
     ),
   ],
 );

@@ -44,6 +44,10 @@ export default defineConfig({
   },
   dirs: ["./src/trigger"],
   build: {
+    // DuckDB ships a native addon per platform. Bundling it produces a build
+    // that resolves the `.node` binary relative to the wrong path at runtime, so
+    // it has to stay an external require resolved from node_modules.
+    external: ["@duckdb/node-api", "@duckdb/node-bindings"],
     extensions: [
       sqlRawPlugin,
       syncEnvVars(async (_) => {

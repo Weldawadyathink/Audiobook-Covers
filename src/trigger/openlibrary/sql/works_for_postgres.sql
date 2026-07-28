@@ -1,6 +1,6 @@
 -- Narrow projection of works_search that mirrors the Postgres `openlibrary_work`
 -- table. Every ARRAY column is sorted so that the row hash computed in
--- sync-works-for-postgres is stable across dumps — BigQuery's ARRAY_AGG does not
+-- the ETL delta export is stable across dumps — BigQuery's ARRAY_AGG does not
 -- guarantee ordering, so an unsorted array would produce spurious deltas.
 CREATE OR REPLACE TABLE `${project}.${dataset}.works_for_postgres`
 CLUSTER BY olid, title AS

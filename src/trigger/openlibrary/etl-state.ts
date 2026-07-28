@@ -4,14 +4,26 @@ import type { createPostgresWriteDb } from "@/db.node";
 type WriteDb = ReturnType<typeof createPostgresWriteDb>;
 
 /**
- * How long a claim stays valid without a heartbeat. A run that is OOM-killed or
+ * How long a claim stays valid without renewal. A run that is OOM-killed or
  * loses its machine leaves `status = 'running'` behind; once the lease lapses the
  * next scheduled run reclaims it instead of refusing forever.
+ *
+ * An hour, which is far longer than a heartbeat-based lease would need, because
+ * this run does not heartbeat. `wait.for` checkpoints the run — the whole point,
+ * since sleeping that way is not billed — and a suspended run cannot renew
+ * anything. Renewal therefore happens only at points where the run is awake and
+ * holding a connection: after each BigQuery batch, between loader waves, and on
+ * every poll wake-up. The TTL has to cover the longest gap between two of those,
+ * which is a wave of Parquet loaders.
+ *
+ * The cost of being generous is bounded: this job runs monthly, so a crashed run
+ * blocking retries for up to an hour changes nothing, while a TTL that expires
+ * mid-run would let a second run start writing alongside the first.
  */
-export const LEASE_DURATION_SECONDS = 5 * 60;
+export const LEASE_DURATION_SECONDS = 60 * 60;
 
-/** Heartbeat cadence. Must be comfortably under {@link LEASE_DURATION_SECONDS}. */
-export const LEASE_RENEW_INTERVAL_MS = 60_000;
+export const CatalogueState = z.enum(["full", "reduced"]);
+export type CatalogueState = z.infer<typeof CatalogueState>;
 
 export const EtlState = z.object({
   status: z.enum(["idle", "running", "failed"]),
@@ -21,6 +33,7 @@ export const EtlState = z.object({
   active_run_id: z.string().nullable(),
   started_at: z.date().nullable(),
   lease_expires_at: z.date().nullable(),
+  catalogue_state: CatalogueState,
   last_error: z.string().nullable(),
   updated_at: z.date(),
 });
@@ -57,6 +70,7 @@ export async function readEtlState({ sqlTools }: WriteDb): Promise<EtlState> {
       active_run_id,
       started_at,
       lease_expires_at,
+      catalogue_state,
       last_error,
       updated_at
   `;
@@ -108,6 +122,7 @@ export async function acquireEtlLease(
       active_run_id,
       started_at,
       lease_expires_at,
+      catalogue_state,
       last_error,
       updated_at
   `;
@@ -148,6 +163,48 @@ export async function renewEtlLease(
     RETURNING id
   `;
   return renewed.length === 1;
+}
+
+/**
+ * Records whether `openlibrary_work` currently holds the whole catalogue.
+ *
+ * Run-scoped like the other mutations, so a run that has already lost its lease
+ * cannot flip the flag back to `full` underneath the run that took over.
+ *
+ * Deliberately *not* cleared by {@link failEtlRun}: a run that dies between the
+ * two swaps leaves a reduced catalogue behind, and search has to stay blocked
+ * until a later run rebuilds it.
+ */
+export async function setCatalogueState(
+  { sqlTools }: WriteDb,
+  { runId, catalogueState }: { runId: string; catalogueState: CatalogueState },
+): Promise<boolean> {
+  const updated = await sqlTools.any(z.object({ id: z.boolean() }))`
+    UPDATE openlibrary_etl_state
+    SET
+      catalogue_state = ${catalogueState},
+      updated_at = now()
+    WHERE id = true
+      AND active_run_id = ${runId}
+    RETURNING id
+  `;
+  return updated.length === 1;
+}
+
+/**
+ * Reads the catalogue flag alone, for consumers that must not act on a reduced
+ * catalogue. Returns `full` when the singleton row does not exist yet — an
+ * absent row means no ETL has ever run, so nothing has been reduced.
+ */
+export async function readCatalogueState({
+  sqlTools,
+}: Pick<WriteDb, "sqlTools">): Promise<CatalogueState> {
+  const row = await sqlTools.maybeOne(
+    z.object({ catalogue_state: CatalogueState }),
+  )`
+    SELECT catalogue_state FROM openlibrary_etl_state WHERE id = true
+  `;
+  return row?.catalogue_state ?? "full";
 }
 
 /** Marks the claimed dump as fully applied and drops the lease. */

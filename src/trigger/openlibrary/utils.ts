@@ -1,5 +1,4 @@
 import * as https from "https";
-import { Transform } from "node:stream";
 
 // Follows the "latest" redirect to extract the dump date from the resolved URL.
 // OpenLibrary redirects ol_dump_works_latest.txt.gz →
@@ -37,44 +36,4 @@ export async function resolveDumpDate(url: string): Promise<string> {
     return match[1];
   }
   throw new Error("Too many redirects resolving dump URL");
-}
-
-export function streamTracker(
-  runEvery: number,
-  callback: (
-    rowCount: number,
-    time: number,
-    rowsSinceLastCall: number,
-  ) => unknown,
-) {
-  let rowCount = 0;
-  let lastReported = 0;
-  let lastTime: number | undefined;
-  return new Transform({
-    objectMode: true,
-    transform(chunk, _, done) {
-      if (lastTime === undefined) {
-        lastTime = performance.now();
-      }
-      rowCount++;
-      if (rowCount % runEvery === 0) {
-        const now = performance.now();
-        const rowsSinceLastCall = rowCount - lastReported;
-        callback(rowCount, now - lastTime, rowsSinceLastCall);
-        lastReported = rowCount;
-        lastTime = now;
-      }
-      return done(null, chunk);
-    },
-    flush(done) {
-      if (lastTime !== undefined && rowCount !== lastReported) {
-        callback(
-          rowCount,
-          performance.now() - lastTime,
-          rowCount - lastReported,
-        );
-      }
-      done();
-    },
-  });
 }
