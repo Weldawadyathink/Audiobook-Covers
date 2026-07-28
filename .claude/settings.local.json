@@ -25,7 +25,9 @@
       "WebFetch(domain:planetscale.com)",
       "Bash(git *)",
       "WebFetch(domain:docs.cloud.google.com)",
-      "Bash(rg '\\(^|/\\)\\(gcs-lifecycle\\\\.json|database\\\\.sql|.*schema.*\\\\.sql\\)$|infra/')"
+      "Bash(rg '\\(^|/\\)\\(gcs-lifecycle\\\\.json|database\\\\.sql|.*schema.*\\\\.sql\\)$|infra/')",
+      "Bash(pnpm list *)",
+      "Bash(pnpm exec *)"
     ]
   }
 }

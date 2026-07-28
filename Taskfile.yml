@@ -33,7 +33,7 @@ tasks:
   trigger:deploy:
     desc: Deploy Trigger.dev tasks to production
     cmds:
-      - pnpm dlx trigger.dev@latest deploy
+      - pnpm exec trigger deploy
 
   deploy:dev:
     desc: Build and deploy to Cloudflare (development env)
