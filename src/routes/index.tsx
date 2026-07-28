@@ -82,7 +82,7 @@ function Home() {
             <ImageCard
               key={image.id}
               imageData={image}
-              showDataset={auth.isAuthenticated}
+              showDataset={auth.isAdmin}
               className={getLargeImageClass(index)}
             />
           ))}

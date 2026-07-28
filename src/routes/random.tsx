@@ -29,7 +29,7 @@ function RouteComponent() {
           <ImageCard
             key={image.id}
             imageData={image}
-            showDataset={auth.isAuthenticated}
+            showDataset={auth.isAdmin}
             className={cn(
               "",
               isLargeImage(index) && "col-span-2 row-span-2 scale-95",

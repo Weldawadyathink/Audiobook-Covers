@@ -20,6 +20,7 @@ import { getIsAuthenticated } from "@/server/auth";
 import { ClientOnly } from "@/components/ClientOnly";
 import { DownloadButton } from "@/components/DownloadButton";
 import { MatchAttribution } from "@/components/MatchAttribution";
+import { CoverFeedback } from "@/components/CoverFeedback";
 import type { ReactNode } from "react";
 import type { ImageData } from "@/server/imageData";
 
@@ -205,6 +206,7 @@ function RouteComponent() {
               </div>
 
               <MatchAttribution confidence={openlibrary.confidence} />
+              <CoverFeedback imageId={image.id} />
             </div>
           ) : (
             <div>
@@ -242,7 +244,7 @@ function RouteComponent() {
                 <ExternalLink />
               </a>
             </Button>
-            {auth.isAuthenticated && (
+            {auth.isAdmin && (
               <Button
                 variant="outline"
                 className="h-11 w-full rounded-xl border-white/15 bg-white/5 text-slate-100 hover:bg-white/10 hover:text-white"
@@ -274,7 +276,7 @@ function RouteComponent() {
             : undefined
         }
         images={sameBook}
-        showDataset={auth.isAuthenticated}
+        showDataset={auth.isAdmin}
       />
 
       <CoverShelf
@@ -283,7 +285,7 @@ function RouteComponent() {
         description="Covers for other books by this author. Hover a cover to see which book it belongs to."
         images={sameAuthor}
         showBook
-        showDataset={auth.isAuthenticated}
+        showDataset={auth.isAdmin}
       />
 
       <CoverShelf
@@ -291,8 +293,8 @@ function RouteComponent() {
         title="Visually similar covers"
         description="Matched by artwork rather than by book."
         images={similar}
-        showScore={auth.isAuthenticated}
-        showDataset={auth.isAuthenticated}
+        showScore={auth.isAdmin}
+        showDataset={auth.isAdmin}
       />
 
       {sameBook.length === 0 && sameAuthor.length === 0 && similar.length === 0 && (

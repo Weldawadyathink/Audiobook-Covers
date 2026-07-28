@@ -145,6 +145,13 @@ export const openlibrary_work = schema.table(
       "gin",
       sql`to_tsvector('simple'::regconfig, immutable_array_to_string(${table.author_names}, ' '))`,
     ),
+    // The tsvector index above cannot serve the array-overlap operator. Finding
+    // "other works by this author" is an `author_names && ARRAY[…]` test, which
+    // without this index is a sequential scan of the whole catalogue.
+    index("idx_openlibrary_work_author_names_gin").using(
+      "gin",
+      table.author_names,
+    ),
   ],
 );
 
@@ -209,14 +216,99 @@ export const openlibrary_etl_state = schema.table(
   ],
 );
 
+/**
+ * A registered account. Passkey-only — there is no password column by design.
+ *
+ * Signing up is deliberately unprivileged: an account can do nothing at all
+ * until `is_admin` is set, which only an existing admin can do. That is what
+ * makes it safe to leave registration open at an unlisted URL without email
+ * verification — an unapproved account is inert, so a bogus signup costs a row
+ * and nothing else.
+ *
+ * Bootstrap the first admin by hand:
+ *   UPDATE dev.web_user SET is_admin = true WHERE email = 'you@example.com';
+ */
 export const web_user = schema.table(
   "web_user",
   {
     id: serial("id").primaryKey(),
-    username: text("username").notNull(),
-    password_hash: text("password_hash").notNull(),
+    email: text("email").notNull(),
+    is_admin: boolean("is_admin").notNull().default(false),
+    /** Which admin granted access, kept for an audit trail. */
+    approved_by: integer("approved_by"),
+    approved_at: timestamp("approved_at", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    last_login_at: timestamp("last_login_at", { withTimezone: true }),
   },
-  (table) => [unique("web_user_username_key").on(table.username)],
+  (table) => [
+    unique("web_user_email_key").on(table.email),
+    foreignKey({
+      columns: [table.approved_by],
+      foreignColumns: [table.id],
+      name: "web_user_approved_by_fkey",
+    }).onDelete("set null"),
+  ],
+);
+
+/**
+ * A WebAuthn credential (passkey) belonging to a user.
+ *
+ * `public_key` is the COSE key and `credential_id` the raw credential id, both
+ * base64url. `counter` is the authenticator's signature counter, persisted so a
+ * cloned authenticator can be detected — it must only ever increase.
+ */
+export const web_authn_credential = schema.table(
+  "web_authn_credential",
+  {
+    credential_id: text("credential_id").primaryKey(),
+    user_id: integer("user_id").notNull(),
+    public_key: text("public_key").notNull(),
+    counter: integer("counter").notNull().default(0),
+    transports: text("transports")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    created_at: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    last_used_at: timestamp("last_used_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("idx_web_authn_credential_user_id").on(table.user_id),
+    foreignKey({
+      columns: [table.user_id],
+      foreignColumns: [web_user.id],
+      name: "web_authn_credential_user_id_fkey",
+    }).onDelete("cascade"),
+  ],
+);
+
+/**
+ * One in-flight WebAuthn ceremony.
+ *
+ * The challenge has to survive the round trip between "begin" and "finish", and
+ * Workers keep no memory between requests, so it lives here rather than in
+ * process state. Rows are short-lived; expired ones are swept on each insert.
+ */
+export const web_authn_challenge = schema.table(
+  "web_authn_challenge",
+  {
+    challenge: text("challenge").primaryKey(),
+    /** Set for registration, where no user row exists yet. */
+    email: text("email"),
+    user_id: integer("user_id"),
+    purpose: text("purpose").notNull(),
+    expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    check(
+      "web_authn_challenge_purpose",
+      sql`${table.purpose} IN ('register', 'authenticate')`,
+    ),
+    index("idx_web_authn_challenge_expires_at").on(table.expires_at),
+  ],
 );
 
 export const session = schema.table(
@@ -233,5 +325,60 @@ export const session = schema.table(
       foreignColumns: [web_user.id],
       name: "session_user_id_fkey",
     }).onDelete("cascade"),
+  ],
+);
+
+/**
+ * A public report about whether a cover is matched to the right book.
+ *
+ * `openlibrary_work_id` snapshots the match as it stood when the report was
+ * filed. Without it a report becomes unreadable the moment the match changes —
+ * "this is wrong" would silently start referring to a book nobody complained
+ * about.
+ */
+export const cover_feedback = schema.table(
+  "cover_feedback",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    image_id: uuid("image_id").notNull(),
+    /** The match being judged, as it was at submission time. */
+    openlibrary_work_id: text("openlibrary_work_id"),
+    verdict: text("verdict").notNull(),
+    note: text("note"),
+    status: text("status").notNull().default("OPEN"),
+    created_at: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    resolved_by: integer("resolved_by"),
+    resolved_at: timestamp("resolved_at", { withTimezone: true }),
+    /** What the admin did about it, for the audit trail. */
+    resolution: text("resolution"),
+  },
+  (table) => [
+    check(
+      "cover_feedback_verdict",
+      sql`${table.verdict} IN ('CORRECT', 'INCORRECT')`,
+    ),
+    check(
+      "cover_feedback_status",
+      sql`${table.status} IN ('OPEN', 'RESOLVED', 'DISMISSED')`,
+    ),
+    index("idx_cover_feedback_status_created").on(
+      table.status,
+      table.created_at,
+    ),
+    index("idx_cover_feedback_image_id").on(table.image_id),
+    foreignKey({
+      columns: [table.image_id],
+      foreignColumns: [image.id],
+      name: "cover_feedback_image_id_fkey",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.resolved_by],
+      foreignColumns: [web_user.id],
+      name: "cover_feedback_resolved_by_fkey",
+    }).onDelete("set null"),
   ],
 );

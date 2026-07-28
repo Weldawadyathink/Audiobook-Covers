@@ -11,7 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as RandomRouteImport } from './routes/random'
-import { Route as LoginRouteImport } from './routes/login'
 import { Route as ContributeRouteImport } from './routes/contribute'
 import { Route as AiSearchRouteImport } from './routes/ai-search'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -21,11 +20,15 @@ import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as ImagesIdRouteImport } from './routes/images.$id'
 import { Route as CoverBytextRouteImport } from './routes/cover.bytext'
 import { Route as ApiSearchRouteImport } from './routes/api/search'
-import { Route as ApiLoginRouteImport } from './routes/api/login'
+import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminTestRouteImport } from './routes/admin/test'
 import { Route as AdminSimilarRouteImport } from './routes/admin/similar'
 import { Route as AdminLogoutRouteImport } from './routes/admin/logout'
+import { Route as AdminFeedbackRouteImport } from './routes/admin/feedback'
 import { Route as AdminDatabase_infoRouteImport } from './routes/admin/database_info'
+import { Route as AccessSigninRouteImport } from './routes/access/signin'
+import { Route as AccessPendingRouteImport } from './routes/access/pending'
+import { Route as AccessJoinRouteImport } from './routes/access/join'
 
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
@@ -35,11 +38,6 @@ const SearchRoute = SearchRouteImport.update({
 const RandomRoute = RandomRouteImport.update({
   id: '/random',
   path: '/random',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContributeRoute = ContributeRouteImport.update({
@@ -87,10 +85,10 @@ const ApiSearchRoute = ApiSearchRouteImport.update({
   path: '/api/search',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiLoginRoute = ApiLoginRouteImport.update({
-  id: '/api/login',
-  path: '/api/login',
-  getParentRoute: () => rootRouteImport,
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AdminTestRoute = AdminTestRouteImport.update({
   id: '/test',
@@ -107,10 +105,30 @@ const AdminLogoutRoute = AdminLogoutRouteImport.update({
   path: '/logout',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminFeedbackRoute = AdminFeedbackRouteImport.update({
+  id: '/feedback',
+  path: '/feedback',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminDatabase_infoRoute = AdminDatabase_infoRouteImport.update({
   id: '/database_info',
   path: '/database_info',
   getParentRoute: () => AdminRoute,
+} as any)
+const AccessSigninRoute = AccessSigninRouteImport.update({
+  id: '/access/signin',
+  path: '/access/signin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccessPendingRoute = AccessPendingRouteImport.update({
+  id: '/access/pending',
+  path: '/access/pending',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccessJoinRoute = AccessJoinRouteImport.update({
+  id: '/access/join',
+  path: '/access/join',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -119,14 +137,17 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/ai-search': typeof AiSearchRoute
   '/contribute': typeof ContributeRoute
-  '/login': typeof LoginRoute
   '/random': typeof RandomRoute
   '/search': typeof SearchRoute
+  '/access/join': typeof AccessJoinRoute
+  '/access/pending': typeof AccessPendingRoute
+  '/access/signin': typeof AccessSigninRoute
   '/admin/database_info': typeof AdminDatabase_infoRoute
+  '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/logout': typeof AdminLogoutRoute
   '/admin/similar': typeof AdminSimilarRoute
   '/admin/test': typeof AdminTestRoute
-  '/api/login': typeof ApiLoginRoute
+  '/admin/users': typeof AdminUsersRoute
   '/api/search': typeof ApiSearchRoute
   '/cover/bytext': typeof CoverBytextRoute
   '/images/$id': typeof ImagesIdRoute
@@ -137,14 +158,17 @@ export interface FileRoutesByTo {
   '/about': typeof AboutRoute
   '/ai-search': typeof AiSearchRoute
   '/contribute': typeof ContributeRoute
-  '/login': typeof LoginRoute
   '/random': typeof RandomRoute
   '/search': typeof SearchRoute
+  '/access/join': typeof AccessJoinRoute
+  '/access/pending': typeof AccessPendingRoute
+  '/access/signin': typeof AccessSigninRoute
   '/admin/database_info': typeof AdminDatabase_infoRoute
+  '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/logout': typeof AdminLogoutRoute
   '/admin/similar': typeof AdminSimilarRoute
   '/admin/test': typeof AdminTestRoute
-  '/api/login': typeof ApiLoginRoute
+  '/admin/users': typeof AdminUsersRoute
   '/api/search': typeof ApiSearchRoute
   '/cover/bytext': typeof CoverBytextRoute
   '/images/$id': typeof ImagesIdRoute
@@ -157,14 +181,17 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/ai-search': typeof AiSearchRoute
   '/contribute': typeof ContributeRoute
-  '/login': typeof LoginRoute
   '/random': typeof RandomRoute
   '/search': typeof SearchRoute
+  '/access/join': typeof AccessJoinRoute
+  '/access/pending': typeof AccessPendingRoute
+  '/access/signin': typeof AccessSigninRoute
   '/admin/database_info': typeof AdminDatabase_infoRoute
+  '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/logout': typeof AdminLogoutRoute
   '/admin/similar': typeof AdminSimilarRoute
   '/admin/test': typeof AdminTestRoute
-  '/api/login': typeof ApiLoginRoute
+  '/admin/users': typeof AdminUsersRoute
   '/api/search': typeof ApiSearchRoute
   '/cover/bytext': typeof CoverBytextRoute
   '/images/$id': typeof ImagesIdRoute
@@ -178,14 +205,17 @@ export interface FileRouteTypes {
     | '/admin'
     | '/ai-search'
     | '/contribute'
-    | '/login'
     | '/random'
     | '/search'
+    | '/access/join'
+    | '/access/pending'
+    | '/access/signin'
     | '/admin/database_info'
+    | '/admin/feedback'
     | '/admin/logout'
     | '/admin/similar'
     | '/admin/test'
-    | '/api/login'
+    | '/admin/users'
     | '/api/search'
     | '/cover/bytext'
     | '/images/$id'
@@ -196,14 +226,17 @@ export interface FileRouteTypes {
     | '/about'
     | '/ai-search'
     | '/contribute'
-    | '/login'
     | '/random'
     | '/search'
+    | '/access/join'
+    | '/access/pending'
+    | '/access/signin'
     | '/admin/database_info'
+    | '/admin/feedback'
     | '/admin/logout'
     | '/admin/similar'
     | '/admin/test'
-    | '/api/login'
+    | '/admin/users'
     | '/api/search'
     | '/cover/bytext'
     | '/images/$id'
@@ -215,14 +248,17 @@ export interface FileRouteTypes {
     | '/admin'
     | '/ai-search'
     | '/contribute'
-    | '/login'
     | '/random'
     | '/search'
+    | '/access/join'
+    | '/access/pending'
+    | '/access/signin'
     | '/admin/database_info'
+    | '/admin/feedback'
     | '/admin/logout'
     | '/admin/similar'
     | '/admin/test'
-    | '/api/login'
+    | '/admin/users'
     | '/api/search'
     | '/cover/bytext'
     | '/images/$id'
@@ -235,10 +271,11 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   AiSearchRoute: typeof AiSearchRoute
   ContributeRoute: typeof ContributeRoute
-  LoginRoute: typeof LoginRoute
   RandomRoute: typeof RandomRoute
   SearchRoute: typeof SearchRoute
-  ApiLoginRoute: typeof ApiLoginRoute
+  AccessJoinRoute: typeof AccessJoinRoute
+  AccessPendingRoute: typeof AccessPendingRoute
+  AccessSigninRoute: typeof AccessSigninRoute
   ApiSearchRoute: typeof ApiSearchRoute
   CoverBytextRoute: typeof CoverBytextRoute
   ImagesIdRoute: typeof ImagesIdRoute
@@ -258,13 +295,6 @@ declare module '@tanstack/react-router' {
       path: '/random'
       fullPath: '/random'
       preLoaderRoute: typeof RandomRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contribute': {
@@ -330,12 +360,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSearchRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/login': {
-      id: '/api/login'
-      path: '/api/login'
-      fullPath: '/api/login'
-      preLoaderRoute: typeof ApiLoginRouteImport
-      parentRoute: typeof rootRouteImport
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/admin/test': {
       id: '/admin/test'
@@ -358,6 +388,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLogoutRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/feedback': {
+      id: '/admin/feedback'
+      path: '/feedback'
+      fullPath: '/admin/feedback'
+      preLoaderRoute: typeof AdminFeedbackRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/database_info': {
       id: '/admin/database_info'
       path: '/database_info'
@@ -365,22 +402,47 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDatabase_infoRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/access/signin': {
+      id: '/access/signin'
+      path: '/access/signin'
+      fullPath: '/access/signin'
+      preLoaderRoute: typeof AccessSigninRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/access/pending': {
+      id: '/access/pending'
+      path: '/access/pending'
+      fullPath: '/access/pending'
+      preLoaderRoute: typeof AccessPendingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/access/join': {
+      id: '/access/join'
+      path: '/access/join'
+      fullPath: '/access/join'
+      preLoaderRoute: typeof AccessJoinRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 interface AdminRouteChildren {
   AdminDatabase_infoRoute: typeof AdminDatabase_infoRoute
+  AdminFeedbackRoute: typeof AdminFeedbackRoute
   AdminLogoutRoute: typeof AdminLogoutRoute
   AdminSimilarRoute: typeof AdminSimilarRoute
   AdminTestRoute: typeof AdminTestRoute
+  AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminDatabase_infoRoute: AdminDatabase_infoRoute,
+  AdminFeedbackRoute: AdminFeedbackRoute,
   AdminLogoutRoute: AdminLogoutRoute,
   AdminSimilarRoute: AdminSimilarRoute,
   AdminTestRoute: AdminTestRoute,
+  AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
 
@@ -392,10 +454,11 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   AiSearchRoute: AiSearchRoute,
   ContributeRoute: ContributeRoute,
-  LoginRoute: LoginRoute,
   RandomRoute: RandomRoute,
   SearchRoute: SearchRoute,
-  ApiLoginRoute: ApiLoginRoute,
+  AccessJoinRoute: AccessJoinRoute,
+  AccessPendingRoute: AccessPendingRoute,
+  AccessSigninRoute: AccessSigninRoute,
   ApiSearchRoute: ApiSearchRoute,
   CoverBytextRoute: CoverBytextRoute,
   ImagesIdRoute: ImagesIdRoute,

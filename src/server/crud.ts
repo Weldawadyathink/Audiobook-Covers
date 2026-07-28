@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
-import { getIsAuthenticated } from "./auth";
+import { requireAdmin } from "@/server/session";
 import { createWriteDb } from "@/db.cloudflare";
 import { captureAnalyticsEvent } from "@/server/analyticsCore";
 import { image } from "@/db/schema";
@@ -8,17 +8,14 @@ import { eq } from "drizzle-orm";
 
 export const setImageDeleted = createServerFn()
   .inputValidator(z.object({ id: z.uuid() }))
-  .handler(async ({ data: { id }, context }) => {
-    const auth = await getIsAuthenticated();
-    if (!auth.isAuthenticated) {
-      throw new Error("Not authorized");
-    }
+  .handler(async ({ data: { id } }) => {
+    const admin = await requireAdmin();
     const writeDb = createWriteDb();
     await writeDb.update(image).set({ deleted: true }).where(eq(image.id, id));
     await captureAnalyticsEvent({
       data: {
         eventType: "imageDeleted",
-        payload: { id, username: auth.username, sessionId: auth.sessionId },
+        payload: { id, email: admin.email },
       },
     });
     return { success: true };
@@ -26,17 +23,14 @@ export const setImageDeleted = createServerFn()
 
 export const setImageNotDeleted = createServerFn()
   .inputValidator(z.object({ id: z.uuid() }))
-  .handler(async ({ data: { id }, context }) => {
-    const auth = await getIsAuthenticated();
-    if (!auth.isAuthenticated) {
-      throw new Error("Not authorized");
-    }
+  .handler(async ({ data: { id } }) => {
+    const admin = await requireAdmin();
     const writeDb = createWriteDb();
     await writeDb.update(image).set({ deleted: false }).where(eq(image.id, id));
     await captureAnalyticsEvent({
       data: {
         eventType: "imageUndeleted",
-        payload: { id, username: auth.username, sessionId: auth.sessionId },
+        payload: { id, email: admin.email },
       },
     });
     return { success: true };
@@ -44,11 +38,8 @@ export const setImageNotDeleted = createServerFn()
 
 export const setImageSearchable = createServerFn()
   .inputValidator(z.object({ id: z.uuid() }))
-  .handler(async ({ data: { id }, context }) => {
-    const auth = await getIsAuthenticated();
-    if (!auth.isAuthenticated) {
-      throw new Error("Not authorized");
-    }
+  .handler(async ({ data: { id } }) => {
+    const admin = await requireAdmin();
     console.log("Setting image as searchable", id);
     const writeDb = createWriteDb();
     await writeDb
@@ -58,7 +49,7 @@ export const setImageSearchable = createServerFn()
     await captureAnalyticsEvent({
       data: {
         eventType: "setImageSearchable",
-        payload: { id, username: auth.username, sessionId: auth.sessionId },
+        payload: { id, email: admin.email },
       },
     });
     return { success: true };
@@ -66,11 +57,8 @@ export const setImageSearchable = createServerFn()
 
 export const setImageNotSearchable = createServerFn()
   .inputValidator(z.object({ id: z.uuid() }))
-  .handler(async ({ data: { id }, context }) => {
-    const auth = await getIsAuthenticated();
-    if (!auth.isAuthenticated) {
-      throw new Error("Not authorized");
-    }
+  .handler(async ({ data: { id } }) => {
+    const admin = await requireAdmin();
     console.log("Setting image as not searchable", id);
     const writeDb = createWriteDb();
     await writeDb
@@ -80,7 +68,7 @@ export const setImageNotSearchable = createServerFn()
     await captureAnalyticsEvent({
       data: {
         eventType: "setImageNotSearchable",
-        payload: { id, username: auth.username, sessionId: auth.sessionId },
+        payload: { id, email: admin.email },
       },
     });
     return { success: true };

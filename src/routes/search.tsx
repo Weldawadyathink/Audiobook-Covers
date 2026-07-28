@@ -77,7 +77,7 @@ export const Route = createFileRoute("/search")({
       q,
       showScore: search.showScore ?? false,
       images,
-      isAuthenticated: auth.isAuthenticated,
+      isAdmin: auth.isAdmin,
     };
   },
 });
@@ -93,7 +93,7 @@ function RouteComponent() {
     q,
     showScore: initialShowScore,
     images,
-    isAuthenticated,
+    isAdmin,
   } = Route.useLoaderData();
   const navigate = useNavigate();
   const isLoading = useRouterState({ select: (s) => s.isLoading });
@@ -192,7 +192,7 @@ function RouteComponent() {
             />
           )}
 
-          {isAuthenticated && (
+          {isAdmin && (
             <AdminOptions
               showScore={showScore}
               onShowScoreChange={(value) => {
@@ -259,7 +259,7 @@ function RouteComponent() {
                   key={image.id}
                   imageData={image}
                   showScore={showScore}
-                  showDataset={isAuthenticated}
+                  showDataset={isAdmin}
                 />
               ))}
             </div>
