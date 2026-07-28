@@ -73,6 +73,6 @@ tasks:
       OPENLIBRARY_SAMPLE_PERCENT).
     env:
       APP_STAGE: development
-      OPENLIBRARY_SAMPLE_PERCENT: '{{.OPENLIBRARY_SAMPLE_PERCENT | default "10"}}'
+      OPENLIBRARY_SAMPLE_PERCENT: '{{.OPENLIBRARY_SAMPLE_PERCENT | default "1"}}'
     cmds:
       - pnpm tsx src/scripts/populateDevDatabase.ts
