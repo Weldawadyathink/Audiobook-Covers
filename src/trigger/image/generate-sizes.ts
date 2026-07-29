@@ -13,6 +13,11 @@
  * picture; at 320px it would be both larger than the WebP and pointless, since
  * nothing downscaled is lossless in any useful sense.
  *
+ * It also writes back the facts that only a decode can establish: the
+ * original's true format, its pixel dimensions and byte size, and its blurhash.
+ * Those are free here — the bitmap is already in memory — and have nowhere else
+ * to come from.
+ *
  * Nothing here trusts `image.extension` for anything except building the source
  * key. A meaningful share of the catalogue is WebP bytes stored under a `.jpg`
  * extension, because the Reddit ingest named files after the URL it fetched
@@ -25,6 +30,7 @@ import { eq } from "drizzle-orm";
 import { createWriteDb } from "@/db.node";
 import * as schema from "@/db/schema";
 import { S3Client } from "@/trigger/s3";
+import { blurhashEncode } from "@/image/blurhash";
 import {
   decodeToRgba,
   encodeJpeg,
@@ -118,6 +124,11 @@ export const generateImageSizesTask = schemaTask({
       `Decoded ${sourceKey} as ${decoded.format} at ${decoded.width}x${decoded.height} (${source.byteLength} bytes)`,
     );
 
+    // Cheap next to the encoders, and this is the only place in the codebase
+    // holding a decoded original — `image.blurhash` is read in half a dozen
+    // places and, until now, written in none.
+    const blurhash = blurhashEncode(decoded);
+
     const derivatives: Derivative[] = [];
     // Once an original is 1280px or smaller — most of the catalogue — the
     // `1280` and `original` keys describe the same pixels, and clamping means
@@ -197,18 +208,20 @@ export const generateImageSizesTask = schemaTask({
     // through the uploads is picked up again by the next "derivatives IS NULL"
     // sweep rather than being recorded as done.
     //
-    // `width`/`height`/`bytes` describe the *original*, not any derivative, and
-    // are set unconditionally rather than only when null: this task has just
-    // decoded the file itself, which makes it a better authority than whatever
-    // wrote the row. Note that the dimensions come from the decoder and so are
-    // right even for the WebP-inside-`.jpg` originals, where anything trusting
-    // the extension would have had to guess.
+    // `width`/`height`/`bytes`/`original_format` describe the *original*, not
+    // any derivative, and are set unconditionally rather than only when null:
+    // this task has just decoded the file itself, which makes it a better
+    // authority than whatever wrote the row. `original_format` in particular is
+    // the only thing in the schema that can answer what a file actually is —
+    // `extension` is a key fragment and lies about the WebP-inside-`.jpg` rows.
     await db
       .update(schema.image)
       .set({
         width: decoded.width,
         height: decoded.height,
         bytes: source.byteLength,
+        original_format: decoded.format,
+        blurhash,
         derivatives_generated_at: new Date(),
       })
       .where(eq(schema.image.id, id));
@@ -218,6 +231,7 @@ export const generateImageSizesTask = schemaTask({
       sourceFormat: decoded.format,
       sourceWidth: decoded.width,
       sourceHeight: decoded.height,
+      blurhash,
       written: derivatives.map((derivative) => derivative.key),
     };
   },

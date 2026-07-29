@@ -356,6 +356,20 @@ export const image = schema.table(
      */
     duplicate_of: uuid("duplicate_of"),
     /**
+     * What the original file actually is, sniffed from its magic bytes.
+     *
+     * Deliberately separate from `extension`, which cannot answer this. The
+     * Reddit ingest named files after the URL it fetched them from and
+     * i.redd.it serves WebP bytes from `.jpg` paths, so a meaningful share of
+     * the catalogue is filed under an extension that describes nothing. That
+     * makes `extension` the right thing to build an object key from — it *is*
+     * part of the key — and the wrong thing to answer "what format is this".
+     *
+     * Written by `generate-image-sizes`, which decodes the file and therefore
+     * knows. Null means the image predates that task or has not run through it.
+     */
+    original_format: text("original_format"),
+    /**
      * When `generate-image-sizes` last wrote a full set of derivatives.
      *
      * Null is the work queue — a new image has no resized JPEG or WebP objects
@@ -377,6 +391,12 @@ export const image = schema.table(
     // sequential scan of the whole catalogue every time the pipeline runs.
     index("idx_image_derivatives_generated_at").on(
       table.derivatives_generated_at,
+    ),
+    // The set the decoder can produce. NULL passes, which is what lets the
+    // column be added to a populated table before anything backfills it.
+    check(
+      "image_original_format",
+      sql`${table.original_format} IN ('png', 'jpeg', 'webp')`,
     ),
     index("idx_image_duplicate_of").using("btree", table.duplicate_of),
     // The cover page groups by work ("more covers for this book") and the
