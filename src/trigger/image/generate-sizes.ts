@@ -52,11 +52,25 @@ const JPEG_QUALITY = 82;
 const WEBP_QUALITY = 80;
 
 /**
- * Derivatives are immutable for the life of an image id, and a regenerate
- * writes to the same key, so a long TTL is safe. A changed encoder means a
- * purge, not a shorter TTL on every request for the next decade.
+ * One week.
+ *
+ * A regenerate writes to the same key, so the bytes behind a URL can change
+ * without the URL doing so — and a cache holding the old copy has no way to
+ * find out. A year of `immutable` made that permanent short of a CDN purge; a
+ * week means a re-encode reaches everyone on its own, and the cost of being
+ * wrong is bounded by how long you are willing to wait rather than by
+ * remembering to purge.
+ *
+ * Cheap because the origin is R2: egress to Cloudflare's cache is free, so a
+ * miss costs a little latency and nothing else. That is the trade being made
+ * here — slightly more origin traffic in exchange for not having to keep a
+ * purge step in your head every time the encoder settings move.
+ *
+ * `immutable` is deliberately gone rather than merely shortened. It tells the
+ * browser not to revalidate even on an explicit reload, which is precisely the
+ * escape hatch a shorter TTL exists to preserve.
  */
-const CACHE_CONTROL = "public, max-age=31536000, immutable";
+const CACHE_CONTROL = "public, max-age=604800";
 
 interface Derivative {
   key: string;
