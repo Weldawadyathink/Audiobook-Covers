@@ -6,7 +6,7 @@ type LogLevel = z.infer<typeof zLogLevel>;
 const defaultLogLevel: LogLevel = "debug";
 
 export class Logger {
-  logFunction: (...data: any[]) => void;
+  logFunction: (...data: unknown[]) => void;
   logLevel: LogLevel;
 
   constructor() {
@@ -34,27 +34,27 @@ export class Logger {
     return false;
   }
 
-  log(level: LogLevel, ...data: any[]) {
+  log(level: LogLevel, ...data: unknown[]) {
     if (!this.shouldLog(level)) return;
     this.logFunction(...data);
   }
 
-  info(...data: any[]) {
+  info(...data: unknown[]) {
     if (!this.shouldLog("info")) return;
     this.log("info", ...data);
   }
 
-  debug(...data: any[]) {
+  debug(...data: unknown[]) {
     if (!this.shouldLog("debug")) return;
     this.log("debug", ...data);
   }
 
-  warn(...data: any[]) {
+  warn(...data: unknown[]) {
     if (!this.shouldLog("warn")) return;
     this.log("warn", ...data);
   }
 
-  error(...data: any[]) {
+  error(...data: unknown[]) {
     if (!this.shouldLog("error")) return;
     this.log("error", ...data);
   }

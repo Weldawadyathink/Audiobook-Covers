@@ -13,6 +13,10 @@ All packages are managed using pnpm.
 | Task                  | Purpose                                                                 |
 | --------------------- | ----------------------------------------------------------------------- |
 | `task build`          | Build the app and check for type errors (use this after making changes) |
+| `task lint`           | Run ESLint over the project                                             |
+| `task lint:fix`       | Run ESLint and apply every fix it can make automatically                |
+| `task format`         | Format the project with Prettier                                        |
+| `task format:check`   | Fail if anything is unformatted, without rewriting it                   |
 | `task dev`            | Start the dev server and Trigger.dev runner together (see below)        |
 | `task trigger:dev`    | Start only the Trigger.dev local runner                                 |
 | `task deploy:dev`     | Build and deploy to Cloudflare (development env)                        |
@@ -30,6 +34,8 @@ When interacting with a human, it is likely that they already have a dev server 
 ## After making changes
 
 **Always** run `task build` when you are done with a task. This builds the project and surfaces type errors.
+
+Run `task lint` too. ESLint ignores build output and the generated files (`dist/`, `worker-configuration.d.ts`, `src/routeTree.gen.ts`), so it should report zero problems — keep it that way.
 
 ## Database
 

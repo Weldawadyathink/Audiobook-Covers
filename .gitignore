@@ -7,7 +7,6 @@ dist
 .wrangler
 search-test-results.csv
 
-.trigger.duckdb-skills/
 .trigger
 openlibrary-data
 

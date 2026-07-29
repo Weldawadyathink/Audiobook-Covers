@@ -8,9 +8,9 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import NProgress from "nprogress";
-// @ts-ignore
+// @ts-expect-error Vite `?url` imports have no ambient type
 import nProgressCss from "nprogress/nprogress.css?url";
-// @ts-ignore For some reason it doesn't like this pattern
+// @ts-expect-error Vite `?url` imports have no ambient type
 import appCss from "@/styles/app.css?url";
 import { NavBarItem } from "@/components/NavBarItem";
 import { HeartHandshake, Info, Library, Menu, Search } from "lucide-react";
@@ -202,10 +202,7 @@ function SiteFooter() {
           .
         </p>
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-          <a
-            href="/about"
-            className="transition-colors hover:text-slate-100"
-          >
+          <a href="/about" className="transition-colors hover:text-slate-100">
             About
           </a>
           <a

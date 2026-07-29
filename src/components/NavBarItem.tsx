@@ -28,5 +28,6 @@ const BaseNavBarItem = forwardRef<HTMLAnchorElement, React.ComponentProps<"a">>(
     );
   },
 );
+BaseNavBarItem.displayName = "NavBarItem";
 
 export const NavBarItem = createLink(BaseNavBarItem);

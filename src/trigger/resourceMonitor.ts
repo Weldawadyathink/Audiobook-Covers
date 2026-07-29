@@ -4,7 +4,11 @@ import os from "node:os";
 import { promises as fs } from "node:fs";
 import { type Context, logger } from "@trigger.dev/sdk";
 import { getHeapStatistics } from "node:v8";
-import { PerformanceObserver, constants } from "node:perf_hooks";
+import {
+  PerformanceObserver,
+  constants,
+  type PerformanceEntry,
+} from "node:perf_hooks";
 
 const execAsync = promisify(exec);
 
@@ -289,7 +293,7 @@ export class ResourceMonitor {
             rss,
             command: cmdline.replace(/\0/g, " ").trim(),
           };
-        } catch (error) {
+        } catch {
           return null;
         }
       }),
@@ -475,7 +479,7 @@ export class ResourceMonitor {
             }
           : null,
       };
-    } catch (error) {
+    } catch {
       return {
         node: nodeMetrics,
         targetProcess: this.processName
@@ -517,7 +521,10 @@ export class ResourceMonitor {
   /**
    * Create an enhanced log label with key metrics for quick scanning
    */
-  private createEnhancedLabel(payload: any, baseLabel: string): string {
+  private createEnhancedLabel(
+    payload: ResourceSnapshotPayload,
+    baseLabel: string,
+  ): string {
     const parts: string[] = [baseLabel];
 
     // System resources with text indicators
@@ -615,7 +622,10 @@ export class ResourceMonitor {
   /**
    * Create a compact version of the enhanced label for high-frequency logging
    */
-  private createCompactLabel(payload: any, baseLabel: string): string {
+  private createCompactLabel(
+    payload: ResourceSnapshotPayload,
+    baseLabel: string,
+  ): string {
     const parts: string[] = [baseLabel];
 
     // Only show critical metrics in compact mode
@@ -748,6 +758,15 @@ export class ResourceMonitor {
   }
 }
 
+export type ResourceSnapshotPayload = Awaited<
+  ReturnType<ResourceMonitor["getResourceSnapshotPayload"]>
+>;
+
+/** A `gc` entry carries its collection kind on `detail`, which the base type omits. */
+type GCPerformanceEntry = PerformanceEntry & {
+  detail?: { kind?: number };
+};
+
 function summarizeGCEntries(entries: PerformanceEntry[]): GCSummary {
   if (entries.length === 0) {
     return {
@@ -771,7 +790,8 @@ function summarizeGCEntries(entries: PerformanceEntry[]): GCSummary {
     totalDuration += duration;
     if (duration > maxDuration) maxDuration = duration;
 
-    const kind = kindName((e as any)?.detail?.kind ?? "unknown");
+    const { detail } = e as GCPerformanceEntry;
+    const kind = kindName(detail?.kind ?? "unknown");
     if (!kinds[kind]) {
       kinds[kind] = { count: 0, totalDuration: 0, maxDuration: 0 };
     }

@@ -137,7 +137,7 @@ export class S3Client {
     return zodParser.safeParse(metadataJson);
   }
 
-  async setMetadata<T extends z.ZodObject<any>>(
+  async setMetadata<T extends z.ZodObject<z.ZodRawShape>>(
     key: string,
     zodParser: T,
     data: z.input<T>,

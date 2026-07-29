@@ -141,7 +141,8 @@ export const openLibraryDownloadToS3Task = schemaTask({
         sourceRangeNumber++
       ) {
         const start = (sourceRangeNumber - 1) * SOURCE_RANGE_SIZE_BYTES;
-        const end = Math.min(start + SOURCE_RANGE_SIZE_BYTES, compressedLength) - 1;
+        const end =
+          Math.min(start + SOURCE_RANGE_SIZE_BYTES, compressedLength) - 1;
         const expectedLength = end - start + 1;
 
         console.log(
@@ -327,7 +328,7 @@ async function consumeGunzipAndUpload({
     value: number;
   };
 }) {
-  let pendingBuffers: Buffer[] = [];
+  const pendingBuffers: Buffer[] = [];
   let pendingBytes = 0;
 
   for await (const chunk of gunzip) {
@@ -337,10 +338,7 @@ async function consumeGunzipAndUpload({
     pendingBytes += bufferChunk.length;
 
     while (pendingBytes >= UPLOAD_PART_SIZE_BYTES) {
-      const partBuffer = takeBytes(
-        pendingBuffers,
-        UPLOAD_PART_SIZE_BYTES,
-      );
+      const partBuffer = takeBytes(pendingBuffers, UPLOAD_PART_SIZE_BYTES);
       pendingBytes -= partBuffer.length;
       const partNumber = uploadPartNumberRef.value;
       uploadPartNumberRef.value += 1;

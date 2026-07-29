@@ -2,6 +2,7 @@
   "name": "audiobook-covers",
   "version": "1.0.0",
   "description": "Audiobook Covers",
+  "private": true,
   "type": "module",
   "packageManager": "pnpm@11.1.3",
   "dependencies": {
@@ -52,6 +53,7 @@
     "@cloudflare/vite-plugin": "^1.37.1",
     "@eslint/js": "^9.39.4",
     "@jsquash/webp": "^1.5.0",
+    "@tanstack/eslint-plugin-router": "^1.162.0",
     "@trigger.dev/build": "4.5.8",
     "@types/estree": "^1.0.9",
     "@types/node": "^25.8.0",
@@ -63,6 +65,7 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9.39.4",
     "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^16.5.0",
     "jpeg-js": "^0.4.4",
     "prettier": "^3.8.3",

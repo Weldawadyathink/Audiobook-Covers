@@ -8,7 +8,7 @@ export const Route = createFileRoute("/admin/test")({
 function RouteComponent() {
   return (
     <div className="flex flex-col gap-18">
-      <div>Hello "/admin/test"!</div>
+      <div>Hello &quot;/admin/test&quot;!</div>
       <div className="flex flex-row gap-2">
         <Button variant="default" size="lg">
           Default

@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
-import { and, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import {
   generateAuthenticationOptions,
   generateRegistrationOptions,
@@ -201,8 +201,7 @@ export const completeSignIn = createServerFn({ method: "POST" })
         id: stored.credential_id,
         publicKey: isoBase64URL.toBuffer(stored.public_key),
         counter: stored.counter,
-        transports: (stored.transports ??
-          []) as AuthenticatorTransportFuture[],
+        transports: (stored.transports ?? []) as AuthenticatorTransportFuture[],
       },
     });
 

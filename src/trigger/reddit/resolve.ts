@@ -129,7 +129,7 @@ const IMAGE_EXTENSION = /\.(jpe?g|png|gif|webp|bmp|tiff?)$/i;
  * closes a markdown link, which would otherwise be swallowed into the URL and
  * produce a 404 at download time.
  */
-const URL_PATTERN = /https?:\/\/[^\s<>"'`\]\)]+/g;
+const URL_PATTERN = /https?:\/\/[^\s<>"'`\])]+/g;
 
 /** Strip trailing punctuation a sentence left behind. */
 function trimUrl(raw: string): string {
@@ -203,8 +203,18 @@ function classify(
   if (host === "preview.redd.it") {
     const direct = previewToDirect(url);
     return direct
-      ? { url: direct, host: "i.redd.it", kind: "reddit_image", status: "PENDING" }
-      : { url: url.toString(), host, kind: "other_host", status: "UNSUPPORTED" };
+      ? {
+          url: direct,
+          host: "i.redd.it",
+          kind: "reddit_image",
+          status: "PENDING",
+        }
+      : {
+          url: url.toString(),
+          host,
+          kind: "other_host",
+          status: "UNSUPPORTED",
+        };
   }
 
   // A proxy of someone else's image. The original is normally linked elsewhere
@@ -222,7 +232,11 @@ function classify(
     };
   }
 
-  if (host === "imgur.com" || host === "www.imgur.com" || host === "m.imgur.com") {
+  if (
+    host === "imgur.com" ||
+    host === "www.imgur.com" ||
+    host === "m.imgur.com"
+  ) {
     const segments = url.pathname.split("/").filter(Boolean);
     if (segments[0] === "a" || segments[0] === "gallery") {
       return {
@@ -242,7 +256,12 @@ function classify(
         status: "PENDING",
       };
     }
-    return { url: url.toString(), host: "imgur.com", kind: "other_host", status: "UNSUPPORTED" };
+    return {
+      url: url.toString(),
+      host: "imgur.com",
+      kind: "other_host",
+      status: "UNSUPPORTED",
+    };
   }
 
   if (host === "drive.google.com") {
@@ -267,7 +286,12 @@ function classify(
         status: "PENDING",
       };
     }
-    return { url: url.toString(), host, kind: "other_host", status: "UNSUPPORTED" };
+    return {
+      url: url.toString(),
+      host,
+      kind: "other_host",
+      status: "UNSUPPORTED",
+    };
   }
 
   if (IGNORED_HOSTS.has(host)) {
@@ -286,10 +310,20 @@ function classify(
 
   // Any unknown host still counts if the URL names an image file outright.
   if (IMAGE_EXTENSION.test(url.pathname)) {
-    return { url: url.toString(), host, kind: "direct_image", status: "PENDING" };
+    return {
+      url: url.toString(),
+      host,
+      kind: "direct_image",
+      status: "PENDING",
+    };
   }
 
-  return { url: url.toString(), host, kind: "other_host", status: "UNSUPPORTED" };
+  return {
+    url: url.toString(),
+    host,
+    kind: "other_host",
+    status: "UNSUPPORTED",
+  };
 }
 
 /**
@@ -344,7 +378,9 @@ function fromText(
   return (text.match(URL_PATTERN) ?? []).flatMap((raw) => {
     const classified = classify(raw);
     if (!classified) return [];
-    return [{ post_id: postId, comment_id: commentId, ordinal: null, ...classified }];
+    return [
+      { post_id: postId, comment_id: commentId, ordinal: null, ...classified },
+    ];
   });
 }
 

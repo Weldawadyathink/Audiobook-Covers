@@ -23,6 +23,26 @@ tasks:
       - pnpm exec tsc --noEmit
       - pnpm exec vite build
 
+  lint:
+    desc: Run ESLint over the project
+    cmds:
+      - pnpm exec eslint .
+
+  lint:fix:
+    desc: Run ESLint and apply every fix it can make automatically
+    cmds:
+      - pnpm exec eslint . --fix
+
+  format:
+    desc: Format the project with Prettier
+    cmds:
+      - pnpm exec prettier --write .
+
+  format:check:
+    desc: Fail if anything is not formatted, without rewriting it
+    cmds:
+      - pnpm exec prettier --check .
+
   trigger:dev:
     desc: Start the Trigger.dev local dev runner
     env:

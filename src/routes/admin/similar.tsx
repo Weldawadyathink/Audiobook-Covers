@@ -85,8 +85,10 @@ function RouteComponent() {
         },
         description: "Refresh the page to see changes.",
       });
-    } catch (error: any) {
-      toast("Failed to delete image", { description: error.message });
+    } catch (error) {
+      toast("Failed to delete image", {
+        description: error instanceof Error ? error.message : String(error),
+      });
     }
   };
 
@@ -94,8 +96,10 @@ function RouteComponent() {
     try {
       await setImageNotDeleted({ data: { id } });
       toast("Image restored");
-    } catch (error: any) {
-      toast("Failed to restore image", { description: error.message });
+    } catch (error) {
+      toast("Failed to restore image", {
+        description: error instanceof Error ? error.message : String(error),
+      });
     }
   };
 
@@ -109,7 +113,7 @@ function RouteComponent() {
               imageData={pair.image1}
               showDataset
             />
-            <a href={pair.image1.source} target="_blank">
+            <a href={pair.image1.source} target="_blank" rel="noreferrer">
               {pair.image1.source}
             </a>
             <button
@@ -128,7 +132,7 @@ function RouteComponent() {
               imageData={pair.image2}
               showDataset
             />
-            <a href={pair.image2.source} target="_blank">
+            <a href={pair.image2.source} target="_blank" rel="noreferrer">
               {pair.image2.source}
             </a>
             <button
