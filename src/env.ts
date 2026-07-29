@@ -52,6 +52,14 @@ const envSchema = z.object({
   ETL_S3_REGION: z.string(),
   ETL_S3_ENDPOINT: z.string(),
   BIGQUERY_CREDENTIALS_JSON: bigQueryCredentialsSchema,
+  REDDIT_CLIENT_ID: z.string(),
+  REDDIT_CLIENT_SECRET: z.string(),
+  /**
+   * Reddit requires a descriptive, unique User-Agent and throttles hard on the
+   * default ones every HTTP library sends. Format Reddit asks for:
+   *   <platform>:<app id>:<version> (by /u/<reddit username>)
+   */
+  REDDIT_USER_AGENT: z.string(),
 });
 
 export type Env = z.infer<typeof envSchema>;

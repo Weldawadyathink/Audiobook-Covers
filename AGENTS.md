@@ -47,7 +47,7 @@ Everything lives in one PlanetScale Postgres database, split into a `dev` and a 
 - **Database**: schema in `src/db/schema.ts`; connection helpers in `src/db.ts`, with `src/db.cloudflare.ts` for Worker code and `src/db.node.ts` for Trigger.dev tasks and scripts
 - **Embedding models**: `src/searchModels/`
 - **Rerankers**: `src/server/rerankers/`
-- **Background jobs**: `src/trigger/` (Trigger.dev v4; the OpenLibrary ETL lives in `src/trigger/openlibrary/` and is documented in `docs/openlibrary-etl.md`)
+- **Background jobs**: `src/trigger/` (Trigger.dev v4; the OpenLibrary ETL lives in `src/trigger/openlibrary/` and is documented in `docs/openlibrary-etl.md`; the Reddit import lives in `src/trigger/reddit/` and is documented in `docs/reddit-import.md`)
 
 ## Environment
 

@@ -1,16 +1,20 @@
 import { sql } from "drizzle-orm";
 import {
+  bigint,
+  bigserial,
   bit,
   boolean,
   check,
   foreignKey,
   index,
   integer,
+  jsonb,
   pgTable,
   serial,
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
   vector,
   pgSchema,
@@ -35,40 +39,266 @@ export const schema =
     ? pgSchema("prod")
     : (pgSchema("dev") as unknown as PgSchema<"prod">);
 
+/**
+ * Append-only archive of every Reddit `Thing` we have ever fetched.
+ *
+ * This is the source of truth for the import, and the only table the network
+ * writes into. `reddit_post`, `reddit_comment` and `image_candidate` are all
+ * projections of it and can be truncated and rebuilt from here with no network
+ * access at all — which is the entire point. When the link resolver learns a new
+ * host, six years of history are re-resolved locally in seconds instead of
+ * re-crawling the subreddit.
+ *
+ * Rows are per-`Thing`, not per-HTTP-response. A listing of 100 posts becomes
+ * 100 rows, because the useful unit for replay is "the post as Reddit described
+ * it at time T", not "the page it happened to arrive on".
+ *
+ * Deduplicated on `(fullname, payload_hash)`, which is what makes daily polling
+ * cheap: re-fetching an unchanged post is a no-op insert rather than another
+ * 8KB row. A post that is edited produces a second row, so the archive doubles
+ * as an edit history. A post edited back to a previous exact state does not
+ * record the round trip; that event is not worth a table scan to preserve.
+ */
+export const reddit_raw = schema.table(
+  "reddit_raw",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    /** Reddit fullname, e.g. `t3_j069s5` (post) or `t1_g6xk2mn` (comment). */
+    fullname: text("fullname").notNull(),
+    kind: text("kind").notNull(),
+    /**
+     * Where the payload came from.
+     *
+     * Reddit is the primary source. Arctic Shift is currently used only to
+     * enumerate post ids for the historical backfill, but it also holds comments
+     * that Reddit will never serve again — at last count ~224 posts have
+     * archived comments that the live API reports as absent, because they were
+     * removed or deleted. Tagging the source now means those can be layered in
+     * later without touching this table's shape or the projection code.
+     */
+    source: text("source").notNull(),
+    fetched_at: timestamp("fetched_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    payload: jsonb("payload").notNull(),
+    /** sha256 of the canonicalised payload. See the dedup note above. */
+    payload_hash: text("payload_hash").notNull(),
+  },
+  (table) => [
+    uniqueIndex("uq_reddit_raw_fullname_hash").on(
+      table.fullname,
+      table.payload_hash,
+    ),
+    // Projection reads "latest row per fullname"; polling reads "has this
+    // fullname ever been seen". Both are served by this.
+    index("idx_reddit_raw_fullname_fetched").on(
+      table.fullname,
+      table.fetched_at.desc(),
+    ),
+    check("reddit_raw_kind", sql`${table.kind} IN ('post', 'comment')`),
+    check(
+      "reddit_raw_source",
+      sql`${table.source} IN ('reddit_api', 'arctic_shift')`,
+    ),
+  ],
+);
+
+/**
+ * Current state of one submission, projected from the newest `reddit_raw` row.
+ *
+ * Rows are created as bare stubs by the id enumeration step (id only, everything
+ * else null) and filled in by hydration, so `hydrated_at IS NULL` is the work
+ * queue for `reddit-hydrate-posts`.
+ */
 export const reddit_post = schema.table(
   "reddit_post",
   {
+    /** Base36 id without the `t3_` prefix, e.g. `j069s5`. */
     id: text("id").primaryKey(),
-    status: text("status").notNull(),
     title: text("title"),
+    /** `selftext`. Named `body` to match `reddit_comment`. */
     body: text("body"),
     author: text("author"),
     flair: text("flair"),
+    permalink: text("permalink"),
+    /** The submission's outbound target — an i.redd.it file, a gallery, a link. */
+    url: text("url"),
+    created_utc: timestamp("created_utc", { withTimezone: true }),
+    is_gallery: boolean("is_gallery"),
+    over_18: boolean("over_18"),
+    /** True when Reddit reports the submission removed, deleted or spam-filtered. */
+    removed: boolean("removed"),
+    score: integer("score"),
+    num_comments: integer("num_comments"),
+    /**
+     * Null until the submission has been fetched from the Reddit API.
+     *
+     * Also the re-hydration cursor: the oldest hydrated posts are refreshed
+     * first, which is how edits, deletions and score drift eventually land.
+     */
+    hydrated_at: timestamp("hydrated_at", { withTimezone: true }),
+    /** Null until the comment tree has been fetched at least once. */
+    comments_fetched_at: timestamp("comments_fetched_at", {
+      withTimezone: true,
+    }),
+    /**
+     * Which release of the link resolver last ran over this post.
+     *
+     * Compared against `RESOLVER_VERSION` in the resolver source. Bumping that
+     * constant is the whole re-resolve mechanism — every post falls behind at
+     * once and the resolve task picks them up in batches, no migration and no
+     * network. Null means never resolved.
+     */
+    resolver_version: integer("resolver_version"),
+    /** Newest archive row this projection was built from. */
+    raw_id: bigint("raw_id", { mode: "number" }),
   },
-  (table) => [index("idx_reddit_post_status").on(table.status)],
+  (table) => [
+    index("idx_reddit_post_hydrated_at").on(table.hydrated_at),
+    index("idx_reddit_post_comments_fetched_at").on(table.comments_fetched_at),
+    index("idx_reddit_post_resolver_version").on(table.resolver_version),
+    index("idx_reddit_post_created_utc").on(table.created_utc),
+    foreignKey({
+      columns: [table.raw_id],
+      foreignColumns: [reddit_raw.id],
+      name: "fk_reddit_post_raw_id",
+    }).onDelete("set null"),
+  ],
 );
 
+/**
+ * Current state of one comment, projected from the newest `reddit_raw` row.
+ *
+ * `id` is Reddit's base36 comment id. It was previously typed `uuid`, which no
+ * Reddit id has ever matched — the column could not have held real data.
+ */
 export const reddit_comment = schema.table(
   "reddit_comment",
   {
-    id: uuid("id").primaryKey(),
+    id: text("id").primaryKey(),
     post_id: text("post_id").notNull(),
-    parent_comment_id: uuid("parent_comment_id"),
-    content: text("content"),
+    /**
+     * Fullname of the parent — `t1_…` for a reply, `t3_…` for a top-level
+     * comment. Kept as the raw fullname rather than a self-FK because the tree
+     * is never walked; the resolver only cares which post a body belongs to.
+     */
+    parent_id: text("parent_id"),
+    author: text("author"),
+    body: text("body"),
+    created_utc: timestamp("created_utc", { withTimezone: true }),
+    score: integer("score"),
+    removed: boolean("removed"),
+    raw_id: bigint("raw_id", { mode: "number" }),
   },
   (table) => [
+    index("idx_reddit_comment_post_id").on(table.post_id),
     foreignKey({
       columns: [table.post_id],
       foreignColumns: [reddit_post.id],
       name: "reddit_comment_post_id_fkey",
     }).onDelete("cascade"),
     foreignKey({
-      columns: [table.parent_comment_id],
-      foreignColumns: [table.id],
-      name: "reddit_comment_parent_comment_id_fkey",
+      columns: [table.raw_id],
+      foreignColumns: [reddit_raw.id],
+      name: "fk_reddit_comment_raw_id",
+    }).onDelete("set null"),
+  ],
+);
+
+/**
+ * One candidate image URL found in a post or comment, and the handoff point to
+ * the downloader that does not exist yet.
+ *
+ * The download step is deliberately not part of this pipeline. Everything here
+ * is derived from local data by a pure function, so the table can be rebuilt at
+ * will; a downloader that mutated it in place would make that untrue. The future
+ * fetcher's input is simply:
+ *
+ *   SELECT url, kind FROM image_candidate WHERE status = 'PENDING'
+ *
+ * *Every* URL found is recorded, including ones nothing will ever download.
+ * Hosts we do not support are stored with a non-`PENDING` status rather than
+ * dropped, so the host distribution stays queryable in SQL and adding support
+ * later is an UPDATE rather than a re-crawl. That is how mediafire and mega
+ * (~240 links, almost certainly cover packs rather than single images) are
+ * parked: recorded as `archive`/`UNSUPPORTED`, invisible to the downloader,
+ * one statement away from being queued.
+ */
+export const image_candidate = schema.table(
+  "image_candidate",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    post_id: text("post_id").notNull(),
+    /** Null when the URL came from the submission itself rather than a reply. */
+    comment_id: text("comment_id"),
+    /**
+     * Canonicalised, not as-written.
+     *
+     * Signed `preview.redd.it` URLs are rewritten to their durable `i.redd.it`
+     * form here. The signature in a preview URL expires, so storing one would
+     * produce a table of links that quietly rot between resolve and download.
+     */
+    url: text("url").notNull(),
+    host: text("host").notNull(),
+    /** Routes to a download strategy: which fetcher, and whether it fans out. */
+    kind: text("kind").notNull(),
+    /** Position within a gallery or album, so ordering survives the download. */
+    ordinal: integer("ordinal"),
+    status: text("status").notNull().default("PENDING"),
+    resolver_version: integer("resolver_version").notNull(),
+    discovered_at: timestamp("discovered_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    /** Set by the future downloader once the bytes have landed. */
+    image_id: uuid("image_id"),
+    last_error: text("last_error"),
+  },
+  (table) => [
+    // NULLS NOT DISTINCT so that post-level candidates (comment_id IS NULL)
+    // collide with themselves on re-resolve. Without it the default NULL
+    // semantics make every re-run insert a fresh duplicate of every post-level
+    // URL, which is precisely the case that re-resolving is built around.
+    unique("uq_image_candidate_source_url")
+      .on(table.post_id, table.comment_id, table.url)
+      .nullsNotDistinct(),
+    index("idx_image_candidate_status").on(table.status, table.kind),
+    index("idx_image_candidate_post_id").on(table.post_id),
+    check(
+      "image_candidate_status",
+      sql`${table.status} IN ('PENDING', 'UNSUPPORTED', 'IGNORED', 'DOWNLOADED', 'FAILED')`,
+    ),
+    foreignKey({
+      columns: [table.post_id],
+      foreignColumns: [reddit_post.id],
+      name: "fk_image_candidate_post_id",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.comment_id],
+      foreignColumns: [reddit_comment.id],
+      name: "fk_image_candidate_comment_id",
     }).onDelete("cascade"),
   ],
 );
+
+/**
+ * Singleton cursor for the incremental pollers.
+ *
+ * `/new` and `/r/<sub>/comments` are walked newest-first and stopped as soon as
+ * a fullname we already hold appears, so the only state needed is a high-water
+ * mark per stream. Kept in one row rather than derived from `max(created_utc)`
+ * because a post can be *created* before the cursor and still arrive after it —
+ * crossposts and approvals both do this — and a derived cursor would skip them
+ * permanently.
+ */
+export const reddit_poll_cursor = schema.table("reddit_poll_cursor", {
+  /** `posts` or `comments`. */
+  stream: text("stream").primaryKey(),
+  last_fullname: text("last_fullname"),
+  last_polled_at: timestamp("last_polled_at", { withTimezone: true }),
+  last_error: text("last_error"),
+});
 
 export const image = schema.table(
   "image",
@@ -76,7 +306,11 @@ export const image = schema.table(
     id: uuid("id").primaryKey(),
     source: text("source"),
     reddit_post_id: text("reddit_post_id"),
-    reddit_comment_id: uuid("reddit_comment_id"),
+    /**
+     * Base36 Reddit comment id. Was `uuid`, which no Reddit id can satisfy; the
+     * column was NULL on every row, so the retype loses nothing.
+     */
+    reddit_comment_id: text("reddit_comment_id"),
     extension: text("extension"),
     searchable: boolean("searchable").default(true),
     blurhash: text("blurhash"),
