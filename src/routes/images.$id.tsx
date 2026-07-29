@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { useState } from "react";
 import { getImageDetail } from "@/server/imageSearcherAI";
 import ImageCard from "@/components/ImageCard";
 import { Panel } from "@/components/Panel";
@@ -13,8 +14,13 @@ import {
   Search,
   SearchCheck,
   SearchX,
+  BadgeCheck,
 } from "lucide-react";
-import { setImageNotSearchable, setImageSearchable } from "@/server/crud";
+import {
+  confirmImageMatch,
+  setImageNotSearchable,
+  setImageSearchable,
+} from "@/server/crud";
 import { toast, Toaster } from "sonner";
 import { getIsAuthenticated } from "@/server/auth";
 import { ClientOnly } from "@/components/ClientOnly";
@@ -77,6 +83,85 @@ function CoverShelf({
         ))}
       </div>
     </section>
+  );
+}
+
+/**
+ * Admin-only controls, kept visually apart from the public actions so there is
+ * no chance of mistaking one for the other.
+ */
+function AdminActions({
+  imageId,
+  searchable,
+  hasMatch,
+  isConfirmed,
+  onToggleSearchable,
+}: {
+  imageId: string;
+  searchable: boolean;
+  hasMatch: boolean;
+  isConfirmed: boolean;
+  onToggleSearchable: () => void;
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+
+  async function confirm() {
+    setBusy(true);
+    try {
+      await confirmImageMatch({ data: { id: imageId } });
+      toast("Match confirmed");
+      await router.invalidate();
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Could not confirm");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-4 rounded-xl border border-dashed border-white/15 bg-white/[0.03] px-3 py-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+        Admin
+      </p>
+      <div className="mt-2.5 flex flex-col gap-2">
+        {hasMatch &&
+          (isConfirmed ? (
+            <p className="flex items-center gap-2 rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-3 py-2 text-xs text-emerald-100">
+              <BadgeCheck className="size-3.5 shrink-0" />
+              You have confirmed this match.
+            </p>
+          ) : (
+            <Button
+              type="button"
+              disabled={busy}
+              onClick={confirm}
+              className="h-10 w-full rounded-lg bg-emerald-300 text-sm font-bold text-slate-950 hover:bg-emerald-200"
+            >
+              <BadgeCheck className="size-4" />
+              Confirm this match
+            </Button>
+          ))}
+        <Button
+          type="button"
+          variant="outline"
+          className="h-10 w-full rounded-lg border-white/15 bg-white/5 text-sm text-slate-100 hover:bg-white/10 hover:text-white"
+          onClick={onToggleSearchable}
+        >
+          {searchable ? (
+            <>
+              <span>Searchable</span>
+              <SearchCheck />
+            </>
+          ) : (
+            <>
+              <span>Not Searchable</span>
+              <SearchX />
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -244,26 +329,17 @@ function RouteComponent() {
                 <ExternalLink />
               </a>
             </Button>
-            {auth.isAdmin && (
-              <Button
-                variant="outline"
-                className="h-11 w-full rounded-xl border-white/15 bg-white/5 text-slate-100 hover:bg-white/10 hover:text-white"
-                onClick={toggleSearchable}
-              >
-                {image.searchable ? (
-                  <>
-                    <span>Searchable</span>
-                    <SearchCheck />
-                  </>
-                ) : (
-                  <>
-                    <span>Not Searchable</span>
-                    <SearchX />
-                  </>
-                )}
-              </Button>
-            )}
           </div>
+
+          {auth.isAdmin && (
+            <AdminActions
+              imageId={image.id}
+              searchable={Boolean(image.searchable)}
+              hasMatch={Boolean(openlibrary)}
+              isConfirmed={openlibrary?.confidence === "HUMAN"}
+              onToggleSearchable={toggleSearchable}
+            />
+          )}
         </Panel>
       </div>
 
