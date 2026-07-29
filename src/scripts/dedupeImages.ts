@@ -17,7 +17,11 @@
 import { createPostgresWriteDb } from "../db.node";
 import { schemaName } from "../db/schema";
 import { logger } from "../logger";
-import { decodeImage, downscaleToSquare } from "./imagePixels";
+import {
+  decodeImage,
+  downscaleToSquare,
+  type ImageFormat,
+} from "./imagePixels";
 import { DCT_SIZE, perceptualHash } from "./perceptualHash";
 
 const IMAGE_URL_PREFIX = "https://images.audiobookcovers.com";
@@ -38,6 +42,8 @@ interface HashedImage {
   width: number;
   height: number;
   bytes: number;
+  /** Sniffed, not taken from `extension` — the two disagree. Tallied, not stored. */
+  format: ImageFormat;
 }
 
 async function hashOne(image: PendingImage): Promise<HashedImage> {
@@ -48,13 +54,14 @@ async function hashOne(image: PendingImage): Promise<HashedImage> {
   }
   const buffer = Buffer.from(await response.arrayBuffer());
 
-  const decoded = decodeImage(buffer);
+  const decoded = await decodeImage(buffer);
   return {
     id: image.id,
     phash64: perceptualHash(downscaleToSquare(decoded, DCT_SIZE)),
     width: decoded.width,
     height: decoded.height,
     bytes: buffer.byteLength,
+    format: decoded.format,
   };
 }
 
@@ -95,6 +102,9 @@ async function commandHash() {
   let done = 0;
   let failed = 0;
   let batch: HashedImage[] = [];
+  // Tallied because `extension` cannot be trusted to answer this, and a run
+  // that quietly skipped a whole format would otherwise look like a clean run.
+  const formats = new Map<string, number>();
 
   // A hand-rolled worker pool rather than chunked Promise.all, so one slow
   // download cannot stall the other fifteen slots behind it. Only the downloads
@@ -110,7 +120,13 @@ async function commandHash() {
         if (index >= pending.length) return;
         const image = pending[index]!;
         try {
-          batch.push(await hashOne(image));
+          const hashed = await hashOne(image);
+          const key =
+            hashed.format === image.extension.replace(/^jpg$/, "jpeg")
+              ? hashed.format
+              : `${hashed.format} (filed as .${image.extension})`;
+          formats.set(key, (formats.get(key) ?? 0) + 1);
+          batch.push(hashed);
         } catch (error) {
           failed++;
           logger.warn(`Skipping ${image.id}: ${String(error)}`);
@@ -132,6 +148,9 @@ async function commandHash() {
   await Promise.all(workers);
   await writeHashes(batch);
   logger.info(`Hashed ${done - failed} images, ${failed} failed`);
+  for (const [format, count] of [...formats].sort((a, b) => b[1] - a[1])) {
+    logger.info(`  ${format}: ${count}`);
+  }
 }
 
 interface Pair {

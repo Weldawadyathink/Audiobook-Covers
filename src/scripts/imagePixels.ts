@@ -1,23 +1,37 @@
 /**
  * Decoding an image file down to the small greyscale square the hash needs.
  *
- * Pure JavaScript on purpose. sharp would be the obvious choice, but it drags
- * in a native binary that has to match the platform and be rebuilt on install,
- * and this repo has deliberately stayed free of that — `src/server/blurhash.ts`
- * still carries a commented-out sharp import from the last attempt. The only
- * formats in `image.extension` are jpg, jpeg and png, both of which decode fine
- * in JS, so the dependency buys nothing here.
+ * Pure JavaScript and WASM on purpose. sharp would be the obvious choice, but it
+ * drags in a native binary that has to match the platform and be rebuilt on
+ * install, and this repo has deliberately stayed free of that —
+ * `src/server/blurhash.ts` still carries a commented-out sharp import from the
+ * last attempt.
+ *
+ * The format is sniffed from the file's magic bytes, never taken from
+ * `image.extension`. Those two disagree in the catalogue: the Reddit ingest
+ * named files after the URL it fetched them from, and i.redd.it happily serves
+ * WebP bytes from a path ending in `.jpg`, so there are WebP originals filed
+ * under a jpg extension. `extension` is still the right thing to build the
+ * storage URL from — it is part of the object key — but it says nothing about
+ * what is inside.
  */
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { decode as decodeJpeg } from "jpeg-js";
 import {
   convertIndexedToRgb,
   decode as decodePng,
   hasPngSignature,
 } from "fast-png";
+import decodeWebp, { init as initWebpDecode } from "@jsquash/webp/decode";
+
+export type ImageFormat = "png" | "jpeg" | "webp";
 
 export interface DecodedImage {
   width: number;
   height: number;
+  /** What the bytes actually turned out to be, whatever the extension claimed. */
+  format: ImageFormat;
   /** One luma sample per pixel, row-major. */
   luma: Float32Array;
 }
@@ -39,7 +53,7 @@ function decodePngToLuma(buffer: Buffer): DecodedImage {
       const at = i * stride;
       luma[i] = luminance(rgb[at]!, rgb[at + 1]!, rgb[at + 2]!);
     }
-    return { width: png.width, height: png.height, luma };
+    return { width: png.width, height: png.height, format: "png", luma };
   }
 
   // 16-bit channels are scaled back to the 0-255 range the hash assumes.
@@ -56,7 +70,7 @@ function decodePngToLuma(buffer: Buffer): DecodedImage {
             png.data[at + 2]! * scale,
           );
   }
-  return { width: png.width, height: png.height, luma };
+  return { width: png.width, height: png.height, format: "png", luma };
 }
 
 function decodeJpegToLuma(buffer: Buffer): DecodedImage {
@@ -66,13 +80,74 @@ function decodeJpegToLuma(buffer: Buffer): DecodedImage {
     const at = i * 3;
     luma[i] = luminance(jpeg.data[at]!, jpeg.data[at + 1]!, jpeg.data[at + 2]!);
   }
-  return { width: jpeg.width, height: jpeg.height, luma };
+  return { width: jpeg.width, height: jpeg.height, format: "jpeg", luma };
 }
 
-export function decodeImage(buffer: Buffer): DecodedImage {
-  return hasPngSignature(buffer)
-    ? decodePngToLuma(buffer)
-    : decodeJpegToLuma(buffer);
+/**
+ * The WebP codec is WASM and has to be handed its module explicitly.
+ *
+ * `@jsquash` is built for browsers, where the codec is fetched over HTTP; in
+ * Node that fetch fails, so the compiled module is loaded from disk once and
+ * shared by every later decode.
+ */
+let webpReady: Promise<void> | undefined;
+function ensureWebpReady() {
+  webpReady ??= (async () => {
+    const require = createRequire(import.meta.url);
+    const wasm = readFileSync(
+      require.resolve("@jsquash/webp/codec/dec/webp_dec.wasm"),
+    );
+    await initWebpDecode(await WebAssembly.compile(wasm));
+  })();
+  return webpReady;
+}
+
+async function decodeWebpToLuma(buffer: Buffer): Promise<DecodedImage> {
+  await ensureWebpReady();
+  const rgba = await decodeWebp(
+    buffer.buffer.slice(
+      buffer.byteOffset,
+      buffer.byteOffset + buffer.byteLength,
+    ) as ArrayBuffer,
+  );
+  const luma = new Float32Array(rgba.width * rgba.height);
+  for (let i = 0; i < luma.length; i++) {
+    const at = i * 4;
+    luma[i] = luminance(rgba.data[at]!, rgba.data[at + 1]!, rgba.data[at + 2]!);
+  }
+  return { width: rgba.width, height: rgba.height, format: "webp", luma };
+}
+
+/** Identify the format from magic bytes. See the note at the top of the file. */
+export function sniffFormat(buffer: Buffer): ImageFormat | null {
+  if (hasPngSignature(buffer)) return "png";
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return "jpeg";
+  }
+  // "RIFF" .... "WEBP"
+  if (
+    buffer.length >= 12 &&
+    buffer.toString("ascii", 0, 4) === "RIFF" &&
+    buffer.toString("ascii", 8, 12) === "WEBP"
+  ) {
+    return "webp";
+  }
+  return null;
+}
+
+export async function decodeImage(buffer: Buffer): Promise<DecodedImage> {
+  switch (sniffFormat(buffer)) {
+    case "png":
+      return decodePngToLuma(buffer);
+    case "jpeg":
+      return decodeJpegToLuma(buffer);
+    case "webp":
+      return decodeWebpToLuma(buffer);
+    default:
+      throw new Error(
+        `Unrecognised image format, first bytes ${buffer.subarray(0, 8).toString("hex")}`,
+      );
+  }
 }
 
 /**
