@@ -14,7 +14,7 @@
  * The threshold defaults to 4 and can be overridden with `--threshold=N`. See
  * the comment on `image.phash64` in the schema for why 4, and why 64 bits.
  */
-import { createPostgresWriteDb } from "../db.node";
+import { createPostgresWriteDb, textArray } from "../db.node";
 import { schemaName } from "../db/schema";
 import { logger } from "../logger";
 import {
@@ -82,7 +82,7 @@ async function writeHashes(hashed: HashedImage[]) {
         row.bytes,
       ]),
     )}) AS source(id, phash64, width, height, bytes)
-    WHERE image.id = source.id::uuid
+    WHERE image.id = source.id::text
   `;
 }
 
@@ -279,7 +279,7 @@ async function loadClusters(threshold: number) {
   const rows = (await sql`
     SELECT id, width, height, bytes, extension, searchable
     FROM ${sql(schemaName)}.image
-    WHERE id = ANY(${ids}::uuid[])
+    WHERE id = ANY(${textArray(ids)}::text[])
   `) as unknown as Candidate[];
 
   return buildClusters(pairs, new Map(rows.map((row) => [row.id, row])));
@@ -328,10 +328,10 @@ async function commandApply(threshold: number) {
   await sql.begin(async (tx) => {
     await tx`
       UPDATE ${tx(schemaName)}.image AS image
-      SET duplicate_of = source.winner::uuid,
+      SET duplicate_of = source.winner::text,
           searchable = false
       FROM (VALUES ${tx(updates)}) AS source(loser, winner)
-      WHERE image.id = source.loser::uuid
+      WHERE image.id = source.loser::text
     `;
   });
 

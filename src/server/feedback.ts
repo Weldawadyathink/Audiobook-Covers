@@ -8,6 +8,7 @@ import { requireAdmin } from "@/server/session";
 import { captureAnalyticsEvent } from "@/server/analyticsCore";
 import { shapeImageDataArray, DBImageDataValidator } from "@/server/imageData";
 import { parseOpenLibraryWorkId } from "@/server/openlibraryRef";
+import { imageIdSchema } from "@/ids";
 
 const verdictValidator = z.enum(["CORRECT", "INCORRECT"]);
 
@@ -20,7 +21,7 @@ const verdictValidator = z.enum(["CORRECT", "INCORRECT"]);
 export const submitCoverFeedback = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
-      imageId: z.uuid(),
+      imageId: imageIdSchema,
       verdict: verdictValidator,
       note: z.string().trim().max(300).optional(),
     }),
@@ -277,7 +278,7 @@ export const searchConfirmedCovers = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       query: z.string().trim().max(200).optional(),
-      likeImageId: z.uuid().optional(),
+      likeImageId: imageIdSchema.optional(),
     }),
   )
   .handler(async ({ data }) => {

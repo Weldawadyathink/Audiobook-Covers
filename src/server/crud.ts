@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
+import { imageIdSchema } from "@/ids";
 import { requireAdmin } from "@/server/session";
 import { createWriteDb } from "@/db.cloudflare";
 import { captureAnalyticsEvent } from "@/server/analyticsCore";
@@ -15,7 +16,7 @@ import { and, eq, isNotNull, sql } from "drizzle-orm";
  * already been answered.
  */
 export const confirmImageMatch = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ id: z.uuid() }))
+  .inputValidator(z.object({ id: imageIdSchema }))
   .handler(async ({ data: { id } }) => {
     const admin = await requireAdmin();
     const writeDb = createWriteDb();
@@ -52,7 +53,7 @@ export const confirmImageMatch = createServerFn({ method: "POST" })
   });
 
 export const setImageDeleted = createServerFn()
-  .inputValidator(z.object({ id: z.uuid() }))
+  .inputValidator(z.object({ id: imageIdSchema }))
   .handler(async ({ data: { id } }) => {
     const admin = await requireAdmin();
     const writeDb = createWriteDb();
@@ -67,7 +68,7 @@ export const setImageDeleted = createServerFn()
   });
 
 export const setImageNotDeleted = createServerFn()
-  .inputValidator(z.object({ id: z.uuid() }))
+  .inputValidator(z.object({ id: imageIdSchema }))
   .handler(async ({ data: { id } }) => {
     const admin = await requireAdmin();
     const writeDb = createWriteDb();
@@ -82,7 +83,7 @@ export const setImageNotDeleted = createServerFn()
   });
 
 export const setImageSearchable = createServerFn()
-  .inputValidator(z.object({ id: z.uuid() }))
+  .inputValidator(z.object({ id: imageIdSchema }))
   .handler(async ({ data: { id } }) => {
     const admin = await requireAdmin();
     console.log("Setting image as searchable", id);
@@ -101,7 +102,7 @@ export const setImageSearchable = createServerFn()
   });
 
 export const setImageNotSearchable = createServerFn()
-  .inputValidator(z.object({ id: z.uuid() }))
+  .inputValidator(z.object({ id: imageIdSchema }))
   .handler(async ({ data: { id } }) => {
     const admin = await requireAdmin();
     console.log("Setting image as not searchable", id);

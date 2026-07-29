@@ -251,7 +251,7 @@ export const image_candidate = schema.table(
       .notNull()
       .defaultNow(),
     /** Set by the future downloader once the bytes have landed. */
-    image_id: uuid("image_id"),
+    image_id: text("image_id"),
     last_error: text("last_error"),
   },
   (table) => [
@@ -302,7 +302,26 @@ export const reddit_poll_cursor = schema.table("reddit_poll_cursor", {
 export const image = schema.table(
   "image",
   {
-    id: uuid("id").primaryKey(),
+    /**
+     * An 8-character nanoid, or — for anything imported before the switchover —
+     * the original uuid, as text.
+     *
+     * `text` rather than `uuid` so one column can hold both formats. They
+     * cannot be confused (36 characters with hyphens versus 8 without), so no
+     * discriminator column is needed and the format doubles as a marker for
+     * which import pipeline produced a row. Keeping the uuids in place rather
+     * than reassigning them matters because the id *is* the S3 object key:
+     * `550e8400-...` as text is byte-identical to what already names the
+     * objects, so the retype is a pure metadata change with no backfill and no
+     * broken URLs.
+     *
+     * New ids come from `generateImageId()` in `src/ids.ts`, which explains the
+     * length and alphabet. There is no database-side default: the id has to be
+     * generated in the application anyway so the row can be inserted before the
+     * bytes are uploaded, which is what makes the primary key the thing that
+     * actually resolves a collision.
+     */
+    id: text("id").primaryKey(),
     source: text("source"),
     reddit_post_id: text("reddit_post_id"),
     /**
@@ -354,7 +373,7 @@ export const image = schema.table(
      * would discard human judgements about a cover that still exists, and a
      * merge that turns out wrong could not be undone.
      */
-    duplicate_of: uuid("duplicate_of"),
+    duplicate_of: text("duplicate_of"),
     /**
      * What the original file actually is, sniffed from its magic bytes.
      *
@@ -657,7 +676,7 @@ export const cover_feedback = schema.table(
     id: uuid("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),
-    image_id: uuid("image_id").notNull(),
+    image_id: text("image_id").notNull(),
     /** The match being judged, as it was at submission time. */
     openlibrary_work_id: text("openlibrary_work_id"),
     verdict: text("verdict").notNull(),

@@ -2,6 +2,7 @@ import { getBlurhashUrl } from "@/server/blurhash";
 import { decode as decodePng } from "fast-png";
 import { extractColors } from "extract-colors";
 import { z } from "zod/v4";
+import { imageIdSchema } from "@/ids";
 
 function parsePostgresTextArray(value: unknown): unknown {
   if (value == null || Array.isArray(value)) return value;
@@ -26,7 +27,7 @@ const nullableStringArray = z.preprocess(
 );
 
 export const DBImageDataValidator = z.object({
-  id: z.uuid(),
+  id: imageIdSchema,
   source: z.string(),
   extension: z.string(),
   blurhash: z.string(),

@@ -10,6 +10,7 @@ import { and, desc, eq, gte, ne, sql as drizzleSql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { cosineDistance } from "drizzle-orm/sql/functions/vector";
 import { env } from "@/env.cloudflare";
+import { imageIdSchema } from "@/ids";
 
 function imageResultSelection<TScore>(score: TScore) {
   return {
@@ -200,7 +201,7 @@ async function getVisuallySimilarCovers(readDb: ReadDb, id: string) {
 export const getImageDetail = createServerFn({
   method: "GET",
 })
-  .inputValidator(z.uuid())
+  .inputValidator(imageIdSchema)
   .handler(async ({ data: id }): Promise<ImageDetail> => {
     console.log(`getImageDetail: ${id}`);
     const start = performance.now();

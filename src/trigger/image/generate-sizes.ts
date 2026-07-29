@@ -25,12 +25,13 @@
  * magic bytes instead; see `src/image/codec.ts`.
  */
 import { schemaTask } from "@trigger.dev/sdk/v3";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { eq } from "drizzle-orm";
 import { createWriteDb } from "@/db.node";
 import * as schema from "@/db/schema";
 import { S3Client } from "@/trigger/s3";
 import { blurhashEncode } from "@/image/blurhash";
+import { imageIdSchema } from "@/ids";
 import {
   decodeToRgba,
   encodeJpeg,
@@ -83,7 +84,7 @@ interface Derivative {
 export const generateImageSizesTask = schemaTask({
   id: "generate-image-sizes",
   schema: z.object({
-    id: z.string().uuid(),
+    id: imageIdSchema,
     /** Re-encode even if this image already has derivatives. */
     force: z.boolean().default(false),
   }),
