@@ -173,13 +173,19 @@ export class S3Client {
     }
   }
 
-  async createObject(key: string, data: Buffer, contentType: string) {
+  async createObject(
+    key: string,
+    data: Buffer,
+    contentType: string,
+    options: { cacheControl?: string } = {},
+  ) {
     return await this.s3Client.send(
       new PutObjectCommand({
         Bucket: this.bucket,
         Key: key,
         Body: data,
         ContentType: contentType,
+        CacheControl: options.cacheControl,
       }),
     );
   }

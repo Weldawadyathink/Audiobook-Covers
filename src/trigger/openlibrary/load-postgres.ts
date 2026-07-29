@@ -5,7 +5,7 @@ import prettyMilliseconds from "pretty-ms";
 import { createPostgresWriteDb } from "@/db.node";
 import { schemaName } from "@/db/schema";
 import { env } from "@/env.node";
-import { S3Client } from "./s3";
+import { S3Client } from "@/trigger/s3";
 import {
   DELTA_STAGE_TABLE,
   KEEP_TABLE,

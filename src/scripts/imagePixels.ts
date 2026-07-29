@@ -18,14 +18,11 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { decode as decodeJpeg } from "jpeg-js";
-import {
-  convertIndexedToRgb,
-  decode as decodePng,
-  hasPngSignature,
-} from "fast-png";
+import { convertIndexedToRgb, decode as decodePng } from "fast-png";
 import decodeWebp, { init as initWebpDecode } from "@jsquash/webp/decode";
+import { sniffFormat, type ImageFormat } from "@/image/codec";
 
-export type ImageFormat = "png" | "jpeg" | "webp";
+export type { ImageFormat };
 
 export interface DecodedImage {
   width: number;
@@ -116,23 +113,6 @@ async function decodeWebpToLuma(buffer: Buffer): Promise<DecodedImage> {
     luma[i] = luminance(rgba.data[at]!, rgba.data[at + 1]!, rgba.data[at + 2]!);
   }
   return { width: rgba.width, height: rgba.height, format: "webp", luma };
-}
-
-/** Identify the format from magic bytes. See the note at the top of the file. */
-export function sniffFormat(buffer: Buffer): ImageFormat | null {
-  if (hasPngSignature(buffer)) return "png";
-  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
-    return "jpeg";
-  }
-  // "RIFF" .... "WEBP"
-  if (
-    buffer.length >= 12 &&
-    buffer.toString("ascii", 0, 4) === "RIFF" &&
-    buffer.toString("ascii", 8, 12) === "WEBP"
-  ) {
-    return "webp";
-  }
-  return null;
 }
 
 export async function decodeImage(buffer: Buffer): Promise<DecodedImage> {

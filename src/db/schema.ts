@@ -355,9 +355,29 @@ export const image = schema.table(
      * merge that turns out wrong could not be undone.
      */
     duplicate_of: uuid("duplicate_of"),
+    /**
+     * When `generate-image-sizes` last wrote a full set of derivatives.
+     *
+     * Null is the work queue — a new image has no resized JPEG or WebP objects
+     * behind the URLs `shapeImageData` builds for it, so it cannot be displayed
+     * until this is set. Written only after every object has been uploaded, so
+     * a half-finished run stays null and gets retried.
+     *
+     * A timestamp rather than a boolean because the useful question is usually
+     * "which images predate the current encoder settings", which a flag cannot
+     * answer.
+     */
+    derivatives_generated_at: timestamp("derivatives_generated_at", {
+      withTimezone: true,
+    }),
   },
   (table) => [
     index("idx_image_searchable").using("btree", table.searchable),
+    // Serves the "what still needs derivatives" sweep, which is otherwise a
+    // sequential scan of the whole catalogue every time the pipeline runs.
+    index("idx_image_derivatives_generated_at").on(
+      table.derivatives_generated_at,
+    ),
     index("idx_image_duplicate_of").using("btree", table.duplicate_of),
     // The cover page groups by work ("more covers for this book") and the
     // title/author search joins images to their work, both of which are

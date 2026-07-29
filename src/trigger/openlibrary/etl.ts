@@ -3,7 +3,7 @@ import { z } from "zod";
 import formatNumber from "format-number";
 import { resolveDumpDate } from "@/trigger/openlibrary/utils";
 import { BQClient } from "./bq";
-import { S3Client } from "./s3";
+import { S3Client } from "@/trigger/s3";
 import {
   getProcessingTableNames,
   getQueryForTarget,

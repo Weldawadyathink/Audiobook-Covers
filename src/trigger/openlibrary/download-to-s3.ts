@@ -4,7 +4,7 @@ import { PassThrough, Readable } from "node:stream";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import { createGunzip } from "node:zlib";
 import { z } from "zod/v4";
-import { S3Client } from "@/trigger/openlibrary/s3";
+import { S3Client } from "@/trigger/s3";
 
 const SOURCE_RANGE_SIZE_BYTES = 64 * 1024 * 1024;
 const UPLOAD_PART_SIZE_BYTES = 64 * 1024 * 1024;
