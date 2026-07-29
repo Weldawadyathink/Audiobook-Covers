@@ -22,16 +22,14 @@ const getSimilarImagePairs = createServerFn().handler(async () => {
           'source',            i1.source,
           'extension',         i1.extension,
           'blurhash',          i1.blurhash,
-          'searchable',        i1.searchable,
-          'from_old_database', i1.from_old_database
+          'searchable',        i1.searchable
         ) AS image1,
         jsonb_build_object(
           'id',                i2.id,
           'source',            i2.source,
           'extension',         i2.extension,
           'blurhash',          i2.blurhash,
-          'searchable',        i2.searchable,
-          'from_old_database', i2.from_old_database
+          'searchable',        i2.searchable
         ) AS image2,
         n.distance
       FROM image_neighbor n
@@ -108,11 +106,7 @@ function RouteComponent() {
       {pairs.map((pair, index) => (
         <div key={index} className="grid grid-cols-3 gap-4 items-center">
           <div className="flex flex-col items-center">
-            <ImageCard
-              className="w-64 max-w-64"
-              imageData={pair.image1}
-              showDataset
-            />
+            <ImageCard className="w-64 max-w-64" imageData={pair.image1} />
             <a href={pair.image1.source} target="_blank" rel="noreferrer">
               {pair.image1.source}
             </a>
@@ -127,11 +121,7 @@ function RouteComponent() {
             {pair.distance.toFixed(4)}
           </span>
           <div className="flex flex-col items-center">
-            <ImageCard
-              className="w-64 max-w-64"
-              imageData={pair.image2}
-              showDataset
-            />
+            <ImageCard className="w-64 max-w-64" imageData={pair.image2} />
             <a href={pair.image2.source} target="_blank" rel="noreferrer">
               {pair.image2.source}
             </a>

@@ -226,9 +226,19 @@ export const reddit_comment = schema.table(
 export const image_candidate = schema.table(
   "image_candidate",
   {
-    id: uuid("id")
-      .primaryKey()
-      .default(sql`gen_random_uuid()`),
+    /**
+     * Sequential, and never leaves the database.
+     *
+     * This is a projection of `reddit_raw` that gets bulk-deleted and bulk-
+     * reinserted every time the resolver version is bumped, and nothing outside
+     * Postgres ever holds one of these ids — the natural key
+     * `(post_id, comment_id, url)` is what the upsert conflicts on, and the
+     * downloader finds work by `status`. A random uuid primary key on a table
+     * with that write pattern is the worst case for B-tree locality: every
+     * insert lands on a random leaf page, so the index is dirtied all over
+     * rather than appended to. Monotonic ids keep the inserts at the right edge.
+     */
+    id: bigserial("id", { mode: "number" }).primaryKey(),
     post_id: text("post_id").notNull(),
     /** Null when the URL came from the submission itself rather than a reply. */
     comment_id: text("comment_id"),

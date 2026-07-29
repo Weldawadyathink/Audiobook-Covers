@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { getRandom } from "@/server/imageSearcherAI";
 import ImageCard from "@/components/ImageCard";
 import { cn } from "@/lib/utils";
-import { getIsAuthenticated } from "@/server/auth";
 import { Search, Shuffle, Sparkles } from "lucide-react";
 
 function isLargeImageLg(index: number) {
@@ -31,13 +30,12 @@ export const Route = createFileRoute("/")({
   loader: async () => {
     return {
       images: await getRandom(),
-      auth: await getIsAuthenticated(),
     };
   },
 });
 
 function Home() {
-  const { images, auth } = Route.useLoaderData();
+  const { images } = Route.useLoaderData();
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
@@ -81,7 +79,6 @@ function Home() {
             <ImageCard
               key={image.id}
               imageData={image}
-              showDataset={auth.isAdmin}
               className={getLargeImageClass(index)}
             />
           ))}

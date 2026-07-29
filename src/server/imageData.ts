@@ -33,7 +33,6 @@ export const DBImageDataValidator = z.object({
   blurhash: z.string(),
   searchable: z.boolean().optional(),
   score: z.number().nullish(),
-  from_old_database: z.boolean().optional(),
   openlibrary_work_id: z.string().nullish(),
   openlibrary_work_id_confidence: z
     .enum(["UNCERTAIN", "LIKELY", "CONFIRMED", "HUMAN", "NO_MATCH"])

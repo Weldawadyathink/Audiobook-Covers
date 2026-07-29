@@ -7,7 +7,6 @@ export default function ImageCard(props: {
   className?: string;
   class?: string;
   showScore?: boolean;
-  showDataset?: boolean;
   /** Caption the cover with its matched book on hover/focus. */
   showBook?: boolean;
 }) {
@@ -46,11 +45,6 @@ export default function ImageCard(props: {
       {"score" in image && props.showScore && (
         <span className="absolute top-2 right-2 z-10 rounded-full bg-slate-950/70 px-2 py-1 text-xs font-semibold text-white backdrop-blur">
           {image.score!.toFixed(3)}
-        </span>
-      )}
-      {"from_old_database" in image && props.showDataset && (
-        <span className="absolute bottom-2 right-2 z-10 rounded-full bg-slate-950/70 px-2 py-1 text-xs font-semibold text-white backdrop-blur">
-          {image.from_old_database ? "Old dataset" : "New dataset"}
         </span>
       )}
       <img

@@ -52,7 +52,6 @@ function CoverShelf({
   images,
   showBook,
   showScore,
-  showDataset,
 }: {
   eyebrow: ReactNode;
   title: ReactNode;
@@ -60,7 +59,6 @@ function CoverShelf({
   images: ImageData[];
   showBook?: boolean;
   showScore?: boolean;
-  showDataset?: boolean;
 }) {
   if (images.length === 0) return null;
   return (
@@ -78,7 +76,6 @@ function CoverShelf({
             imageData={image}
             showBook={showBook}
             showScore={showScore}
-            showDataset={showDataset}
           />
         ))}
       </div>
@@ -354,7 +351,6 @@ function RouteComponent() {
             : undefined
         }
         images={sameBook}
-        showDataset={auth.isAdmin}
       />
 
       <CoverShelf
@@ -365,7 +361,6 @@ function RouteComponent() {
         description="Covers for other books by this author. Hover a cover to see which book it belongs to."
         images={sameAuthor}
         showBook
-        showDataset={auth.isAdmin}
       />
 
       <CoverShelf
@@ -374,7 +369,6 @@ function RouteComponent() {
         description="Matched by artwork rather than by book."
         images={similar}
         showScore={auth.isAdmin}
-        showDataset={auth.isAdmin}
       />
 
       {sameBook.length === 0 &&

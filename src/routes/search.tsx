@@ -259,7 +259,6 @@ function RouteComponent() {
                   key={image.id}
                   imageData={image}
                   showScore={showScore}
-                  showDataset={isAdmin}
                 />
               ))}
             </div>
