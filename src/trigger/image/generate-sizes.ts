@@ -1,11 +1,17 @@
 /**
- * Generate the JPEG and WebP derivatives the website serves.
+ * Generate the JPEG, WebP and PNG derivatives the website serves.
  *
- * One image in, eight objects out: 320, 640, 1280 and the original resolution,
- * in each of the two formats. The keys are the ones `shapeImageData` already
- * builds URLs for — `<format>/<size>/<id>.<ext>`, alongside the untouched
+ * One image in, nine objects out: 320, 640, 1280 and the original resolution as
+ * both JPEG and WebP, plus a lossless PNG at the original resolution. The keys
+ * are the ones `shapeImageData` already builds URLs for —
+ * `<format>/<size>/<id>.<ext>`, alongside the untouched
  * `original/<id>.<extension>` this task reads from — so a run of this task is
  * what turns a row in `image` into a cover the site can actually display.
+ *
+ * PNG is deliberately only produced at the original resolution. It is the
+ * lossless copy, several times heavier than the JPEG or WebP of the same
+ * picture; at 320px it would be both larger than the WebP and pointless, since
+ * nothing downscaled is lossless in any useful sense.
  *
  * Nothing here trusts `image.extension` for anything except building the source
  * key. A meaningful share of the catalogue is WebP bytes stored under a `.jpg`
@@ -22,6 +28,7 @@ import { S3Client } from "@/trigger/s3";
 import {
   decodeToRgba,
   encodeJpeg,
+  encodePng,
   encodeWebp,
   resizeRgba,
 } from "@/image/codec";
@@ -112,6 +119,12 @@ export const generateImageSizesTask = schemaTask({
     );
 
     const derivatives: Derivative[] = [];
+    // Once an original is 1280px or smaller — most of the catalogue — the
+    // `1280` and `original` keys describe the same pixels, and clamping means
+    // a 600px original collapses `640` into them too. Encoding per distinct
+    // width rather than per key stops the same JPEG being computed three times;
+    // both keys are still written, since the site asks for both by name.
+    const encoded = new Map<number, { jpeg: Buffer; webp: Buffer }>();
 
     for (const size of SIZES) {
       // Never upscale. The 1280 key still gets written for a 500px original —
@@ -129,23 +142,42 @@ export const generateImageSizesTask = schemaTask({
               Math.round((decoded.height * targetWidth) / decoded.width),
             );
 
-      const resized = resizeRgba(decoded, targetWidth, targetHeight);
+      let bodies = encoded.get(targetWidth);
+      if (!bodies) {
+        const resized = resizeRgba(decoded, targetWidth, targetHeight);
+        bodies = {
+          jpeg: encodeJpeg(resized, JPEG_QUALITY),
+          webp: await encodeWebp(resized, WEBP_QUALITY),
+        };
+        encoded.set(targetWidth, bodies);
+      }
 
       derivatives.push({
         key: `jpeg/${size}/${id}.jpg`,
         contentType: "image/jpeg",
-        body: encodeJpeg(resized, JPEG_QUALITY),
+        body: bodies.jpeg,
         width: targetWidth,
         height: targetHeight,
       });
       derivatives.push({
         key: `webp/${size}/${id}.webp`,
         contentType: "image/webp",
-        body: await encodeWebp(resized, WEBP_QUALITY),
+        body: bodies.webp,
         width: targetWidth,
         height: targetHeight,
       });
     }
+
+    // The lossless copy, at full resolution and in exactly one format, so it
+    // sits outside the size loop rather than inside a branch of it. `decoded`
+    // is already the full-resolution bitmap, so there is nothing to resize.
+    derivatives.push({
+      key: `png/original/${id}.png`,
+      contentType: "image/png",
+      body: await encodePng(decoded),
+      width: decoded.width,
+      height: decoded.height,
+    });
 
     for (const derivative of derivatives) {
       await s3.createObject(
@@ -164,9 +196,21 @@ export const generateImageSizesTask = schemaTask({
     // Written only after every object has landed, so a run that dies halfway
     // through the uploads is picked up again by the next "derivatives IS NULL"
     // sweep rather than being recorded as done.
+    //
+    // `width`/`height`/`bytes` describe the *original*, not any derivative, and
+    // are set unconditionally rather than only when null: this task has just
+    // decoded the file itself, which makes it a better authority than whatever
+    // wrote the row. Note that the dimensions come from the decoder and so are
+    // right even for the WebP-inside-`.jpg` originals, where anything trusting
+    // the extension would have had to guess.
     await db
       .update(schema.image)
-      .set({ derivatives_generated_at: new Date() })
+      .set({
+        width: decoded.width,
+        height: decoded.height,
+        bytes: source.byteLength,
+        derivatives_generated_at: new Date(),
+      })
       .where(eq(schema.image.id, id));
 
     return {

@@ -47,11 +47,17 @@ export default defineConfig({
     // DuckDB ships a native addon per platform. Bundling it produces a build
     // that resolves the `.node` binary relative to the wrong path at runtime, so
     // it has to stay an external require resolved from node_modules.
-    // `@jsquash/webp` is WASM. The JS wrapper bundles fine, but it reaches for
-    // its `.wasm` files through `require.resolve`, and esbuild does not copy
-    // those into the bundle — so the package has to stay resolvable from
-    // node_modules at runtime.
-    external: ["@duckdb/node-api", "@duckdb/node-bindings", "@jsquash/webp"],
+    // The `@jsquash` codecs are WASM. Their JS wrappers bundle fine, but they
+    // reach for their `.wasm` files through `require.resolve`, and esbuild does
+    // not copy those into the bundle — so the packages have to stay resolvable
+    // from node_modules at runtime.
+    external: [
+      "@duckdb/node-api",
+      "@duckdb/node-bindings",
+      "@jsquash/webp",
+      "@jsquash/png",
+      "@jsquash/oxipng",
+    ],
     extensions: [
       sqlRawPlugin,
       syncEnvVars(async (_) => {

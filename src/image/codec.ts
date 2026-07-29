@@ -28,9 +28,14 @@ import {
 } from "fast-png";
 import decodeWebpBuffer, { init as initWebpDecode } from "@jsquash/webp/decode";
 import encodeWebpBuffer, { init as initWebpEncode } from "@jsquash/webp/encode";
+import encodePngBuffer, { init as initPngEncode } from "@jsquash/png/encode";
+import optimisePng, { init as initOxipng } from "@jsquash/oxipng/optimise";
 import { simd } from "wasm-feature-detect";
 
 export type ImageFormat = "png" | "jpeg" | "webp";
+
+/** oxipng's own default. See the measurement in `encodePng`. */
+const OXIPNG_LEVEL = 2;
 
 /** Straight (not premultiplied) RGBA, row-major, 8 bits per channel. */
 export interface RgbaImage {
@@ -98,6 +103,19 @@ function ensureWebpEncodeReady() {
     return await initWebpEncode(await compileWasm(specifier));
   })();
   return webpEncodeReady;
+}
+
+let pngEncodeReady: Promise<unknown> | undefined;
+function ensurePngEncodeReady() {
+  pngEncodeReady ??= (async () => {
+    await initPngEncode(
+      await compileWasm("@jsquash/png/codec/pkg/squoosh_png_bg.wasm"),
+    );
+    return await initOxipng(
+      await compileWasm("@jsquash/oxipng/codec/pkg/squoosh_oxipng_bg.wasm"),
+    );
+  })();
+  return pngEncodeReady;
 }
 
 function decodePngToRgba(buffer: Buffer): DecodedRgbaImage {
@@ -297,6 +315,35 @@ export function encodeJpeg(image: RgbaImage, quality: number): Buffer {
     { data: flattened, width: image.width, height: image.height },
     quality,
   ).data;
+}
+
+/**
+ * Lossless PNG, alpha preserved.
+ *
+ * Two passes, because the encoder and the optimiser are different jobs: Squoosh's
+ * PNG encoder is fast and indifferent to size, and oxipng then re-derives the
+ * filter and deflate choices it did not bother searching for. Measured over
+ * three real covers at 909-1280px, oxipng at level 2 takes 25-45% off the
+ * encoder's output for about a second of CPU — worth it for an archival object
+ * written once and served forever.
+ *
+ * `fast-png`, already a dependency and used above for decoding, was measured
+ * against this: within ~10% of the raw encoder either way, but 10x slower and
+ * with no optimiser to pair with, so it loses on both axes that matter here.
+ *
+ * A word of warning on expectations: a photographic cover is 4-7x *larger* as
+ * PNG than as the JPEG or WebP it came from — 2-3MB is typical at 1280px. That
+ * is PNG working correctly, not a bad setting. This format is for the lossless
+ * copy, never for what the browser downloads.
+ */
+export async function encodePng(image: RgbaImage): Promise<Buffer> {
+  await ensurePngEncodeReady();
+  const encoded = await encodePngBuffer({
+    data: image.data,
+    width: image.width,
+    height: image.height,
+  } as ImageData);
+  return Buffer.from(await optimisePng(encoded, { level: OXIPNG_LEVEL }));
 }
 
 export async function encodeWebp(
