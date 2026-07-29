@@ -48,7 +48,8 @@ export function getBlurhashUrl(inputHash: string) {
       }
 
       // little-endian
-      storeBuffer += blockType +
+      storeBuffer +=
+        blockType +
         String.fromCharCode(remaining & 0xff, (remaining & 0xff00) >>> 8);
       storeBuffer += String.fromCharCode(
         ~remaining & 0xff,
@@ -105,7 +106,8 @@ export function getBlurhashUrl(inputHash: string) {
   const IEND = createChunk(0, "IEND", "");
 
   const createIHDR = (width: number, height: number) => {
-    const IHDRdata = dwordAsString(width) +
+    const IHDRdata =
+      dwordAsString(width) +
       dwordAsString(height) +
       // bit depth
       String.fromCharCode(8) +
@@ -133,7 +135,8 @@ export function getBlurhashUrl(inputHash: string) {
       }
     }
 
-    const compressedScanlines = DEFLATE_METHOD +
+    const compressedScanlines =
+      DEFLATE_METHOD +
       inflateStore(scanlines) +
       dwordAsString(adler32(scanlines));
     const IDAT = createChunk(

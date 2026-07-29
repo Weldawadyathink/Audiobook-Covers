@@ -104,9 +104,7 @@ function RouteComponent() {
         <Panel className="p-6">
           <div className="flex items-center gap-2 text-cyan-200">
             <BookOpenText className="size-5" />
-            <h2 className="text-lg font-semibold text-white">
-              Search by book
-            </h2>
+            <h2 className="text-lg font-semibold text-white">Search by book</h2>
           </div>
           <p className="mt-3 text-sm leading-6 text-slate-300">
             Every cover is matched to a book in the OpenLibrary catalogue using

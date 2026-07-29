@@ -142,7 +142,10 @@ export const resolveLinksTask = schemaTask({
         resolvePost(post, commentsByPost.get(post.id) ?? []),
       );
       for (const candidate of candidates) {
-        byStatus.set(candidate.status, (byStatus.get(candidate.status) ?? 0) + 1);
+        byStatus.set(
+          candidate.status,
+          (byStatus.get(candidate.status) ?? 0) + 1,
+        );
       }
 
       await writeCandidates(sql, ids, candidates);
@@ -153,7 +156,9 @@ export const resolveLinksTask = schemaTask({
       `;
 
       written += candidates.length;
-      logger.info(`resolved ${Math.min(i + BATCH, pending.length)}/${pending.length}`);
+      logger.info(
+        `resolved ${Math.min(i + BATCH, pending.length)}/${pending.length}`,
+      );
     }
 
     await sql.end();

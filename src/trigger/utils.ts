@@ -32,9 +32,9 @@ export async function batchTriggerAndWait<T extends TaskItem<AnyTask>[]>(
   return finishedItems;
 }
 
-export async function batchTriggerAndWaitSettled<
-  T extends TaskItem<AnyTask>[],
->(items: T) {
+export async function batchTriggerAndWaitSettled<T extends TaskItem<AnyTask>[]>(
+  items: T,
+) {
   let unfinishedItems: TaskItem<T[number]["task"]>[] = items;
   type BatchRun = Awaited<
     ReturnType<typeof batch.triggerByTaskAndWait>

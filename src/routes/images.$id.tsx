@@ -303,8 +303,8 @@ function RouteComponent() {
                 Not yet matched to a book
               </h1>
               <p className="mt-2 text-sm text-slate-400">
-                This cover has not been linked to an OpenLibrary work, so it only
-                turns up in visual search.
+                This cover has not been linked to an OpenLibrary work, so it
+                only turns up in visual search.
               </p>
             </div>
           )}
@@ -344,7 +344,9 @@ function RouteComponent() {
       </div>
 
       <CoverShelf
-        eyebrow={<span className="inline-flex items-center gap-1.5">Same book</span>}
+        eyebrow={
+          <span className="inline-flex items-center gap-1.5">Same book</span>
+        }
         title="More covers for this book"
         description={
           openlibraryTitle
@@ -357,7 +359,9 @@ function RouteComponent() {
 
       <CoverShelf
         eyebrow="Same author"
-        title={primaryAuthor ? `More by ${primaryAuthor}` : "More by this author"}
+        title={
+          primaryAuthor ? `More by ${primaryAuthor}` : "More by this author"
+        }
         description="Covers for other books by this author. Hover a cover to see which book it belongs to."
         images={sameAuthor}
         showBook
@@ -373,12 +377,14 @@ function RouteComponent() {
         showDataset={auth.isAdmin}
       />
 
-      {sameBook.length === 0 && sameAuthor.length === 0 && similar.length === 0 && (
-        <p className="mt-12 flex items-center justify-center gap-2 text-sm text-slate-500">
-          <Images className="size-4" />
-          No related covers found.
-        </p>
-      )}
+      {sameBook.length === 0 &&
+        sameAuthor.length === 0 &&
+        similar.length === 0 && (
+          <p className="mt-12 flex items-center justify-center gap-2 text-sm text-slate-500">
+            <Images className="size-4" />
+            No related covers found.
+          </p>
+        )}
 
       <div className="mt-14 flex justify-center">
         <Link

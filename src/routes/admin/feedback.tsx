@@ -476,8 +476,8 @@ function TriagePanel({
                   </Button>
                 </div>
                 <p className="mt-2 text-xs text-slate-500">
-                  Only covers a human already confirmed are searched — picking one
-                  copies its book onto this cover.
+                  Only covers a human already confirmed are searched — picking
+                  one copies its book onto this cover.
                 </p>
 
                 {coverResults && coverResults.length === 0 && (

@@ -74,8 +74,7 @@ function Home() {
 
       <section className="mt-14">
         <div className="mb-5 flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-          <Shuffle className="size-3.5" />
-          A random shelf from the archive
+          <Shuffle className="size-3.5" />A random shelf from the archive
         </div>
         <div className="grid grid-cols-2 justify-center gap-4 md:grid-cols-3 lg:grid-cols-4 lg:gap-6">
           {images.map((image, index) => (

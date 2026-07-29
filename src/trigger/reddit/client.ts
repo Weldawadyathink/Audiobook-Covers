@@ -197,7 +197,9 @@ export class RedditClient {
   async info(fullnames: string[]): Promise<RedditThing[]> {
     if (fullnames.length === 0) return [];
     if (fullnames.length > 100) {
-      throw new Error(`/api/info accepts at most 100 ids, got ${fullnames.length}`);
+      throw new Error(
+        `/api/info accepts at most 100 ids, got ${fullnames.length}`,
+      );
     }
     const body = await this.request<Listing>("/api/info", {
       id: fullnames.join(","),

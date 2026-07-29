@@ -121,8 +121,7 @@ export const listFeedback = createServerFn()
       resolution: row.resolution,
       resolvedBy: row.resolvedBy,
       /** True when the match already moved on since the report was filed. */
-      matchChangedSinceReport:
-        row.reportedWorkId !== row.currentWorkId,
+      matchChangedSinceReport: row.reportedWorkId !== row.currentWorkId,
       currentWorkId: row.currentWorkId,
       currentConfidence: row.currentConfidence,
       title: row.title,
@@ -218,7 +217,10 @@ export const getFeedbackDetail = createServerFn()
  * work ids, the one that already carries covers is almost always the id worth
  * consolidating on, so it sorts to the top.
  */
-async function loadAuthorWorks(authorNames: string[], excludeOlid: string | null) {
+async function loadAuthorWorks(
+  authorNames: string[],
+  excludeOlid: string | null,
+) {
   if (authorNames.length === 0) return [];
   const readDb = createReadDb();
 
@@ -315,12 +317,14 @@ export const searchConfirmedCovers = createServerFn({ method: "POST" })
 
     if (data.likeImageId) {
       const candidate = alias(image, "candidate");
-      const targetEmbedding = readDb.$with("target_embedding").as(
-        readDb
-          .select({ e: image.embedding_jina_clip_v2 })
-          .from(image)
-          .where(eq(image.id, data.likeImageId)),
-      );
+      const targetEmbedding = readDb
+        .$with("target_embedding")
+        .as(
+          readDb
+            .select({ e: image.embedding_jina_clip_v2 })
+            .from(image)
+            .where(eq(image.id, data.likeImageId)),
+        );
       const score = sql<number>`1 - (${candidate.embedding_jina_clip_v2} <=> ${targetEmbedding.e})`;
       rows = await readDb
         .with(targetEmbedding)
@@ -463,7 +467,12 @@ export const lookupOpenLibraryWork = createServerFn({ method: "POST" })
       })
       .onConflictDoNothing();
 
-    return { ...remote, subtitle: null, matchCount: 0, inCatalogue: false as const };
+    return {
+      ...remote,
+      subtitle: null,
+      matchCount: 0,
+      inCatalogue: false as const,
+    };
   });
 
 async function fetchOpenLibraryWork(workId: string) {

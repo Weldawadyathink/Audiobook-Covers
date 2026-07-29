@@ -39,7 +39,10 @@ export const extractOlidPhase4Task = schemaTask({
     const result = parseOpenlibraryWorkIdResult(raw);
 
     if (!result) {
-      console.warn("Phase 4 failed to produce valid structured output. Raw response:", raw);
+      console.warn(
+        "Phase 4 failed to produce valid structured output. Raw response:",
+        raw,
+      );
     } else {
       console.log(
         `Phase 4 result: OLID ${result.openlibrary_work_id ?? "null"} (${result.evidence}) — "${result.title ?? "unknown"}"`,

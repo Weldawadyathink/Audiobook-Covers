@@ -27,7 +27,9 @@ function RouteComponent() {
       toast(isAdmin ? "Admin access granted" : "Admin access revoked");
       await router.invalidate();
     } catch (error) {
-      toast(error instanceof Error ? error.message : "Could not update account");
+      toast(
+        error instanceof Error ? error.message : "Could not update account",
+      );
     } finally {
       setBusy(null);
     }

@@ -1,5 +1,5 @@
 allowBuilds:
-  '@depot/cli': true
+  "@depot/cli": true
   core-js: true
   esbuild: true
   protobufjs: true
@@ -9,9 +9,9 @@ allowBuilds:
 nodeLinker: hoisted
 
 onlyBuiltDependencies:
-  - '@parcel/watcher'
-  - '@tailwindcss/oxide'
-  - '@duckdb/node-api'
+  - "@parcel/watcher"
+  - "@tailwindcss/oxide"
+  - "@duckdb/node-api"
   - core-js
   - esbuild
   - protobufjs

@@ -29,7 +29,8 @@ export default function ImageCard(props: {
   };
 
   const book = props.showBook ? image.openlibrary : undefined;
-  const bookTitle = book && [book.title, book.subtitle].filter(Boolean).join(": ");
+  const bookTitle =
+    book && [book.title, book.subtitle].filter(Boolean).join(": ");
   const bookAuthors = book?.authorNames.filter(Boolean).join(", ");
 
   return (

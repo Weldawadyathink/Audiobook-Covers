@@ -188,11 +188,15 @@ export const hydratePostsTask = schemaTask({
             SET hydrated_at = now(), removed = true
             WHERE id = ANY(${missing}::text[])
           `;
-          logger.warn(`${missing.length} posts absent from Reddit`, { missing });
+          logger.warn(`${missing.length} posts absent from Reddit`, {
+            missing,
+          });
         }
       }
 
-      logger.info(`hydrated ${Math.min(i + INFO_BATCH, pending.length)}/${pending.length}`);
+      logger.info(
+        `hydrated ${Math.min(i + INFO_BATCH, pending.length)}/${pending.length}`,
+      );
     }
 
     await sql.end();

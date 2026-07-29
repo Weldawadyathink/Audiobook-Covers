@@ -43,9 +43,7 @@ function RouteComponent() {
           <KeyRound className="size-3.5" />
           Create account
         </div>
-        <h1 className="mt-3 text-2xl font-bold text-white">
-          Set up a passkey
-        </h1>
+        <h1 className="mt-3 text-2xl font-bold text-white">Set up a passkey</h1>
         <p className="mt-2 text-sm leading-6 text-slate-400">
           Your email identifies the account. Your device holds the passkey —
           there is no password to choose or forget.
@@ -72,7 +70,9 @@ function RouteComponent() {
             disabled={status === "working" || !email}
             className="h-12 rounded-2xl bg-cyan-200 text-base font-bold text-slate-950 hover:bg-cyan-100"
           >
-            {status === "working" ? "Waiting for your device…" : "Create passkey"}
+            {status === "working"
+              ? "Waiting for your device…"
+              : "Create passkey"}
           </Button>
         </form>
 

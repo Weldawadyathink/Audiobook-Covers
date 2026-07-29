@@ -111,13 +111,13 @@ column could never have held real data — it is `text` now, as is
 
 ## Measured cost of a full import
 
-| Stage | Requests |
-| --- | --- |
-| Arctic Shift id enumeration | ~35 |
-| `/api/info` hydration | ~35 |
-| `/comments/<id>` | ~1,704 |
-| Link resolution | 0 |
-| **Total** | **~1,774, about 18 minutes at 100 QPM** |
+| Stage                       | Requests                                |
+| --------------------------- | --------------------------------------- |
+| Arctic Shift id enumeration | ~35                                     |
+| `/api/info` hydration       | ~35                                     |
+| `/comments/<id>`            | ~1,704                                  |
+| Link resolution             | 0                                       |
+| **Total**                   | **~1,774, about 18 minutes at 100 QPM** |
 
 Corpus as of 2026-07: 3,494 posts, 7,204 comments, 2020-09-26 onward.
 

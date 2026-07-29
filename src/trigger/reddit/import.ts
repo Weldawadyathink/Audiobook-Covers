@@ -14,7 +14,11 @@
  *   -> ~1,774 requests, about 18 minutes at Reddit's 100 QPM free tier.
  */
 import { logger, task } from "@trigger.dev/sdk/v3";
-import { enumeratePostIdsTask, fetchCommentsTask, hydratePostsTask } from "./backfill";
+import {
+  enumeratePostIdsTask,
+  fetchCommentsTask,
+  hydratePostsTask,
+} from "./backfill";
 import { resolveLinksTask } from "./resolve-task";
 
 export const importSubredditTask = task({
