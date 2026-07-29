@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod/v4";
 import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { createReadDb, createWriteDb } from "@/db.cloudflare";
 import { cover_feedback, image, openlibrary_work, web_user } from "@/db/schema";
 import { requireAdmin } from "@/server/session";
@@ -258,6 +259,144 @@ async function loadAuthorWorks(authorNames: string[], excludeOlid: string | null
     authorNames: (row.authorNames ?? []) as string[],
   }));
 }
+
+/**
+ * Finds already-confirmed covers so their book can be copied onto this one.
+ *
+ * Restricted to HUMAN matches on purpose: the point is to inherit a decision a
+ * person already made. Inheriting from an AI guess would launder that guess into
+ * a confirmed match and quietly spread whatever it got wrong.
+ *
+ * Two ways to look: by book text, or by what the artwork looks like. The visual
+ * mode exists because the same artwork is frequently uploaded more than once, so
+ * a confirmed twin is often the fastest correct answer.
+ */
+export const searchConfirmedCovers = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      query: z.string().trim().max(200).optional(),
+      likeImageId: z.uuid().optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await requireAdmin();
+    const readDb = createReadDb();
+
+    const confirmed = and(
+      eq(image.openlibrary_work_id_confidence, "HUMAN"),
+      eq(image.deleted, false),
+    );
+
+    const selection = {
+      imageId: image.id,
+      source: image.source,
+      extension: image.extension,
+      blurhash: image.blurhash,
+      workId: openlibrary_work.olid,
+      title: openlibrary_work.title,
+      subtitle: openlibrary_work.subtitle,
+      authorNames: openlibrary_work.author_names,
+      firstPublishYear: openlibrary_work.first_publish_year,
+      editionCount: openlibrary_work.edition_count,
+    };
+
+    let rows: Array<{
+      imageId: string;
+      source: string | null;
+      extension: string | null;
+      blurhash: string | null;
+      workId: string;
+      title: string;
+      subtitle: string | null;
+      authorNames: unknown;
+      firstPublishYear: number | null;
+      editionCount: number | null;
+    }>;
+
+    if (data.likeImageId) {
+      const candidate = alias(image, "candidate");
+      const targetEmbedding = readDb.$with("target_embedding").as(
+        readDb
+          .select({ e: image.embedding_jina_clip_v2 })
+          .from(image)
+          .where(eq(image.id, data.likeImageId)),
+      );
+      const score = sql<number>`1 - (${candidate.embedding_jina_clip_v2} <=> ${targetEmbedding.e})`;
+      rows = await readDb
+        .with(targetEmbedding)
+        .select({
+          imageId: candidate.id,
+          source: candidate.source,
+          extension: candidate.extension,
+          blurhash: candidate.blurhash,
+          workId: openlibrary_work.olid,
+          title: openlibrary_work.title,
+          subtitle: openlibrary_work.subtitle,
+          authorNames: openlibrary_work.author_names,
+          firstPublishYear: openlibrary_work.first_publish_year,
+          editionCount: openlibrary_work.edition_count,
+        })
+        .from(candidate)
+        .crossJoin(targetEmbedding)
+        .innerJoin(
+          openlibrary_work,
+          eq(openlibrary_work.olid, candidate.openlibrary_work_id),
+        )
+        .where(
+          and(
+            eq(candidate.openlibrary_work_id_confidence, "HUMAN"),
+            eq(candidate.deleted, false),
+            ne(candidate.id, data.likeImageId),
+          ),
+        )
+        .orderBy(desc(score))
+        .limit(24);
+    } else {
+      const query = data.query ?? "";
+      if (!query) return [];
+      const titleVector = sql`to_tsvector('simple'::regconfig, COALESCE(${openlibrary_work.title}, ''))`;
+      const authorVector = sql`to_tsvector('simple'::regconfig, immutable_array_to_string(${openlibrary_work.author_names}, ' '))`;
+      const tsQuery = sql`websearch_to_tsquery('simple'::regconfig, ${query})`;
+      const rank = sql<number>`(ts_rank(${titleVector}, ${tsQuery}) + ts_rank(${authorVector}, ${tsQuery}))`;
+
+      rows = await readDb
+        .select(selection)
+        .from(image)
+        .innerJoin(
+          openlibrary_work,
+          eq(openlibrary_work.olid, image.openlibrary_work_id),
+        )
+        .where(
+          and(
+            confirmed,
+            sql`(${titleVector} @@ ${tsQuery} OR ${authorVector} @@ ${tsQuery})`,
+          ),
+        )
+        .orderBy(desc(rank), image.id)
+        .limit(24);
+    }
+
+    const images = await shapeImageDataArray(
+      rows.map((row) =>
+        DBImageDataValidator.parse({
+          id: row.imageId,
+          source: row.source,
+          extension: row.extension,
+          blurhash: row.blurhash,
+        }),
+      ),
+    );
+
+    return rows.map((row, index) => ({
+      image: images[index],
+      workId: row.workId,
+      title: row.title,
+      subtitle: row.subtitle,
+      authorNames: (row.authorNames ?? []) as string[],
+      firstPublishYear: row.firstPublishYear,
+      editionCount: row.editionCount,
+    }));
+  });
 
 /**
  * Resolves an OpenLibrary URL, `/works/OL…W` path, or bare OLID into a work.
