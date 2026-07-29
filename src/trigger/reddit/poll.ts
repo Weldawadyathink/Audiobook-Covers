@@ -11,10 +11,11 @@
  * requests per run.
  */
 import { schedules, logger } from "@trigger.dev/sdk/v3";
-import { createPostgresWriteDb } from "@/db.node";
+import { createPostgresWriteDb, textArray } from "@/db.node";
 import { schemaName } from "@/db/schema";
 import { RedditClient, type RedditThing } from "./client";
 import { archiveThings, projectComments, projectPosts } from "./archive";
+import { resolveLinksTask } from "./resolve-task";
 
 const SUBREDDIT = "audiobookcovers";
 
@@ -27,6 +28,19 @@ const SUBREDDIT = "audiobookcovers";
  * paying for a full walk.
  */
 const OVERSHOOT = 100;
+
+/** First-ever run: one page, because the backfill owns everything older. */
+const FIRST_RUN_PAGE = 100;
+
+/**
+ * Hard stop for a walk that never finds its cursor.
+ *
+ * The remembered fullname can be deleted, and a deleted thing is gone from the
+ * listing — so without a bound the walk runs to Reddit's 1,000-item ceiling
+ * every single night looking for something that no longer exists. At two posts a
+ * day this limit is still months of history.
+ */
+const MAX_WALK = 300;
 
 type Stream = "posts" | "comments";
 
@@ -61,7 +75,20 @@ async function writeCursor(
 }
 
 /**
- * Walk a listing until the cursor is reached, then `OVERSHOOT` items further.
+ * Walk a listing to the cursor, then `OVERSHOOT` items further, collecting
+ * everything seen along the way.
+ *
+ * Items at and below the cursor are collected, not merely counted. That is the
+ * entire point of overshooting: a crosspost or a newly approved submission
+ * appears *below* fullnames the previous run already recorded, so the window
+ * past the cursor is precisely where the things it could not have seen are. An
+ * earlier version counted those hundred items without keeping them, which threw
+ * away the case the overshoot exists for.
+ *
+ * Collecting things we already hold costs nothing. `archiveThings` dedupes on
+ * the payload hash, so an unchanged thing is a no-op insert, and re-projecting a
+ * hundred fullnames is one statement — much cheaper than the arithmetic needed
+ * to decide which side of the cursor an item really belongs on.
  *
  * A null cursor means "first ever run"; the walk is bounded to one page rather
  * than paging to the 1,000-item ceiling, because the historical backfill owns
@@ -73,27 +100,75 @@ async function collectNew(
   cursor: string | null,
 ): Promise<RedditThing[]> {
   const collected: RedditThing[] = [];
-  let seenCursor = false;
-  let sinceCursor = 0;
+  /** Null until the cursor turns up, then counts the items past it. */
+  let sinceCursor: number | null = null;
 
   for await (const thing of client.listing(path, () => false)) {
-    const name = (thing.data as { name?: string }).name;
+    collected.push(thing);
 
-    if (cursor === null && collected.length >= 100) break;
-
-    if (name === cursor) {
-      seenCursor = true;
-    } else if (!seenCursor) {
-      collected.push(thing);
+    if (cursor === null) {
+      if (collected.length >= FIRST_RUN_PAGE) break;
+      continue;
     }
 
-    if (seenCursor) {
-      sinceCursor++;
+    if ((thing.data as { name?: string }).name === cursor) sinceCursor = 0;
+    else if (sinceCursor !== null) sinceCursor += 1;
+
+    if (sinceCursor !== null) {
       if (sinceCursor >= OVERSHOOT) break;
+      // `MAX_WALK` is not checked once the cursor is in hand: finishing the
+      // overshoot matters more than the bound, and it is only ever exceeded by
+      // one page.
+      continue;
+    }
+
+    if (collected.length >= MAX_WALK) {
+      logger.warn(
+        `cursor ${cursor} not found in ${path} within ${MAX_WALK} items; ` +
+          `it was most likely deleted`,
+      );
+      break;
     }
   }
 
   return collected;
+}
+
+/**
+ * Give every post referenced by a batch of comments a `reddit_post` row.
+ *
+ * `/r/<sub>/comments` is a firehose: it returns replies to submissions this
+ * pipeline may never have enumerated, and `projectComments` skips any comment
+ * whose post is missing so the foreign key stays satisfiable. That skip was
+ * silent and permanent — the archive row existed, so a later fetch saw no
+ * change and nothing ever went back for it. Inserting a bare stub is exactly
+ * what `reddit-enumerate-post-ids` does, so the comment projects immediately and
+ * the post lands in the hydration queue with `hydrated_at IS NULL`.
+ */
+async function ensurePostStubs(
+  sql: ReturnType<typeof createPostgresWriteDb>["sql"],
+  things: RedditThing[],
+): Promise<number> {
+  const postIds = [
+    ...new Set(
+      things.flatMap((thing) => {
+        const linkId = (thing.data as { link_id?: unknown }).link_id;
+        return typeof linkId === "string" && linkId.startsWith("t3_")
+          ? [linkId.slice(3)]
+          : [];
+      }),
+    ),
+  ];
+  if (postIds.length === 0) return 0;
+
+  const inserted = (await sql`
+    INSERT INTO ${sql(schemaName)}.reddit_post (id)
+    SELECT * FROM unnest(${textArray(postIds)}::text[])
+    ON CONFLICT (id) DO NOTHING
+    RETURNING id
+  `) as unknown as { id: string }[];
+
+  return inserted.length;
 }
 
 export const pollNewPostsTask = schedules.task({
@@ -111,24 +186,33 @@ export const pollNewPostsTask = schedules.task({
 
     const cursor = await readCursor(sql, "posts");
     const things = await collectNew(client, `/r/${SUBREDDIT}/new`, cursor);
-    logger.info(`found ${things.length} new posts`);
 
+    let changed = 0;
     if (things.length > 0) {
-      const { changed } = await archiveThings(sql, things, "reddit_api");
+      const result = await archiveThings(sql, things, "reddit_api");
+      changed = result.changed.length;
       // Project all of them, not only changed ones — an unchanged post that is
       // new to us still has no `reddit_post` row.
       await projectPosts(
         sql,
         things.map((thing) => (thing.data as { name: string }).name),
       );
-      logger.info(`archived ${changed} changed payloads`);
     }
+
+    // `walked` is not "how many are new": the overshoot deliberately re-walks a
+    // page of things already held. `changed` is the number that carried content
+    // the archive had not seen.
+    logger.info(`walked ${things.length} posts, ${changed} with new payloads`);
 
     const newest = (things[0]?.data as { name?: string } | undefined)?.name;
     await writeCursor(sql, "posts", newest ?? cursor);
 
     await sql.end();
-    return { found: things.length, redditRequests: client.requestsMade };
+    return {
+      walked: things.length,
+      changed,
+      redditRequests: client.requestsMade,
+    };
   },
 });
 
@@ -137,9 +221,9 @@ export const pollNewPostsTask = schedules.task({
  *
  * `/r/<sub>/comments` is the subreddit-wide firehose, newest first, which is the
  * only way to notice a reply to an old post without re-polling every post.
- * New comments arriving on posts we have never enumerated are archived anyway
- * and projected later — `projectComments` skips rows whose post is missing, and
- * the next backfill pass picks them up.
+ * Comments arriving on posts we have never enumerated get a post stub written
+ * for them first, so they project straight away instead of being skipped on the
+ * foreign key and forgotten.
  */
 export const pollNewCommentsTask = schedules.task({
   id: "reddit-poll-new-comments",
@@ -154,20 +238,64 @@ export const pollNewCommentsTask = schedules.task({
 
     const cursor = await readCursor(sql, "comments");
     const things = await collectNew(client, `/r/${SUBREDDIT}/comments`, cursor);
-    logger.info(`found ${things.length} new comments`);
 
+    let changed = 0;
+    let stubs = 0;
     if (things.length > 0) {
-      await archiveThings(sql, things, "reddit_api");
+      const result = await archiveThings(sql, things, "reddit_api");
+      changed = result.changed.length;
+      stubs = await ensurePostStubs(sql, things);
+      // Project all of them for the same reason the posts poller does: a comment
+      // whose payload is unchanged can still be missing from `reddit_comment`.
+      // Only the changed ones invalidate resolved links, though — otherwise the
+      // overshoot window would re-resolve the recent subreddit every night.
       await projectComments(
         sql,
         things.map((thing) => (thing.data as { name: string }).name),
+        result.changed,
       );
     }
+
+    logger.info(
+      `walked ${things.length} comments, ${changed} with new payloads, ` +
+        `${stubs} unknown posts stubbed`,
+    );
 
     const newest = (things[0]?.data as { name?: string } | undefined)?.name;
     await writeCursor(sql, "comments", newest ?? cursor);
 
     await sql.end();
-    return { found: things.length, redditRequests: client.requestsMade };
+    return {
+      walked: things.length,
+      changed,
+      postStubs: stubs,
+      redditRequests: client.requestsMade,
+    };
+  },
+});
+
+/**
+ * Turn everything the pollers collected into `image_candidate` rows.
+ *
+ * Without this the incremental sync stops one step short of its own output.
+ * `reddit-resolve-links` is a `schemaTask` because it takes parameters, so it was
+ * only reachable by hand or through the one-shot import — meaning the URL list
+ * stopped growing the moment the historical backfill finished, while the pollers
+ * went on quietly archiving content nothing extracted links from.
+ *
+ * Runs after both pollers rather than inside them: one resolve pass covers both
+ * streams, and two concurrent passes would contend over the same posts'
+ * candidate rows. A day with no new content costs one query, because the task
+ * claims only posts whose `resolver_version` is behind.
+ */
+export const pollResolveTask = schedules.task({
+  id: "reddit-poll-resolve",
+  cron: "40 6 * * *",
+  machine: "micro",
+  maxDuration: 900,
+  run: async () => {
+    const handle = await resolveLinksTask.trigger({});
+    logger.info(`triggered reddit-resolve-links run ${handle.id}`);
+    return { runId: handle.id };
   },
 });

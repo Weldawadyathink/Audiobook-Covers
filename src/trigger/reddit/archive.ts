@@ -202,7 +202,27 @@ export async function projectPosts(sql: Sql, fullnames: string[] | null) {
  * id enumeration has not reached yet, and losing one comment to a later re-run
  * beats stalling the poller on a foreign key.
  */
-export async function projectComments(sql: Sql, fullnames: string[] | null) {
+export async function projectComments(
+  sql: Sql,
+  fullnames: string[] | null,
+  /**
+   * Which of `fullnames` carried content the archive had not already seen.
+   *
+   * Separate from `fullnames` because the two answer different questions.
+   * Projection has to cover everything fetched — a comment can be absent from
+   * `reddit_comment` while its archive payload is unchanged, and scoping the
+   * projection to changes is how such a row never gets projected at all.
+   * *Invalidation* is the opposite: a byte-identical comment cannot have
+   * invalidated anything the resolver derived from it. Since the poller
+   * deliberately re-walks a page of comments it already holds, driving
+   * invalidation off `fullnames` would re-resolve most of the recent subreddit
+   * every night and churn `image_candidate` for no reason.
+   *
+   * Defaults to all of `fullnames`, which is correct for a full replay and for
+   * callers with nothing better to say.
+   */
+  changed: string[] | null = fullnames,
+) {
   const all = fullnames === null;
   await sql`
     WITH latest AS (
@@ -243,14 +263,17 @@ export async function projectComments(sql: Sql, fullnames: string[] | null) {
 
   // A changed comment invalidates its post's resolved links exactly as a
   // changed post body does — the resolver reads both together.
+  const allChanged = changed === null;
+  if (!allChanged && changed.length === 0) return;
+
   await sql`
     UPDATE ${sql(schemaName)}.reddit_post p
     SET resolver_version = NULL
     FROM ${sql(schemaName)}.reddit_comment c
     WHERE c.post_id = p.id
       AND p.resolver_version IS NOT NULL
-      AND (${all} OR c.id = ANY(${textArray(
-        fullnames?.map((name) => name.slice(3)) ?? [],
+      AND (${allChanged} OR c.id = ANY(${textArray(
+        changed?.map((name) => name.slice(3)) ?? [],
       )}::text[]))
   `;
 }

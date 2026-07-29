@@ -248,8 +248,19 @@ export const fetchCommentsTask = schemaTask({
       const result = await archiveThings(sql, things, "reddit_api");
       archived += result.changed.length;
 
-      if (result.changed.length > 0) {
-        await projectComments(sql, result.changed);
+      // Project every comment fetched, not only the ones whose payload changed —
+      // the same reason post hydration projects its whole batch. `changed` is
+      // empty whenever the archive already holds an identical payload, which is
+      // exactly the case after `reddit_comment` has been truncated for a rebuild,
+      // or for a comment that was archived while its post was still unknown. In
+      // both, scoping to `changed` means the comment is never projected at all
+      // and refetching it does not help.
+      if (things.length > 0) {
+        await projectComments(
+          sql,
+          things.map((thing) => (thing.data as { name: string }).name),
+          result.changed,
+        );
       }
       await sql`
         UPDATE ${sql(schemaName)}.reddit_post

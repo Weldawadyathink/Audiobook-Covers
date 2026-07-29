@@ -29,8 +29,20 @@ reddit_post + reddit_comment
 image_candidate   status = PENDING | UNSUPPORTED | IGNORED
 ```
 
-Incremental sync runs `reddit-poll-new-posts` and `reddit-poll-new-comments`
-daily, feeding the same archive and the same projections.
+Incremental sync runs three scheduled tasks daily, feeding the same archive and
+the same projections: `reddit-poll-new-posts` (06:00), `reddit-poll-new-comments`
+(06:20) and `reddit-poll-resolve` (06:40). The third exists because the other two
+stop one step short of the pipeline's own output — `reddit-resolve-links` takes
+parameters, so it is a `schemaTask` and nothing scheduled ever reached it. New
+content was being archived and projected every night while the URL list sat
+frozen at whatever the last manual import produced.
+
+Everything else — `reddit-hydrate-posts --includeRefresh` and
+`reddit-fetch-comments --includeRefresh` — is still run by hand. That is the one
+remaining gap in the steady state: `/new` only returns recent submissions, so an
+edit to a two-year-old post is not noticed until somebody runs the refresh sweep.
+It costs ~35 requests for posts and ~1,700 for comment trees, which is why it is
+not on a cron yet.
 
 ## Settled decisions
 
@@ -75,6 +87,21 @@ archives needing an unpack step) are parked exactly this way.
 so there is no reason to hold a Reddit password — and the token cannot vote, post
 or moderate if it leaks.
 
+**A projection step must project its whole batch, never just the changed rows.**
+`archiveThings` returns the fullnames whose payload was new, and scoping the
+projection to those is wrong in a way that only shows up later: an identical
+payload returns `changed = []`, so if the typed table was truncated for a rebuild
+— or the row was skipped the first time — refetching produces no projection and
+never will. Both `reddit-hydrate-posts` and `reddit-fetch-comments` now project
+every fullname they fetched. `changed` is a statistic, not a work list.
+
+**`DOWNLOADED` and `FAILED` are the downloader's, and they are terminal.** The
+resolver owns `url`, `host`, `kind` and `ordinal`; it must not write `status` over
+a row that already has a verdict. Re-resolve deletes and reinserts candidates
+wholesale, and an `ON CONFLICT DO UPDATE SET status = EXCLUDED.status` quietly
+resets finished rows to `PENDING` — re-downloading bytes already held and
+retrying URLs already proven dead, every time the resolver version is bumped.
+
 ## Gotchas discovered
 
 **`preview.redd.it` URLs expire.** They carry an `s=` signature with a lifetime.
@@ -97,6 +124,21 @@ containing `&amp;` and the resolver extracts a broken link.
 simply shorter than the request. Unhandled, those ids keep `hydrated_at IS NULL`
 and get retried forever; hydration diffs the response against the batch and marks
 the missing ones `removed`.
+
+**The poller's overshoot has to keep what it walks past, not just count it.**
+Listings are not append-only — an approved or crossposted item appears _below_
+fullnames the previous run already recorded — so the hundred items past the cursor
+are exactly where the missed ones are. The first version of `collectNew` scanned
+that window and collected nothing from it, which discarded the only case
+overshooting exists to catch. Re-collecting things already held is free:
+`archiveThings` dedupes on the payload hash.
+
+**A firehose comment can name a post nothing has enumerated.** `projectComments`
+skips comments whose post is missing to keep the foreign key satisfiable, and that
+skip is permanent — the archive row exists, so every later fetch reports no change
+and nothing goes back for it. The comments poller now writes a bare `reddit_post`
+stub for any unknown `link_id` first, which is what the id enumeration does
+anyway; the comment projects immediately and the post joins the hydration queue.
 
 **Reddit's live API returns fewer comments than ever existed.** Arctic Shift has
 comments on 1,928 posts; only 1,704 posts currently report `num_comments > 0`.

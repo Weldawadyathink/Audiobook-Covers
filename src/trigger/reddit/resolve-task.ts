@@ -46,7 +46,7 @@ async function writeCandidates(
   if (candidates.length === 0) return;
 
   await sql`
-    INSERT INTO ${sql(schemaName)}.image_candidate
+    INSERT INTO ${sql(schemaName)}.image_candidate AS existing
       (post_id, comment_id, url, host, kind, ordinal, status, resolver_version)
     SELECT
       source.post_id,
@@ -75,8 +75,17 @@ async function writeCandidates(
       host = EXCLUDED.host,
       kind = EXCLUDED.kind,
       ordinal = EXCLUDED.ordinal,
-      status = EXCLUDED.status,
-      resolver_version = EXCLUDED.resolver_version
+      resolver_version = EXCLUDED.resolver_version,
+      -- DOWNLOADED and FAILED are the downloader's verdicts, and they are
+      -- terminal. The DELETE above spares those rows, but overwriting status
+      -- with EXCLUDED.status here undid that: every re-resolve reset them to
+      -- PENDING, queueing a second download of bytes already held and retrying
+      -- every URL that has already been proven dead. Classification is the
+      -- resolver's to update; status is not.
+      status = CASE
+        WHEN existing.status IN ('DOWNLOADED', 'FAILED') THEN existing.status
+        ELSE EXCLUDED.status
+      END
   `;
 }
 
