@@ -27,7 +27,8 @@
       "WebFetch(domain:docs.cloud.google.com)",
       "Bash(rg '\\(^|/\\)\\(gcs-lifecycle\\\\.json|database\\\\.sql|.*schema.*\\\\.sql\\)$|infra/')",
       "Bash(pnpm list *)",
-      "Bash(pnpm exec *)"
+      "Bash(pnpm exec *)",
+      "mcp__planetscale__planetscale_list_organizations"
     ]
   }
 }

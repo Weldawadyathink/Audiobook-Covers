@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  bit,
   boolean,
   check,
   foreignKey,
@@ -86,9 +87,45 @@ export const image = schema.table(
     embedding_jina_clip_v2: vector("embedding_jina_clip_v2", {
       dimensions: 1024,
     }),
+    /**
+     * 64-bit DCT perceptual hash of the original file, for duplicate detection.
+     *
+     * Deliberately 64 bits and deliberately compared with a Hamming threshold
+     * rather than for equality. Both choices are measured, not guessed, over 400
+     * covers hashed at two different resolutions:
+     *
+     *   - Equality alone misses 10% of duplicates at 64 bits and 40% at 256,
+     *     because rescaling flips a bit or two even when nothing else changes.
+     *   - At a threshold of 4, the same-image distance never exceeded 2 while
+     *     the closest distinct pair sat at 10 — 100% recall, no false pairs
+     *     across 159,600 comparisons.
+     *
+     * Widening the hash only moves the false-pair floor up; it does not buy
+     * separation that a 10-bit dead zone hasn't already provided.
+     *
+     * Stored as `bit(64)` so Postgres can do the comparison itself with
+     * `bit_count(a # b)`. No index can serve a Hamming predicate, so the pairing
+     * query is an intentional sequential self-join — roughly 10s over the whole
+     * table, which is fine for a job that runs by hand.
+     */
+    phash64: bit("phash64", { dimensions: 64 }),
+    /** Pixel dimensions and byte size of the original, for picking a winner. */
+    width: integer("width"),
+    height: integer("height"),
+    bytes: integer("bytes"),
+    /**
+     * Set on the losing rows of a duplicate group, pointing at the kept image.
+     *
+     * A pointer rather than a delete because `cover_feedback` rows and
+     * `openlibrary_work_id` matches hang off these images: removing the row
+     * would discard human judgements about a cover that still exists, and a
+     * merge that turns out wrong could not be undone.
+     */
+    duplicate_of: uuid("duplicate_of"),
   },
   (table) => [
     index("idx_image_searchable").using("btree", table.searchable),
+    index("idx_image_duplicate_of").using("btree", table.duplicate_of),
     // The cover page groups by work ("more covers for this book") and the
     // title/author search joins images to their work, both of which are
     // openlibrary_work_id lookups rather than scans.
@@ -105,6 +142,11 @@ export const image = schema.table(
       columns: [table.reddit_comment_id],
       foreignColumns: [reddit_comment.id],
       name: "fk_image_reddit_comment_id",
+    }).onDelete("set null"),
+    foreignKey({
+      columns: [table.duplicate_of],
+      foreignColumns: [table.id],
+      name: "fk_image_duplicate_of",
     }).onDelete("set null"),
   ],
 );
