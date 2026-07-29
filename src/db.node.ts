@@ -3,4 +3,5 @@ export {
   createWriteDb,
   createPostgresReadDb,
   createPostgresWriteDb,
+  textArray,
 } from "./db";

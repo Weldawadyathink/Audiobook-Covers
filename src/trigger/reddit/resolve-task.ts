@@ -8,7 +8,7 @@
  */
 import { schemaTask, logger } from "@trigger.dev/sdk/v3";
 import { z } from "zod";
-import { createPostgresWriteDb } from "@/db.node";
+import { createPostgresWriteDb, textArray } from "@/db.node";
 import { schemaName } from "@/db/schema";
 import {
   RESOLVER_VERSION,
@@ -39,7 +39,7 @@ async function writeCandidates(
   // PENDING would queue a second download of bytes already held.
   await sql`
     DELETE FROM ${sql(schemaName)}.image_candidate
-    WHERE post_id = ANY(${postIds}::text[])
+    WHERE post_id = ANY(${textArray(postIds)}::text[])
       AND status IN ('PENDING', 'UNSUPPORTED', 'IGNORED')
   `;
 
@@ -128,7 +128,7 @@ export const resolveLinksTask = schemaTask({
 
       const commentRows = (await sql`
         SELECT id, post_id, body FROM ${sql(schemaName)}.reddit_comment
-        WHERE post_id = ANY(${ids}::text[])
+        WHERE post_id = ANY(${textArray(ids)}::text[])
       `) as unknown as { id: string; post_id: string; body: string | null }[];
 
       const commentsByPost = new Map<string, ResolvableComment[]>();
@@ -152,7 +152,7 @@ export const resolveLinksTask = schemaTask({
       await sql`
         UPDATE ${sql(schemaName)}.reddit_post
         SET resolver_version = ${RESOLVER_VERSION}
-        WHERE id = ANY(${ids}::text[])
+        WHERE id = ANY(${textArray(ids)}::text[])
       `;
 
       written += candidates.length;

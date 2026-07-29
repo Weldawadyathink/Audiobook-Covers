@@ -12,7 +12,7 @@
  */
 import { schemaTask, logger } from "@trigger.dev/sdk/v3";
 import { z } from "zod";
-import { createPostgresWriteDb } from "@/db.node";
+import { createPostgresWriteDb, textArray } from "@/db.node";
 import { schemaName } from "@/db/schema";
 import { env } from "@/env.node";
 import { RedditClient } from "./client";
@@ -111,7 +111,7 @@ export const enumeratePostIdsTask = schemaTask({
       discovered += ids.length;
       const inserted = (await sql`
         INSERT INTO ${sql(schemaName)}.reddit_post (id)
-        SELECT * FROM unnest(${ids}::text[])
+        SELECT * FROM unnest(${textArray(ids)}::text[])
         ON CONFLICT (id) DO NOTHING
         RETURNING id
       `) as unknown as { id: string }[];
@@ -186,7 +186,7 @@ export const hydratePostsTask = schemaTask({
           await sql`
             UPDATE ${sql(schemaName)}.reddit_post
             SET hydrated_at = now(), removed = true
-            WHERE id = ANY(${missing}::text[])
+            WHERE id = ANY(${textArray(missing)}::text[])
           `;
           logger.warn(`${missing.length} posts absent from Reddit`, {
             missing,

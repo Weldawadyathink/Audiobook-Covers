@@ -25,6 +25,33 @@ export interface Options {
   application_name?: string;
 }
 
+/**
+ * Render a JS string array as a Postgres array literal, for use as a bound
+ * parameter: `WHERE id = ANY(${textArray(ids)}::text[])`.
+ *
+ * Necessary because every connection below sets `fetch_types: false`. Without
+ * the type catalogue, postgres-js cannot resolve the OID for `text[]` — its
+ * `inferType` returns 0 for an array of strings — and silently sends the array
+ * as a single comma-joined scalar. Postgres then rejects it with
+ * `malformed array literal`. `sql.array()` does not help; it fails identically,
+ * because the missing piece is the OID rather than the call site.
+ *
+ * The only alternatives that work are this and the `(VALUES ${sql(rows)})`
+ * helper. Prefer this one for `= ANY(...)` and `unnest(...)`, where a VALUES
+ * subquery would obscure the intent.
+ *
+ * Every element is quoted and escaped, so commas, quotes, braces and
+ * backslashes inside values survive the round trip. An empty array renders as
+ * `{}`, which is valid and matches nothing — unlike `IN ()`, which is a syntax
+ * error.
+ */
+export function textArray(values: readonly string[]): string {
+  const escaped = values.map(
+    (value) => `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`,
+  );
+  return `{${escaped.join(",")}}`;
+}
+
 export function createReadDb(options?: Options) {
   const { sql } = createPostgresReadDb(options);
   return drizzle({ client: sql, schema });

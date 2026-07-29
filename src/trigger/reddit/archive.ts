@@ -9,6 +9,7 @@
  */
 import { createHash } from "node:crypto";
 import type postgres from "postgres";
+import { textArray } from "@/db.node";
 import { schemaName } from "@/db/schema";
 import type { RedditThing } from "./client";
 
@@ -141,7 +142,7 @@ export async function projectPosts(sql: Sql, fullnames: string[] | null) {
       SELECT DISTINCT ON (r.fullname) r.id, r.fullname, r.payload
       FROM ${sql(schemaName)}.reddit_raw r
       WHERE r.kind = 'post'
-        AND (${all} OR r.fullname = ANY(${fullnames ?? []}::text[]))
+        AND (${all} OR r.fullname = ANY(${textArray(fullnames ?? [])}::text[]))
       ORDER BY r.fullname, r.fetched_at DESC, r.id DESC
     )
     INSERT INTO ${sql(schemaName)}.reddit_post AS p (
@@ -208,7 +209,7 @@ export async function projectComments(sql: Sql, fullnames: string[] | null) {
       SELECT DISTINCT ON (r.fullname) r.id, r.fullname, r.payload
       FROM ${sql(schemaName)}.reddit_raw r
       WHERE r.kind = 'comment'
-        AND (${all} OR r.fullname = ANY(${fullnames ?? []}::text[]))
+        AND (${all} OR r.fullname = ANY(${textArray(fullnames ?? [])}::text[]))
       ORDER BY r.fullname, r.fetched_at DESC, r.id DESC
     )
     INSERT INTO ${sql(schemaName)}.reddit_comment AS c (
@@ -248,8 +249,8 @@ export async function projectComments(sql: Sql, fullnames: string[] | null) {
     FROM ${sql(schemaName)}.reddit_comment c
     WHERE c.post_id = p.id
       AND p.resolver_version IS NOT NULL
-      AND (${all} OR c.id = ANY(${
-        fullnames?.map((name) => name.slice(3)) ?? []
-      }::text[]))
+      AND (${all} OR c.id = ANY(${textArray(
+        fullnames?.map((name) => name.slice(3)) ?? [],
+      )}::text[]))
   `;
 }
