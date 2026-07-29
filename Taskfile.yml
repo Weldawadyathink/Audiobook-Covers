@@ -96,21 +96,13 @@ tasks:
 
   dedupe:report:
     desc: >-
-      Print the duplicate clusters and which image each one would keep. Read
-      only. Override the Hamming threshold with `-- --threshold=N` (default 4).
+      Print the duplicate clusters and which image each one is worth keeping.
+      Read only. Override the Hamming threshold with `-- --threshold=N`
+      (default 4).
     env:
       APP_STAGE: '{{.APP_STAGE | default "development"}}'
     cmds:
       - pnpm tsx src/scripts/dedupeImages.ts report {{.CLI_ARGS}}
-
-  dedupe:apply:
-    desc: >-
-      Write the result of dedupe:report — point losers at their winner via
-      duplicate_of and drop them out of search. Run dedupe:report first.
-    env:
-      APP_STAGE: '{{.APP_STAGE | default "development"}}'
-    cmds:
-      - pnpm tsx src/scripts/dedupeImages.ts apply {{.CLI_ARGS}}
 
   db:populate:
     desc: >-

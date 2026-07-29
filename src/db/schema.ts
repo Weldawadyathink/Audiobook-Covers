@@ -366,15 +366,6 @@ export const image = schema.table(
     height: integer("height"),
     bytes: integer("bytes"),
     /**
-     * Set on the losing rows of a duplicate group, pointing at the kept image.
-     *
-     * A pointer rather than a delete because `cover_feedback` rows and
-     * `openlibrary_work_id` matches hang off these images: removing the row
-     * would discard human judgements about a cover that still exists, and a
-     * merge that turns out wrong could not be undone.
-     */
-    duplicate_of: text("duplicate_of"),
-    /**
      * What the original file actually is, sniffed from its magic bytes.
      *
      * Deliberately separate from `extension`, which cannot answer this. The
@@ -417,7 +408,6 @@ export const image = schema.table(
       "image_original_format",
       sql`${table.original_format} IN ('png', 'jpeg', 'webp')`,
     ),
-    index("idx_image_duplicate_of").using("btree", table.duplicate_of),
     // The cover page groups by work ("more covers for this book") and the
     // title/author search joins images to their work, both of which are
     // openlibrary_work_id lookups rather than scans.
@@ -434,11 +424,6 @@ export const image = schema.table(
       columns: [table.reddit_comment_id],
       foreignColumns: [reddit_comment.id],
       name: "fk_image_reddit_comment_id",
-    }).onDelete("set null"),
-    foreignKey({
-      columns: [table.duplicate_of],
-      foreignColumns: [table.id],
-      name: "fk_image_duplicate_of",
     }).onDelete("set null"),
   ],
 );

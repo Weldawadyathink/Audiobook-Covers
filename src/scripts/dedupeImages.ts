@@ -1,15 +1,14 @@
 /**
  * Perceptual-hash duplicate detection for the image catalogue.
  *
- * Three subcommands, meant to be run in order and by hand:
+ * Two subcommands, meant to be run in order and by hand:
  *
  *   hash    Download every original that has no hash yet and fill in
  *           `phash64`, `width`, `height` and `bytes`. Resumable — re-running it
  *           only picks up rows still missing a hash.
  *   report  Ask Postgres for every pair within the Hamming threshold, group the
- *           pairs into clusters, and print what `apply` would do. Read-only.
- *   apply   Write the result of `report`: point each loser at its winner via
- *           `duplicate_of` and drop it out of search.
+ *           pairs into clusters, and print each cluster with the image worth
+ *           keeping first. Read-only — acting on the result is a manual job.
  *
  * The threshold defaults to 4 and can be overridden with `--threshold=N`. See
  * the comment on `image.phash64` in the schema for why 4, and why 64 bits.
@@ -165,7 +164,6 @@ interface Candidate {
   height: number | null;
   bytes: number | null;
   extension: string | null;
-  searchable: boolean | null;
 }
 
 interface Cluster {
@@ -189,8 +187,8 @@ async function findPairs(threshold: number): Promise<Pair[]> {
     JOIN ${sql(schemaName)}.image b
       ON b.id > a.id
      AND bit_count(a.phash64 # b.phash64) <= ${threshold}
-    WHERE a.phash64 IS NOT NULL AND NOT a.deleted AND a.duplicate_of IS NULL
-      AND b.phash64 IS NOT NULL AND NOT b.deleted AND b.duplicate_of IS NULL
+    WHERE a.phash64 IS NOT NULL AND NOT a.deleted
+      AND b.phash64 IS NOT NULL AND NOT b.deleted
     ORDER BY distance, a.id, b.id
   `) as unknown as Pair[];
 }
@@ -277,7 +275,7 @@ async function loadClusters(threshold: number) {
 
   const ids = [...new Set(pairs.flatMap((pair) => [pair.a, pair.b]))];
   const rows = (await sql`
-    SELECT id, width, height, bytes, extension, searchable
+    SELECT id, width, height, bytes, extension
     FROM ${sql(schemaName)}.image
     WHERE id = ANY(${textArray(ids)}::text[])
   `) as unknown as Candidate[];
@@ -305,38 +303,11 @@ async function commandReport(threshold: number) {
     );
     console.log(`  keep  ${describe(cluster.winner)}`);
     for (const loser of cluster.losers) {
-      console.log(`  drop  ${describe(loser)}`);
+      console.log(`  dupe  ${describe(loser)}`);
     }
   }
   console.log(
-    `\n${clusters.length} clusters, ${total} images would be marked duplicate.`,
-  );
-  console.log("Re-run with `apply` to write this.");
-}
-
-async function commandApply(threshold: number) {
-  const clusters = await loadClusters(threshold);
-  if (clusters.length === 0) {
-    logger.info("No duplicates found, nothing to apply");
-    return;
-  }
-
-  const updates = clusters.flatMap((cluster) =>
-    cluster.losers.map((loser) => [loser.id, cluster.winner.id]),
-  );
-
-  await sql.begin(async (tx) => {
-    await tx`
-      UPDATE ${tx(schemaName)}.image AS image
-      SET duplicate_of = source.winner::text,
-          searchable = false
-      FROM (VALUES ${tx(updates)}) AS source(loser, winner)
-      WHERE image.id = source.loser::text
-    `;
-  });
-
-  logger.info(
-    `Marked ${updates.length} images as duplicates across ${clusters.length} clusters`,
+    `\n${clusters.length} clusters, ${total} images duplicate something else.`,
   );
 }
 
@@ -356,13 +327,8 @@ try {
     case "report":
       await commandReport(threshold);
       break;
-    case "apply":
-      await commandApply(threshold);
-      break;
     default:
-      throw new Error(
-        `Usage: dedupeImages.ts <hash|report|apply> [--threshold=4]`,
-      );
+      throw new Error(`Usage: dedupeImages.ts <hash|report> [--threshold=4]`);
   }
 } finally {
   await sql.end();
