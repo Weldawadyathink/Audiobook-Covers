@@ -1,13 +1,15 @@
 # Reddit import — design
 
-How posts, comments and candidate image URLs get from /r/audiobookcovers into
-Postgres, and why the pieces are shaped this way.
+How posts and comments get from /r/audiobookcovers into Postgres, and why the
+pieces are shaped this way.
 
-**Scope.** This pipeline ends at a list of URLs. It does not download images.
-The downloader's input is one query:
+**Scope.** This pipeline ends with a complete, queryable copy of the subreddit.
+It does not extract URLs into a table and it does not download images — the
+archiver does both, in one pass, and its work queue is one query:
 
 ```sql
-SELECT url, kind, ordinal FROM image_candidate WHERE status = 'PENDING';
+SELECT id FROM reddit_post   WHERE archived_at IS NULL;
+SELECT id FROM reddit_comment WHERE archived_at IS NULL;
 ```
 
 ## Pipeline
@@ -20,31 +22,37 @@ reddit_post   (bare id stubs, hydrated_at IS NULL)
    │  reddit-hydrate-posts    /api/info, 100 ids per request   ~35 requests
    │  reddit-fetch-comments   /comments/<id>, one per post   ~1,704 requests
    ▼
-reddit_raw    (append-only, every Thing Reddit ever returned)
+reddit_raw    (latest payload per Thing — the only table the network writes)
    │  projectPosts / projectComments        ← no network
    ▼
-reddit_post + reddit_comment
-   │  reddit-resolve-links                  ← no network, pure function
+reddit_post + reddit_comment             archived_at IS NULL = the work queue
+   ╎
+   ╎  archiver (not yet written): extractUrls() → download → image rows
    ▼
-image_candidate   status = PENDING | UNSUPPORTED | IGNORED
+image         upstream_url, reddit_post_id, reddit_comment_id
 ```
 
-Incremental sync runs three scheduled tasks daily, feeding the same archive and
-the same projections: `reddit-poll-new-posts` (06:00), `reddit-poll-new-comments`
-(06:20) and `reddit-poll-resolve` (06:40). The third exists because the other two
-stop one step short of the pipeline's own output — `reddit-resolve-links` takes
-parameters, so it is a `schemaTask` and nothing scheduled ever reached it. New
-content was being archived and projected every night while the URL list sat
-frozen at whatever the last manual import produced.
+Incremental sync runs `reddit-poll-new-posts` (06:00) and
+`reddit-poll-new-comments` (06:20). Everything else —
+`reddit-hydrate-posts --includeRefresh`, `reddit-fetch-comments --includeRefresh`
+— is run by hand. That is the one gap in the steady state: `/new` only returns
+recent submissions, so an edit to a two-year-old post is not noticed until
+somebody runs the refresh sweep.
 
-Everything else — `reddit-hydrate-posts --includeRefresh` and
-`reddit-fetch-comments --includeRefresh` — is still run by hand. That is the one
-remaining gap in the steady state: `/new` only returns recent submissions, so an
-edit to a two-year-old post is not noticed until somebody runs the refresh sweep.
-It costs ~35 requests for posts and ~1,700 for comment trees, which is why it is
-not on a cron yet.
+**The archiver has no schedule because it does not exist yet.** When it lands it
+needs a cron after the two pollers, or new posts will be ingested nightly and
+never turned into images.
 
 ## Settled decisions
+
+**Ingest and library are separate, with no foreign keys between them.**
+`image.reddit_post_id` and `image.reddit_comment_id` join to the ingest tables by
+convention only. `reddit_post` and `reddit_comment` are projections meant to be
+truncated and rebuilt at will, and an enforced reference would make every rebuild
+a choice between cascading into the catalogue or nulling out provenance the
+library still wants. Ingest state must never be able to reach into a table of
+downloaded images. Foreign keys _within_ ingest are fine and still present —
+`reddit_comment.post_id` is one.
 
 **Reddit is the source of content; Arctic Shift only supplies ids.** Reddit
 cannot enumerate its own history — every listing endpoint stops at 1,000 items
@@ -52,17 +60,42 @@ and the subreddit has ~3,500 posts, so `/new` and `/top` together cannot reach
 the first three years. `/api/info` has no such ceiling. That splits the problem
 cleanly: get an id list from anywhere, then hydrate it from Reddit 100 at a time.
 
-**The archive is the source of truth, not the typed tables.** `reddit_raw` is
-append-only and holds every payload verbatim. `reddit_post`, `reddit_comment`
-and `image_candidate` are projections that can be dropped and rebuilt from it
-with no network access. This is what makes "teach the resolver a new host" a
-seconds-long local operation instead of a re-crawl.
+**The archive is the source of truth, not the typed tables.** `reddit_raw` holds
+every payload verbatim, keyed by `(reddit_id, kind)`. `reddit_post` and
+`reddit_comment` are projections that can be dropped and rebuilt from it with no
+network access.
 
-**The payload hash excludes volatile fields.** Score and comment count change on
-almost every post between any two polls. Hashing them would archive 3,494 new
-rows every single day, none of which record a change worth keeping. Volatile
-values still reach `reddit_post` through the projection — they just don't
-constitute a new version of the thing. See `VOLATILE_KEYS` in `archive.ts`.
+**One row per Thing, not one row per version.** `reddit_raw` is current state,
+not history. An earlier design appended every version, deduplicated on a hash of
+the payload with volatile fields (`score`, `num_comments`, …) stripped, so the
+table doubled as an edit log. That is a completeness feature, and completeness is
+not the goal here: the cost was a hash function that had to stay in sync with
+which Reddit fields happen to be volatile, and it bought a history nothing read.
+
+**Extraction is a function, not a table.** `extractUrls()` in `extract-urls.ts`
+is pure — same post in, same URL list out — so the archiver recomputes it rather
+than reading it back. The previous design persisted the output as an
+`image_candidate` table, which had to be bulk-deleted and rebuilt on every rule
+change, and which accumulated download state (`DOWNLOADED`, `FAILED`, `image_id`)
+that then could not survive the rebuild. Re-resolve kept resetting finished rows
+to `PENDING` and re-downloading bytes already held. The list is cheap to
+recompute and was actively harmful to store.
+
+**`archived_at`, not `is_archived`.** A null timestamp is the work queue, which
+is how every other stage in this schema is spelled (`hydrated_at`,
+`comments_fetched_at`, `image.derivatives_generated_at`). A boolean alongside a
+date is two columns that can disagree about one fact.
+
+**`archived_at` is set whether or not anything was downloaded.** That is the
+point: a post with no links, or only links to hosts the archiver cannot fetch, is
+_not actionable_ and needs a way to say so. Keying "done" off the existence of
+images would leave every such post in the queue forever — precisely the set that
+would then be retried most often.
+
+**`archiver_version` is the re-run mechanism.** Bump `ARCHIVER_VERSION` in
+`extract-urls.ts` and the whole subreddit falls behind at once, with no migration
+and no Reddit traffic. Re-running is not re-downloading: anything that already
+has an `image` row is skipped.
 
 **Two poll streams, not one.** `/new` catches submissions; `/r/<sub>/comments`
 catches replies to posts of any age. Comments are where the off-site image links
@@ -71,46 +104,40 @@ live (498 posts carry image-bearing replies), and a reply can land on a two-year
 catalogue silently drifts while appearing to work — the previous BDFR-based
 import had this shape.
 
-**`resolver_version`, not a status column.** A post is due for re-resolution when
-its `resolver_version` is below `RESOLVER_VERSION` in `resolve.ts`. Bumping that
-constant re-queues the entire subreddit — no migration, no backfill script, no
-Reddit traffic. The projection also nulls it whenever a post's content changes,
-so edits re-resolve automatically.
-
-**Unsupported hosts are recorded, not dropped.** Everything the resolver finds
-gets a row. Hosts with no fetcher are stored `UNSUPPORTED` rather than discarded,
-so the backlog stays queryable in SQL and enabling one later is an `UPDATE`
-instead of a re-crawl. mediafire and mega (~230 links, mostly multi-cover
-archives needing an unpack step) are parked exactly this way.
+**Unfetchable hosts are classified, not dropped.** `extractUrls` returns
+everything it finds with `fetchable: false` on hosts that have no fetcher, so the
+distribution stays countable and enabling one later is a code change plus a
+version bump. mediafire and mega (~240 links, mostly multi-cover archives needing
+an unpack step) are parked this way.
 
 **App-only OAuth.** `grant_type=client_credentials`. Everything read is public,
 so there is no reason to hold a Reddit password — and the token cannot vote, post
 or moderate if it leaks.
 
-**A projection step must project its whole batch, never just the changed rows.**
-`archiveThings` returns the fullnames whose payload was new, and scoping the
-projection to those is wrong in a way that only shows up later: an identical
-payload returns `changed = []`, so if the typed table was truncated for a rebuild
-— or the row was skipped the first time — refetching produces no projection and
-never will. Both `reddit-hydrate-posts` and `reddit-fetch-comments` now project
-every fullname they fetched. `changed` is a statistic, not a work list.
-
-**`DOWNLOADED` and `FAILED` are the downloader's, and they are terminal.** The
-resolver owns `url`, `host`, `kind` and `ordinal`; it must not write `status` over
-a row that already has a verdict. Re-resolve deletes and reinserts candidates
-wholesale, and an `ON CONFLICT DO UPDATE SET status = EXCLUDED.status` quietly
-resets finished rows to `PENDING` — re-downloading bytes already held and
-retrying URLs already proven dead, every time the resolver version is bumped.
+**A projection step must project its whole batch, never a subset.** A row can be
+missing from `reddit_post`/`reddit_comment` while its payload is perfectly
+current — after a truncate-and-rebuild, or when it was skipped the first time.
+Scoping a projection to "what looks new" means those rows are never projected at
+all, and refetching does not help. `archiveThings` returns every fullname it
+wrote, and that is the work list.
 
 ## Gotchas discovered
 
-**`preview.redd.it` URLs expire.** They carry an `s=` signature with a lifetime.
-Storing one produces a table of links that rot silently between resolve and
-download. The resolver rewrites them to `https://i.redd.it/<media id>.<ext>`,
-which is permanent — and verified to return the full-resolution original, not the
-downscaled preview. 187 of the 192 preview links in history are bare media ids;
-the remaining five are slugged (`title-v0-<id>.jpg`) and handled by a second
-pattern.
+**`reddit_raw` is keyed on `(reddit_id, kind)`, not on the id alone.** Posts and
+comments share the table and their base36 id spaces are independent, so `abc123`
+can name both — on `reddit_id` alone one would silently overwrite the other.
+Storing the prefixed fullname (`t3_abc123`) would disambiguate too, but then
+`kind` is a derived duplicate of the prefix, nothing stops the contradictory row
+`('t3_abc123', 'comment')`, and every projection and every join to the typed
+tables has to go through a `substring`. Bare ids keep `reddit_raw` in the same
+id-space as `reddit_post`, `reddit_comment` and `image`.
+
+**`preview.redd.it` URLs expire.** They carry an `s=` signature with a lifetime,
+so a stored one rots between extraction and download. `extractUrls` rewrites them
+to `https://i.redd.it/<media id>.<ext>`, which is permanent — and verified to
+return the full-resolution original, not the downscaled preview. 187 of the 192
+preview links in history are bare media ids; the remaining five are slugged
+(`title-v0-<id>.jpg`) and handled by a second pattern.
 
 **Gallery images must come from `media_metadata`, not `s.u`.** Each gallery entry
 ships a preview URL that expires. The media id plus the declared mime type
@@ -118,7 +145,7 @@ reconstructs the permanent original directly.
 
 **`raw_json=1` is mandatory.** Without it Reddit HTML-escapes `&`, `<` and `>`
 inside selftext and comment bodies, so every URL with a query string arrives
-containing `&amp;` and the resolver extracts a broken link.
+containing `&amp;` and the parser extracts a broken link.
 
 **Deleted posts vanish from `/api/info` rather than erroring.** The response is
 simply shorter than the request. Unhandled, those ids keep `hydrated_at IS NULL`
@@ -127,29 +154,26 @@ the missing ones `removed`.
 
 **The poller's overshoot has to keep what it walks past, not just count it.**
 Listings are not append-only — an approved or crossposted item appears _below_
-fullnames the previous run already recorded — so the hundred items past the cursor
-are exactly where the missed ones are. The first version of `collectNew` scanned
-that window and collected nothing from it, which discarded the only case
-overshooting exists to catch. Re-collecting things already held is free:
-`archiveThings` dedupes on the payload hash.
+fullnames the previous run already recorded — so the hundred items past the
+cursor are exactly where the missed ones are. The first version of `collectNew`
+scanned that window and collected nothing from it, discarding the only case
+overshooting exists to catch. Re-collecting things already held is free: the
+archive upsert makes it a no-op.
 
 **A firehose comment can name a post nothing has enumerated.** `projectComments`
-skips comments whose post is missing to keep the foreign key satisfiable, and that
-skip is permanent — the archive row exists, so every later fetch reports no change
-and nothing goes back for it. The comments poller now writes a bare `reddit_post`
-stub for any unknown `link_id` first, which is what the id enumeration does
-anyway; the comment projects immediately and the post joins the hydration queue.
+skips comments whose post is missing to keep the foreign key satisfiable, and
+that skip is permanent — nothing goes back for it. The comments poller writes a
+bare `reddit_post` stub for any unknown `link_id` first, which is what the id
+enumeration does anyway; the comment projects immediately and the post joins the
+hydration queue.
 
 **Reddit's live API returns fewer comments than ever existed.** Arctic Shift has
 comments on 1,928 posts; only 1,704 posts currently report `num_comments > 0`.
 The gap is removed and deleted comments Reddit will not serve again. This is the
-one place the Reddit-primary decision costs data. `reddit_raw.source` is tagged
-per row so an Arctic Shift top-up can be layered in later without reshaping
-anything.
-
-**`reddit_comment.id` was typed `uuid`.** No Reddit id can satisfy that, so the
-column could never have held real data — it is `text` now, as is
-`image.reddit_comment_id`.
+one place the Reddit-primary decision costs data, and it is an accepted cost —
+the goal is not a complete archive against post authors' wishes.
+`reddit_raw.source` is tagged per row so an Arctic Shift top-up could be layered
+in later without reshaping anything.
 
 ## Measured cost of a full import
 
@@ -158,7 +182,6 @@ column could never have held real data — it is `text` now, as is
 | Arctic Shift id enumeration | ~35                                     |
 | `/api/info` hydration       | ~35                                     |
 | `/comments/<id>`            | ~1,704                                  |
-| Link resolution             | 0                                       |
 | **Total**                   | **~1,774, about 18 minutes at 100 QPM** |
 
 Corpus as of 2026-07: 3,494 posts, 7,204 comments, 2020-09-26 onward.

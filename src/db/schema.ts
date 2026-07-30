@@ -1,7 +1,5 @@
 import { sql } from "drizzle-orm";
 import {
-  bigint,
-  bigserial,
   bit,
   boolean,
   check,
@@ -9,11 +7,11 @@ import {
   index,
   integer,
   jsonb,
+  primaryKey,
   serial,
   text,
   timestamp,
   unique,
-  uniqueIndex,
   uuid,
   vector,
   pgSchema,
@@ -39,31 +37,37 @@ export const schema =
     : (pgSchema("dev") as unknown as PgSchema<"prod">);
 
 /**
- * Append-only archive of every Reddit `Thing` we have ever fetched.
+ * The latest payload Reddit returned for every `Thing` we have fetched.
  *
- * This is the source of truth for the import, and the only table the network
- * writes into. `reddit_post`, `reddit_comment` and `image_candidate` are all
- * projections of it and can be truncated and rebuilt from here with no network
- * access at all — which is the entire point. When the link resolver learns a new
- * host, six years of history are re-resolved locally in seconds instead of
- * re-crawling the subreddit.
+ * The only table the network writes into, and the source of truth for the
+ * ingest side. `reddit_post` and `reddit_comment` are projections of it and can
+ * be truncated and rebuilt from here with no network access at all — which is
+ * what makes teaching the archiver a new host a local operation instead of a
+ * re-crawl.
  *
- * Rows are per-`Thing`, not per-HTTP-response. A listing of 100 posts becomes
- * 100 rows, because the useful unit for replay is "the post as Reddit described
- * it at time T", not "the page it happened to arrive on".
- *
- * Deduplicated on `(fullname, payload_hash)`, which is what makes daily polling
- * cheap: re-fetching an unchanged post is a no-op insert rather than another
- * 8KB row. A post that is edited produces a second row, so the archive doubles
- * as an edit history. A post edited back to a previous exact state does not
- * record the round trip; that event is not worth a table scan to preserve.
+ * Rows are per-`Thing`, not per-HTTP-response: a listing of 100 posts becomes
+ * 100 rows. One row per thing, upserted — this is current state, not history.
+ * An earlier version kept every version of every payload, keyed by a hash of
+ * the content with volatile fields stripped, so the table doubled as an edit
+ * log. That is a completeness feature, and completeness is explicitly not the
+ * goal here; the cost was a hash function that had to stay in sync with which
+ * Reddit fields happen to be volatile, and it bought a history nothing read.
  */
 export const reddit_raw = schema.table(
   "reddit_raw",
   {
-    id: bigserial("id", { mode: "number" }).primaryKey(),
-    /** Reddit fullname, e.g. `t3_j069s5` (post) or `t1_g6xk2mn` (comment). */
-    fullname: text("fullname").notNull(),
+    /**
+     * Base36 id with no `t3_`/`t1_` prefix, e.g. `j069s5` — the same form
+     * `reddit_post.id` and `reddit_comment.id` use.
+     *
+     * Not unique on its own. Posts and comments share this table and their id
+     * spaces are independent, so one base36 string can name both; the primary
+     * key is `(reddit_id, kind)` for exactly that reason. Storing the prefixed
+     * fullname instead would also disambiguate, but it would make `kind` a
+     * derived duplicate of the prefix and force every projection and every join
+     * to the typed tables through a `substring`.
+     */
+    reddit_id: text("reddit_id").notNull(),
     kind: text("kind").notNull(),
     /**
      * Where the payload came from.
@@ -80,20 +84,12 @@ export const reddit_raw = schema.table(
       .notNull()
       .defaultNow(),
     payload: jsonb("payload").notNull(),
-    /** sha256 of the canonicalised payload. See the dedup note above. */
-    payload_hash: text("payload_hash").notNull(),
   },
   (table) => [
-    uniqueIndex("uq_reddit_raw_fullname_hash").on(
-      table.fullname,
-      table.payload_hash,
-    ),
-    // Projection reads "latest row per fullname"; polling reads "has this
-    // fullname ever been seen". Both are served by this.
-    index("idx_reddit_raw_fullname_fetched").on(
-      table.fullname,
-      table.fetched_at.desc(),
-    ),
+    primaryKey({
+      columns: [table.reddit_id, table.kind],
+      name: "reddit_raw_pkey",
+    }),
     check("reddit_raw_kind", sql`${table.kind} IN ('post', 'comment')`),
     check(
       "reddit_raw_source",
@@ -141,27 +137,41 @@ export const reddit_post = schema.table(
       withTimezone: true,
     }),
     /**
-     * Which release of the link resolver last ran over this post.
+     * When the archiver finished with this post. Null is the work queue.
      *
-     * Compared against `RESOLVER_VERSION` in the resolver source. Bumping that
-     * constant is the whole re-resolve mechanism — every post falls behind at
-     * once and the resolve task picks them up in batches, no migration and no
-     * network. Null means never resolved.
+     * A timestamp rather than an `is_archived` boolean, to match how every other
+     * "has this stage run" flag in this schema is spelled (`hydrated_at`,
+     * `comments_fetched_at`, `image.derivatives_generated_at`) — and because a
+     * boolean alongside a date is two columns that can disagree about the same
+     * fact.
+     *
+     * Set whether or not anything was downloaded. That is the point: a post with
+     * no links, or only links to hosts the archiver cannot fetch, is *not
+     * actionable* and has to be able to say so. Keying "done" off the existence
+     * of images instead would leave every such post in the queue forever, which
+     * is precisely the set of posts that would be retried most often.
      */
-    resolver_version: integer("resolver_version"),
-    /** Newest archive row this projection was built from. */
-    raw_id: bigint("raw_id", { mode: "number" }),
+    archived_at: timestamp("archived_at", { withTimezone: true }),
+    /**
+     * Which release of the archiver last ran over this post.
+     *
+     * The re-run mechanism: bump `ARCHIVER_VERSION` in the archiver source and
+     * every post falls behind at once, with no migration and no Reddit traffic.
+     * Teaching the URL parser a new host is exactly this. Re-running does not
+     * mean re-downloading — the archiver skips any post that already has images.
+     */
+    archiver_version: integer("archiver_version"),
   },
   (table) => [
     index("idx_reddit_post_hydrated_at").on(table.hydrated_at),
     index("idx_reddit_post_comments_fetched_at").on(table.comments_fetched_at),
-    index("idx_reddit_post_resolver_version").on(table.resolver_version),
     index("idx_reddit_post_created_utc").on(table.created_utc),
-    foreignKey({
-      columns: [table.raw_id],
-      foreignColumns: [reddit_raw.id],
-      name: "fk_reddit_post_raw_id",
-    }).onDelete("set null"),
+    // The archiver's work queue is "archived_at IS NULL", which is a shrinking
+    // fraction of a growing table — exactly the case a partial index serves.
+    index("idx_reddit_post_unarchived")
+      .on(table.id)
+      .where(sql`${table.archived_at} IS NULL`),
+    index("idx_reddit_post_archiver_version").on(table.archiver_version),
   ],
 );
 
@@ -187,106 +197,24 @@ export const reddit_comment = schema.table(
     created_utc: timestamp("created_utc", { withTimezone: true }),
     score: integer("score"),
     removed: boolean("removed"),
-    raw_id: bigint("raw_id", { mode: "number" }),
+    /** See `reddit_post.archived_at`. A comment is its own unit of archiver work. */
+    archived_at: timestamp("archived_at", { withTimezone: true }),
+    /** See `reddit_post.archiver_version`. */
+    archiver_version: integer("archiver_version"),
   },
   (table) => [
     index("idx_reddit_comment_post_id").on(table.post_id),
+    index("idx_reddit_comment_unarchived")
+      .on(table.id)
+      .where(sql`${table.archived_at} IS NULL`),
+    index("idx_reddit_comment_archiver_version").on(table.archiver_version),
+    // Kept: this one is *within* the ingest side, where a comment genuinely
+    // cannot exist without its submission. The separation being enforced is
+    // between ingest and library, not inside ingest.
     foreignKey({
       columns: [table.post_id],
       foreignColumns: [reddit_post.id],
       name: "reddit_comment_post_id_fkey",
-    }).onDelete("cascade"),
-    foreignKey({
-      columns: [table.raw_id],
-      foreignColumns: [reddit_raw.id],
-      name: "fk_reddit_comment_raw_id",
-    }).onDelete("set null"),
-  ],
-);
-
-/**
- * One candidate image URL found in a post or comment, and the handoff point to
- * the downloader that does not exist yet.
- *
- * The download step is deliberately not part of this pipeline. Everything here
- * is derived from local data by a pure function, so the table can be rebuilt at
- * will; a downloader that mutated it in place would make that untrue. The future
- * fetcher's input is simply:
- *
- *   SELECT url, kind FROM image_candidate WHERE status = 'PENDING'
- *
- * *Every* URL found is recorded, including ones nothing will ever download.
- * Hosts we do not support are stored with a non-`PENDING` status rather than
- * dropped, so the host distribution stays queryable in SQL and adding support
- * later is an UPDATE rather than a re-crawl. That is how mediafire and mega
- * (~240 links, almost certainly cover packs rather than single images) are
- * parked: recorded as `archive`/`UNSUPPORTED`, invisible to the downloader,
- * one statement away from being queued.
- */
-export const image_candidate = schema.table(
-  "image_candidate",
-  {
-    /**
-     * Sequential, and never leaves the database.
-     *
-     * This is a projection of `reddit_raw` that gets bulk-deleted and bulk-
-     * reinserted every time the resolver version is bumped, and nothing outside
-     * Postgres ever holds one of these ids — the natural key
-     * `(post_id, comment_id, url)` is what the upsert conflicts on, and the
-     * downloader finds work by `status`. A random uuid primary key on a table
-     * with that write pattern is the worst case for B-tree locality: every
-     * insert lands on a random leaf page, so the index is dirtied all over
-     * rather than appended to. Monotonic ids keep the inserts at the right edge.
-     */
-    id: bigserial("id", { mode: "number" }).primaryKey(),
-    post_id: text("post_id").notNull(),
-    /** Null when the URL came from the submission itself rather than a reply. */
-    comment_id: text("comment_id"),
-    /**
-     * Canonicalised, not as-written.
-     *
-     * Signed `preview.redd.it` URLs are rewritten to their durable `i.redd.it`
-     * form here. The signature in a preview URL expires, so storing one would
-     * produce a table of links that quietly rot between resolve and download.
-     */
-    url: text("url").notNull(),
-    host: text("host").notNull(),
-    /** Routes to a download strategy: which fetcher, and whether it fans out. */
-    kind: text("kind").notNull(),
-    /** Position within a gallery or album, so ordering survives the download. */
-    ordinal: integer("ordinal"),
-    status: text("status").notNull().default("PENDING"),
-    resolver_version: integer("resolver_version").notNull(),
-    discovered_at: timestamp("discovered_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    /** Set by the future downloader once the bytes have landed. */
-    image_id: text("image_id"),
-    last_error: text("last_error"),
-  },
-  (table) => [
-    // NULLS NOT DISTINCT so that post-level candidates (comment_id IS NULL)
-    // collide with themselves on re-resolve. Without it the default NULL
-    // semantics make every re-run insert a fresh duplicate of every post-level
-    // URL, which is precisely the case that re-resolving is built around.
-    unique("uq_image_candidate_source_url")
-      .on(table.post_id, table.comment_id, table.url)
-      .nullsNotDistinct(),
-    index("idx_image_candidate_status").on(table.status, table.kind),
-    index("idx_image_candidate_post_id").on(table.post_id),
-    check(
-      "image_candidate_status",
-      sql`${table.status} IN ('PENDING', 'UNSUPPORTED', 'IGNORED', 'DOWNLOADED', 'FAILED')`,
-    ),
-    foreignKey({
-      columns: [table.post_id],
-      foreignColumns: [reddit_post.id],
-      name: "fk_image_candidate_post_id",
-    }).onDelete("cascade"),
-    foreignKey({
-      columns: [table.comment_id],
-      foreignColumns: [reddit_comment.id],
-      name: "fk_image_candidate_comment_id",
     }).onDelete("cascade"),
   ],
 );
@@ -332,7 +260,33 @@ export const image = schema.table(
      * actually resolves a collision.
      */
     id: text("id").primaryKey(),
+    /**
+     * Where this image came from, as a link to show on the site.
+     *
+     * Legacy-shaped: the original import wrote `https://reddit.com/<post id>`
+     * here and `shapeImageData` rewrites that to `https://redd.it/<post id>` for
+     * display. Distinct from `upstream_url`, which is the file the bytes were
+     * actually fetched from — for a Drive folder or an imgur album those are two
+     * different URLs, and only one of them is worth showing a visitor.
+     */
     source: text("source"),
+    /**
+     * The exact URL the bytes were downloaded from.
+     *
+     * Not necessarily unique: one album or Drive folder URL yields many images,
+     * so several rows can share it, told apart by their ids. Null for anything
+     * that predates the archiver.
+     */
+    upstream_url: text("upstream_url"),
+    /**
+     * Where the link was found. Both nullable, and deliberately *not* foreign
+     * keys — see the note on this table's constraints.
+     *
+     * A post id with a null comment id means the link was in the submission
+     * itself; both set means it was in a reply. The same image can legitimately
+     * be reachable from several posts, and these columns record the one the
+     * archiver actually pulled it from, not an exhaustive list.
+     */
     reddit_post_id: text("reddit_post_id"),
     /**
      * Base36 Reddit comment id. Was `uuid`, which no Reddit id can satisfy; the
@@ -425,16 +379,15 @@ export const image = schema.table(
       "btree",
       table.openlibrary_work_id,
     ),
-    foreignKey({
-      columns: [table.reddit_post_id],
-      foreignColumns: [reddit_post.id],
-      name: "fk_image_reddit_post_id",
-    }).onDelete("set null"),
-    foreignKey({
-      columns: [table.reddit_comment_id],
-      foreignColumns: [reddit_comment.id],
-      name: "fk_image_reddit_comment_id",
-    }).onDelete("set null"),
+    // `reddit_post_id` and `reddit_comment_id` join to the ingest tables by
+    // convention, with no foreign key behind them. That is deliberate: the
+    // library outlives the ingest side. `reddit_post` and `reddit_comment` are
+    // projections meant to be truncated and rebuilt at will, and an enforced
+    // reference would make every rebuild a choice between cascading into the
+    // catalogue or nulling out provenance the library still wants. Ingest state
+    // must never be able to reach into a table of downloaded images.
+    index("idx_image_reddit_post_id").on(table.reddit_post_id),
+    index("idx_image_reddit_comment_id").on(table.reddit_comment_id),
   ],
 );
 

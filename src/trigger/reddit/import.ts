@@ -6,11 +6,14 @@
  * every stage filters to outstanding work, so a second run against a finished
  * import does nothing but four queries.
  *
+ * Ingest only: this ends with a complete `reddit_post` and `reddit_comment`, and
+ * does not download anything. Turning those into images is the archiver's job,
+ * and it claims its own work by `archived_at IS NULL`.
+ *
  * Expected cost of a cold full import, measured against the live subreddit:
  *   enumerate ids    ~35 Arctic Shift requests
  *   hydrate posts    ~35 Reddit requests (100 posts each)
  *   fetch comments  ~1,704 Reddit requests (one per post with replies)
- *   resolve links     0 requests
  *   -> ~1,774 requests, about 18 minutes at Reddit's 100 QPM free tier.
  */
 import { logger, task } from "@trigger.dev/sdk/v3";
@@ -19,7 +22,6 @@ import {
   fetchCommentsTask,
   hydratePostsTask,
 } from "./backfill";
-import { resolveLinksTask } from "./resolve-task";
 
 export const importSubredditTask = task({
   id: "reddit-import-subreddit",
@@ -38,15 +40,10 @@ export const importSubredditTask = task({
     if (!comments.ok) throw new Error("comment fetch failed");
     logger.info("fetched comments", comments.output);
 
-    const resolved = await resolveLinksTask.triggerAndWait({});
-    if (!resolved.ok) throw new Error("link resolution failed");
-    logger.info("resolved links", resolved.output);
-
     return {
       enumerated: enumerated.output,
       hydrated: hydrated.output,
       comments: comments.output,
-      resolved: resolved.output,
     };
   },
 });

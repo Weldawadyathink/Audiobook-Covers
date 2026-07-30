@@ -15,7 +15,6 @@ import { createPostgresWriteDb, textArray } from "@/db.node";
 import { schemaName } from "@/db/schema";
 import { RedditClient, type RedditThing } from "./client";
 import { archiveThings, projectComments, projectPosts } from "./archive";
-import { resolveLinksTask } from "./resolve-task";
 
 const SUBREDDIT = "audiobookcovers";
 
@@ -187,32 +186,19 @@ export const pollNewPostsTask = schedules.task({
     const cursor = await readCursor(sql, "posts");
     const things = await collectNew(client, `/r/${SUBREDDIT}/new`, cursor);
 
-    let changed = 0;
     if (things.length > 0) {
-      const result = await archiveThings(sql, things, "reddit_api");
-      changed = result.changed.length;
-      // Project all of them, not only changed ones — an unchanged post that is
-      // new to us still has no `reddit_post` row.
-      await projectPosts(
-        sql,
-        things.map((thing) => (thing.data as { name: string }).name),
-      );
+      await projectPosts(sql, await archiveThings(sql, things, "reddit_api"));
     }
 
     // `walked` is not "how many are new": the overshoot deliberately re-walks a
-    // page of things already held. `changed` is the number that carried content
-    // the archive had not seen.
-    logger.info(`walked ${things.length} posts, ${changed} with new payloads`);
+    // page of things already held, and re-archiving them is a no-op upsert.
+    logger.info(`walked ${things.length} posts`);
 
     const newest = (things[0]?.data as { name?: string } | undefined)?.name;
     await writeCursor(sql, "posts", newest ?? cursor);
 
     await sql.end();
-    return {
-      walked: things.length,
-      changed,
-      redditRequests: client.requestsMade,
-    };
+    return { walked: things.length, redditRequests: client.requestsMade };
   },
 });
 
@@ -239,26 +225,17 @@ export const pollNewCommentsTask = schedules.task({
     const cursor = await readCursor(sql, "comments");
     const things = await collectNew(client, `/r/${SUBREDDIT}/comments`, cursor);
 
-    let changed = 0;
     let stubs = 0;
     if (things.length > 0) {
-      const result = await archiveThings(sql, things, "reddit_api");
-      changed = result.changed.length;
+      const archived = await archiveThings(sql, things, "reddit_api");
+      // Stubs before projection: `projectComments` drops any comment whose post
+      // is missing, and nothing ever revisits the ones it drops.
       stubs = await ensurePostStubs(sql, things);
-      // Project all of them for the same reason the posts poller does: a comment
-      // whose payload is unchanged can still be missing from `reddit_comment`.
-      // Only the changed ones invalidate resolved links, though — otherwise the
-      // overshoot window would re-resolve the recent subreddit every night.
-      await projectComments(
-        sql,
-        things.map((thing) => (thing.data as { name: string }).name),
-        result.changed,
-      );
+      await projectComments(sql, archived);
     }
 
     logger.info(
-      `walked ${things.length} comments, ${changed} with new payloads, ` +
-        `${stubs} unknown posts stubbed`,
+      `walked ${things.length} comments, ${stubs} unknown posts stubbed`,
     );
 
     const newest = (things[0]?.data as { name?: string } | undefined)?.name;
@@ -267,35 +244,8 @@ export const pollNewCommentsTask = schedules.task({
     await sql.end();
     return {
       walked: things.length,
-      changed,
       postStubs: stubs,
       redditRequests: client.requestsMade,
     };
-  },
-});
-
-/**
- * Turn everything the pollers collected into `image_candidate` rows.
- *
- * Without this the incremental sync stops one step short of its own output.
- * `reddit-resolve-links` is a `schemaTask` because it takes parameters, so it was
- * only reachable by hand or through the one-shot import — meaning the URL list
- * stopped growing the moment the historical backfill finished, while the pollers
- * went on quietly archiving content nothing extracted links from.
- *
- * Runs after both pollers rather than inside them: one resolve pass covers both
- * streams, and two concurrent passes would contend over the same posts'
- * candidate rows. A day with no new content costs one query, because the task
- * claims only posts whose `resolver_version` is behind.
- */
-export const pollResolveTask = schedules.task({
-  id: "reddit-poll-resolve",
-  cron: "40 6 * * *",
-  machine: "micro",
-  maxDuration: 900,
-  run: async () => {
-    const handle = await resolveLinksTask.trigger({});
-    logger.info(`triggered reddit-resolve-links run ${handle.id}`);
-    return { runId: handle.id };
   },
 });

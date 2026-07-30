@@ -1,24 +1,29 @@
 /**
- * Turning archived Reddit data into candidate image URLs.
+ * Turning archived Reddit data into image URLs to attempt.
  *
- * Everything here is a pure function of rows already in Postgres. No network,
- * no clock, no randomness — feed it the same post and it emits the same
- * candidates. That is what allows six years of history to be re-resolved in
- * seconds whenever a new host is taught below.
+ * The archiver's URL parser, and deliberately not a database table. Everything
+ * here is a pure function of rows already in Postgres — no network, no clock,
+ * no randomness — so feeding it the same post always emits the same list, and
+ * teaching it a new host means re-running the archiver rather than migrating
+ * anything. An earlier design persisted this output as an `image_candidate`
+ * table; that table had to be bulk-deleted and rebuilt on every rule change,
+ * and it ended up carrying download state that then could not survive the
+ * rebuild. The list is cheap to recompute and worthless to store.
  */
 
 /**
  * Bump when the extraction rules change in a way that should re-run over
  * history.
  *
- * `reddit-resolve-links` claims any post whose `resolver_version` is below this,
- * so incrementing it re-queues the entire subreddit with no migration and no
- * Reddit traffic. Adding a host, fixing a URL rewrite and changing a status
- * policy all warrant a bump; a comment or a refactor does not.
+ * The archiver claims any post or comment whose `archiver_version` is below
+ * this, so incrementing it re-queues the entire subreddit with no migration and
+ * no Reddit traffic. Adding a host and fixing a URL rewrite both warrant a bump;
+ * a comment or a refactor does not. Re-running is not re-downloading — anything
+ * that already has an `image` row is left alone.
  */
-export const RESOLVER_VERSION = 1;
+export const ARCHIVER_VERSION = 1;
 
-export type CandidateKind =
+export type UrlKind =
   | "reddit_image"
   | "imgur_image"
   | "imgur_album"
@@ -29,19 +34,29 @@ export type CandidateKind =
   | "other_host"
   | "ignored";
 
-export type CandidateStatus = "PENDING" | "UNSUPPORTED" | "IGNORED";
-
-export interface Candidate {
+export interface ExtractedUrl {
   post_id: string;
+  /** Null when the URL came from the submission itself rather than a reply. */
   comment_id: string | null;
   url: string;
   host: string;
-  kind: CandidateKind;
+  kind: UrlKind;
+  /** Position within a gallery or album, so ordering survives the download. */
   ordinal: number | null;
-  status: CandidateStatus;
+  /**
+   * Whether the archiver has a fetcher for this host.
+   *
+   * False covers two different "no": hosts that hold artwork nothing can
+   * download yet (mediafire, mega — mostly multi-cover packs needing an unpack
+   * step) and hosts that never hold community artwork at all (retail listings,
+   * discussion links). Both are returned rather than filtered out so a caller
+   * can log the distribution and see what enabling a host would be worth. The
+   * distinction between the two is in `kind`.
+   */
+  fetchable: boolean;
 }
 
-export interface ResolvablePost {
+export interface ExtractablePost {
   id: string;
   body: string | null;
   url: string | null;
@@ -50,7 +65,7 @@ export interface ResolvablePost {
   media_metadata: unknown;
 }
 
-export interface ResolvableComment {
+export interface ExtractableComment {
   id: string;
   body: string | null;
 }
@@ -58,10 +73,11 @@ export interface ResolvableComment {
 /**
  * Hosts that carry images we cannot fetch yet.
  *
- * Recorded as `UNSUPPORTED` rather than dropped so the backlog stays queryable
- * and enabling one later is an UPDATE, not a re-crawl. mediafire and mega are
- * here by choice — ~240 links, almost all of them multi-cover archives needing
- * an unpack step rather than a download.
+ * Returned `fetchable: false` rather than dropped, so the backlog stays
+ * countable and enabling one later is a code change plus an `ARCHIVER_VERSION`
+ * bump, not a re-crawl. mediafire and mega are here by choice — ~240 links,
+ * almost all of them multi-cover archives needing an unpack step rather than a
+ * download.
  */
 const UNSUPPORTED_HOSTS = new Set([
   "mediafire.com",
@@ -83,7 +99,7 @@ const UNSUPPORTED_HOSTS = new Set([
 /**
  * Hosts that never hold community artwork worth importing.
  *
- * Retail listings, reference links and discussion. Recorded as `IGNORED` so the
+ * Retail listings, reference links and discussion. Classified `ignored` so the
  * decision is visible and reversible instead of vanishing inside a regex.
  */
 const IGNORED_HOSTS = new Set([
@@ -173,13 +189,14 @@ function previewToDirect(url: URL): string | null {
 }
 
 /**
- * Classify one extracted URL into a kind, a canonical form and a status.
+ * Classify one extracted URL into a kind, a canonical form, and whether the
+ * archiver can fetch it.
  *
  * Returns null only for input that is not a usable URL at all.
  */
 function classify(
   raw: string,
-): Pick<Candidate, "url" | "host" | "kind" | "status"> | null {
+): Pick<ExtractedUrl, "url" | "host" | "kind" | "fetchable"> | null {
   let url: URL;
   try {
     url = new URL(trimUrl(raw));
@@ -196,7 +213,7 @@ function classify(
       url: `https://i.redd.it${url.pathname}`,
       host,
       kind: "reddit_image",
-      status: "PENDING",
+      fetchable: true,
     };
   }
 
@@ -207,20 +224,20 @@ function classify(
           url: direct,
           host: "i.redd.it",
           kind: "reddit_image",
-          status: "PENDING",
+          fetchable: true,
         }
       : {
           url: url.toString(),
           host,
           kind: "other_host",
-          status: "UNSUPPORTED",
+          fetchable: false,
         };
   }
 
   // A proxy of someone else's image. The original is normally linked elsewhere
   // in the same post, so importing the proxy would duplicate it at lower quality.
   if (host === "external-preview.redd.it") {
-    return { url: url.toString(), host, kind: "ignored", status: "IGNORED" };
+    return { url: url.toString(), host, kind: "ignored", fetchable: false };
   }
 
   if (host === "i.imgur.com") {
@@ -228,7 +245,7 @@ function classify(
       url: `https://i.imgur.com${url.pathname}`,
       host,
       kind: "imgur_image",
-      status: "PENDING",
+      fetchable: true,
     };
   }
 
@@ -243,7 +260,7 @@ function classify(
         url: `https://imgur.com/${segments[0]}/${segments[1] ?? ""}`,
         host: "imgur.com",
         kind: "imgur_album",
-        status: "PENDING",
+        fetchable: true,
       };
     }
     // A bare `imgur.com/<id>` — a single image whose extension the downloader
@@ -253,14 +270,14 @@ function classify(
         url: `https://imgur.com/${segments[0]}`,
         host: "imgur.com",
         kind: "imgur_image",
-        status: "PENDING",
+        fetchable: true,
       };
     }
     return {
       url: url.toString(),
       host: "imgur.com",
       kind: "other_host",
-      status: "UNSUPPORTED",
+      fetchable: false,
     };
   }
 
@@ -274,7 +291,7 @@ function classify(
         url: `https://drive.google.com/drive/folders/${folderMatch[1]}`,
         host,
         kind: "drive_folder",
-        status: "PENDING",
+        fetchable: true,
       };
     }
     const fileId = fileMatch?.[1] ?? idParam;
@@ -283,19 +300,19 @@ function classify(
         url: `https://drive.google.com/file/d/${fileId}/view`,
         host,
         kind: "drive_file",
-        status: "PENDING",
+        fetchable: true,
       };
     }
     return {
       url: url.toString(),
       host,
       kind: "other_host",
-      status: "UNSUPPORTED",
+      fetchable: false,
     };
   }
 
   if (IGNORED_HOSTS.has(host)) {
-    return { url: url.toString(), host, kind: "ignored", status: "IGNORED" };
+    return { url: url.toString(), host, kind: "ignored", fetchable: false };
   }
 
   if (UNSUPPORTED_HOSTS.has(host)) {
@@ -304,7 +321,7 @@ function classify(
       url: url.toString(),
       host,
       kind: isArchive ? "archive" : "other_host",
-      status: "UNSUPPORTED",
+      fetchable: false,
     };
   }
 
@@ -314,7 +331,7 @@ function classify(
       url: url.toString(),
       host,
       kind: "direct_image",
-      status: "PENDING",
+      fetchable: true,
     };
   }
 
@@ -322,7 +339,7 @@ function classify(
     url: url.toString(),
     host,
     kind: "other_host",
-    status: "UNSUPPORTED",
+    fetchable: false,
   };
 }
 
@@ -333,7 +350,7 @@ function classify(
  * carries, because those are signed and expire. The media id plus the declared
  * mime type reconstructs the permanent `i.redd.it` original directly.
  */
-function galleryCandidates(post: ResolvablePost): Candidate[] {
+function galleryUrls(post: ExtractablePost): ExtractedUrl[] {
   const gallery = post.gallery_data as
     | { items?: { media_id?: unknown }[] }
     | null
@@ -363,7 +380,7 @@ function galleryCandidates(post: ResolvablePost): Candidate[] {
         host: "i.redd.it",
         kind: "reddit_image" as const,
         ordinal: index,
-        status: "PENDING" as const,
+        fetchable: true,
       },
     ];
   });
@@ -373,7 +390,7 @@ function fromText(
   text: string | null,
   postId: string,
   commentId: string | null,
-): Candidate[] {
+): ExtractedUrl[] {
   if (!text) return [];
   return (text.match(URL_PATTERN) ?? []).flatMap((raw) => {
     const classified = classify(raw);
@@ -385,19 +402,19 @@ function fromText(
 }
 
 /**
- * All candidate URLs for one submission and its comment tree.
+ * Every image URL reachable from one submission and its comment tree.
  *
  * Deduplicated on `(comment_id, url)` so a link repeated inside one body
  * collapses, while the same URL appearing in both the post and a reply stays as
- * two rows — those are genuinely different provenance and the downloader may
- * want either.
+ * two entries — those are genuinely different provenance, and which one the
+ * archiver records on the resulting `image` row is its choice to make.
  */
-export function resolvePost(
-  post: ResolvablePost,
-  comments: ResolvableComment[],
-): Candidate[] {
-  const candidates: Candidate[] = [
-    ...galleryCandidates(post),
+export function extractUrls(
+  post: ExtractablePost,
+  comments: ExtractableComment[],
+): ExtractedUrl[] {
+  const urls: ExtractedUrl[] = [
+    ...galleryUrls(post),
     ...fromText(post.body, post.id, null),
     ...comments.flatMap((comment) =>
       fromText(comment.body, post.id, comment.id),
@@ -409,7 +426,7 @@ export function resolvePost(
   if (post.url && !post.url.includes("/gallery/")) {
     const classified = classify(post.url);
     if (classified) {
-      candidates.push({
+      urls.push({
         post_id: post.id,
         comment_id: null,
         ordinal: null,
@@ -419,8 +436,8 @@ export function resolvePost(
   }
 
   const seen = new Set<string>();
-  return candidates.filter((candidate) => {
-    const key = `${candidate.comment_id ?? ""} ${candidate.url}`;
+  return urls.filter((url) => {
+    const key = `${url.comment_id ?? ""} ${url.url}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

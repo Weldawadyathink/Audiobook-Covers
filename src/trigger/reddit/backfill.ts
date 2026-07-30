@@ -156,20 +156,19 @@ export const hydratePostsTask = schemaTask({
 
     logger.info(`hydrating ${pending.length} posts`);
 
-    let changed = 0;
+    let archived = 0;
     for (let i = 0; i < pending.length; i += INFO_BATCH) {
       const batch = pending.slice(i, i + INFO_BATCH);
       const things = await client.info(batch.map((row) => `t3_${row.id}`));
 
-      const result = await archiveThings(sql, things, "reddit_api");
-      changed += result.changed.length;
+      archived += (await archiveThings(sql, things, "reddit_api")).length;
 
-      // Project every id in the batch, not just changed ones: a post that came
-      // back byte-identical still needs `hydrated_at` advanced, or it stays at
-      // the head of the queue forever and the sweep never moves on.
+      // Project every id in the batch, not only the ones Reddit returned: a post
+      // still needs `hydrated_at` advanced either way, or it stays at the head of
+      // the queue forever and the sweep never moves on.
       await projectPosts(
         sql,
-        batch.map((row) => `t3_${row.id}`),
+        batch.map((row) => row.id),
       );
 
       // Reddit silently omits deleted submissions from /api/info rather than
@@ -202,7 +201,7 @@ export const hydratePostsTask = schemaTask({
     await sql.end();
     return {
       posts: pending.length,
-      changed,
+      archived,
       redditRequests: client.requestsMade,
     };
   },
@@ -245,23 +244,10 @@ export const fetchCommentsTask = schemaTask({
     let archived = 0;
     for (const [index, post] of pending.entries()) {
       const things = await client.comments(post.id);
-      const result = await archiveThings(sql, things, "reddit_api");
-      archived += result.changed.length;
+      const commentIds = await archiveThings(sql, things, "reddit_api");
+      archived += commentIds.length;
 
-      // Project every comment fetched, not only the ones whose payload changed —
-      // the same reason post hydration projects its whole batch. `changed` is
-      // empty whenever the archive already holds an identical payload, which is
-      // exactly the case after `reddit_comment` has been truncated for a rebuild,
-      // or for a comment that was archived while its post was still unknown. In
-      // both, scoping to `changed` means the comment is never projected at all
-      // and refetching it does not help.
-      if (things.length > 0) {
-        await projectComments(
-          sql,
-          things.map((thing) => (thing.data as { name: string }).name),
-          result.changed,
-        );
-      }
+      if (commentIds.length > 0) await projectComments(sql, commentIds);
       await sql`
         UPDATE ${sql(schemaName)}.reddit_post
         SET comments_fetched_at = now()
