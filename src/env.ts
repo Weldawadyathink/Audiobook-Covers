@@ -52,6 +52,15 @@ const envSchema = z.object({
   ETL_S3_REGION: z.string(),
   ETL_S3_ENDPOINT: z.string(),
   BIGQUERY_CREDENTIALS_JSON: bigQueryCredentialsSchema,
+  /**
+   * Trigger.dev API key for the current stage, `tr_dev_…` or `tr_prod_…`.
+   *
+   * Needed by the *Worker*, not by the tasks: `/admin/upload` triggers
+   * `ingest-image` from a server function and mints a scoped public token so the
+   * browser can subscribe to the run. Inside a Trigger.dev run the SDK is already
+   * authenticated and never reads this.
+   */
+  TRIGGER_SECRET_KEY: z.string(),
   REDDIT_CLIENT_ID: z.string(),
   REDDIT_CLIENT_SECRET: z.string(),
   /**

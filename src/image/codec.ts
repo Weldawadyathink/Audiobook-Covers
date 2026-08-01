@@ -2,7 +2,7 @@
  * Decoding, resizing and re-encoding cover images.
  *
  * Pure JavaScript and WASM on purpose, for the same reason as
- * `src/scripts/imagePixels.ts`: sharp drags in a native binary that has to match
+ * `src/image/imagePixels.ts`: sharp drags in a native binary that has to match
  * the platform and be rebuilt on install, and this repo has deliberately stayed
  * free of that. The cost is speed, which does not matter for a per-image
  * background job.
@@ -21,18 +21,22 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { decode as decodeJpeg, encode as encodeJpegBuffer } from "jpeg-js";
-import {
-  convertIndexedToRgb,
-  decode as decodePng,
-  hasPngSignature,
-} from "fast-png";
+import { convertIndexedToRgb, decode as decodePng } from "fast-png";
 import decodeWebpBuffer, { init as initWebpDecode } from "@jsquash/webp/decode";
 import encodeWebpBuffer, { init as initWebpEncode } from "@jsquash/webp/encode";
 import encodePngBuffer, { init as initPngEncode } from "@jsquash/png/encode";
 import optimisePng, { init as initOxipng } from "@jsquash/oxipng/optimise";
 import { simd } from "wasm-feature-detect";
 
-export type ImageFormat = "png" | "jpeg" | "webp";
+/**
+ * Format sniffing lives in `sniff.ts` and is re-exported here.
+ *
+ * Callers already import it from this module, and the Worker cannot import this
+ * module at all — see the note at the top of `sniff.ts`.
+ */
+import { sniffFormat, type ImageFormat } from "@/image/sniff";
+
+export { sniffFormat, type ImageFormat };
 
 /** oxipng's own default. See the measurement in `encodePng`. */
 const OXIPNG_LEVEL = 2;
@@ -47,23 +51,6 @@ export interface RgbaImage {
 export interface DecodedRgbaImage extends RgbaImage {
   /** What the bytes actually turned out to be, whatever the extension claimed. */
   format: ImageFormat;
-}
-
-/** Identify the format from magic bytes. See the note at the top of the file. */
-export function sniffFormat(buffer: Buffer): ImageFormat | null {
-  if (hasPngSignature(buffer)) return "png";
-  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
-    return "jpeg";
-  }
-  // "RIFF" .... "WEBP"
-  if (
-    buffer.length >= 12 &&
-    buffer.toString("ascii", 0, 4) === "RIFF" &&
-    buffer.toString("ascii", 8, 12) === "WEBP"
-  ) {
-    return "webp";
-  }
-  return null;
 }
 
 /**

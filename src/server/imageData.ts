@@ -3,6 +3,7 @@ import { decode as decodePng } from "fast-png";
 import { extractColors } from "extract-colors";
 import { z } from "zod/v4";
 import { imageIdSchema } from "@/ids";
+import { IMAGE_URL_PREFIX } from "@/image/urls";
 
 function parsePostgresTextArray(value: unknown): unknown {
   if (value == null || Array.isArray(value)) return value;
@@ -87,7 +88,7 @@ export interface ImageData {
   };
 }
 
-const imageUrlPrefix = "https://images.audiobookcovers.com";
+const imageUrlPrefix = IMAGE_URL_PREFIX;
 
 const DEFAULT_PRIMARY_COLOR: ImageData["primaryColor"] = {
   hex: "#808080",

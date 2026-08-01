@@ -1,6 +1,7 @@
 import { schemaTask } from "@trigger.dev/sdk/v3";
 import { z } from "zod/v4";
 import { createPostgresWriteDb } from "@/db.node";
+import { schemaName } from "@/db/schema";
 import { batchTriggerAndWaitSettled, triggerAndWait } from "../utils";
 import { extractOlidPhase1Task } from "./phase1";
 import { extractOlidPhase2Task } from "./phase2";
@@ -114,7 +115,7 @@ export const extractOlidTask = schemaTask({
       const { sql, sqlTools } = createPostgresWriteDb();
       try {
         await sqlTools.query`
-          UPDATE image
+          UPDATE ${sql(schemaName)}.image
           SET openlibrary_work_id = ${result.openlibrary_work_id},
               openlibrary_work_id_confidence = ${result.evidence},
               openlibrary_work_id_model = ${models.join(":")}
@@ -163,7 +164,7 @@ export const extractOlidBatchTask = schemaTask({
     try {
       const rows = await sqlTools.many(ImageIdRow)`
         SELECT id::text AS id
-        FROM image
+        FROM ${sql(schemaName)}.image
         ${tablesample === undefined ? sql`` : sql`TABLESAMPLE BERNOULLI(${tablesample})`}
         WHERE openlibrary_work_id IS NULL
           AND deleted = false

@@ -20,6 +20,23 @@
           "localConnectionString": "postgres://postgres:postgres@localhost:5432/postgres",
         },
       ],
+      // Staging area for manual uploads: /admin/upload writes the bytes here and
+      // the `ingest-image` task reads them back through the S3 API. One bucket
+      // for both stages, because an image id is unique across the catalogue and
+      // the bucket is what images.audiobookcovers.com serves.
+      //
+      // `remote` so a locally run dev server writes to the real bucket. The other
+      // half of this handoff is a Trigger.dev task holding real S3 credentials, so
+      // a Miniflare-local bucket would take every staged upload and put it
+      // somewhere the pipeline cannot read — the uploader would appear to work and
+      // every run would fail with "nothing staged at".
+      "r2_buckets": [
+        {
+          "binding": "IMAGES_BUCKET",
+          "bucket_name": "audiobookcovers",
+          "remote": true,
+        },
+      ],
       "vars": {
         "APP_STAGE": "development",
       },
@@ -37,6 +54,13 @@
           "binding": "HYPERDRIVE",
           "id": "53cd95544a994903b3a979766b9adaeb",
           "localConnectionString": "postgres://postgres:postgres@localhost:5432/postgres",
+        },
+      ],
+      // See the note on the development binding.
+      "r2_buckets": [
+        {
+          "binding": "IMAGES_BUCKET",
+          "bucket_name": "audiobookcovers",
         },
       ],
       "vars": {

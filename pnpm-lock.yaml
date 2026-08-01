@@ -59,6 +59,9 @@ importers:
       '@tanstack/zod-adapter':
         specifier: ^1.167.0
         version: 1.167.0(@tanstack/react-router@1.170.4(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(zod@3.25.76)
+      '@trigger.dev/react-hooks':
+        specifier: 4.5.8
+        version: 4.5.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@trigger.dev/sdk':
         specifier: 4.5.8
         version: 4.5.8(react@19.2.6)(zod@3.25.76)
@@ -2790,6 +2793,13 @@ packages:
     resolution: {integrity: sha512-40YOQW67xbj79LlgAHjGHI/eZQCREaWTo/9oD2FemIgRd0agzmsh+eECmzDe2GPBTAaTBCaPj8pj55UMpzMnag==}
     engines: {node: '>=18.20.0'}
 
+  '@trigger.dev/react-hooks@4.5.8':
+    resolution: {integrity: sha512-wWQod0LfvUCbkqvr6ySzA4ZtOmBRzpaNUOB52BC87ylMz31vG1994QC5ZnkbB9eHR7LU4kyQ1Ai0b8YI0ECQfw==}
+    engines: {node: '>=18.20.0'}
+    peerDependencies:
+      react: ^18.0 || ^19.0 || ^19.0.0-rc
+      react-dom: ^18.0 || ^19.0 || ^19.0.0-rc
+
   '@trigger.dev/schema-to-json@4.5.8':
     resolution: {integrity: sha512-O2DMbm2bTvcH/sDFTAOqowprN6p3RajGqvQtIXE3y6Pvn+NjxazTCp95KrCnNIHqqxu+u3wHtzWUPumbxQFpgw==}
     engines: {node: '>=18.20.0'}
@@ -5219,6 +5229,11 @@ packages:
   supports-preserve-symlinks-flag@1.0.0:
     resolution: {integrity: sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==}
     engines: {node: '>= 0.4'}
+
+  swr@2.4.2:
+    resolution: {integrity: sha512-ej644Y2bvkIajfR32KGeSSdBXQW+ScjGjkybZgSE7kFpk9eGnV44XY9FJylXi+W75pavSX1PVNB57W5EbhGIYw==}
+    peerDependencies:
+      react: ^16.11.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
   systeminformation@5.33.1:
     resolution: {integrity: sha512-DEN6ICHk3Tk0Uf/hrAHh7xlt7iL5CJFBtPZinA0H62DrGG/KPKqq/Nzj6lCXPS4Ay/sf/14zNnk9LpqKzBIc+w==}
@@ -8011,6 +8026,17 @@ snapshots:
       zod: 3.25.76
       zod-error: 1.5.0
       zod-validation-error: 1.5.0(zod@3.25.76)
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+
+  '@trigger.dev/react-hooks@4.5.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
+    dependencies:
+      '@trigger.dev/core': 4.5.8(supports-color@10.2.2)
+      react: 19.2.6
+      react-dom: 19.2.6(react@19.2.6)
+      swr: 2.4.2(react@19.2.6)
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -10809,6 +10835,12 @@ snapshots:
       has-flag: 4.0.0
 
   supports-preserve-symlinks-flag@1.0.0: {}
+
+  swr@2.4.2(react@19.2.6):
+    dependencies:
+      dequal: 2.0.3
+      react: 19.2.6
+      use-sync-external-store: 1.6.0(react@19.2.6)
 
   systeminformation@5.33.1: {}
 

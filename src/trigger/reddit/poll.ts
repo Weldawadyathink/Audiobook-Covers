@@ -11,10 +11,15 @@
  * requests per run.
  */
 import { schedules, logger } from "@trigger.dev/sdk/v3";
-import { createPostgresWriteDb, textArray } from "@/db.node";
+import { createPostgresWriteDb } from "@/db.node";
 import { schemaName } from "@/db/schema";
 import { RedditClient, type RedditThing } from "./client";
-import { archiveThings, projectComments, projectPosts } from "./archive";
+import {
+  archiveThings,
+  ensurePostStubs,
+  projectComments,
+  projectPosts,
+} from "./archive";
 
 const SUBREDDIT = "audiobookcovers";
 
@@ -133,41 +138,14 @@ async function collectNew(
   return collected;
 }
 
-/**
- * Give every post referenced by a batch of comments a `reddit_post` row.
- *
- * `/r/<sub>/comments` is a firehose: it returns replies to submissions this
- * pipeline may never have enumerated, and `projectComments` skips any comment
- * whose post is missing so the foreign key stays satisfiable. That skip was
- * silent and permanent — the archive row existed, so a later fetch saw no
- * change and nothing ever went back for it. Inserting a bare stub is exactly
- * what `reddit-enumerate-post-ids` does, so the comment projects immediately and
- * the post lands in the hydration queue with `hydrated_at IS NULL`.
- */
-async function ensurePostStubs(
-  sql: ReturnType<typeof createPostgresWriteDb>["sql"],
-  things: RedditThing[],
-): Promise<number> {
-  const postIds = [
-    ...new Set(
-      things.flatMap((thing) => {
-        const linkId = (thing.data as { link_id?: unknown }).link_id;
-        return typeof linkId === "string" && linkId.startsWith("t3_")
-          ? [linkId.slice(3)]
-          : [];
-      }),
-    ),
-  ];
-  if (postIds.length === 0) return 0;
-
-  const inserted = (await sql`
-    INSERT INTO ${sql(schemaName)}.reddit_post (id)
-    SELECT * FROM unnest(${textArray(postIds)}::text[])
-    ON CONFLICT (id) DO NOTHING
-    RETURNING id
-  `) as unknown as { id: string }[];
-
-  return inserted.length;
+/** The submissions a batch of comments is replying to. */
+function linkedPostIds(things: RedditThing[]): string[] {
+  return things.flatMap((thing) => {
+    const linkId = (thing.data as { link_id?: unknown }).link_id;
+    return typeof linkId === "string" && linkId.startsWith("t3_")
+      ? [linkId.slice(3)]
+      : [];
+  });
 }
 
 export const pollNewPostsTask = schedules.task({
@@ -230,7 +208,7 @@ export const pollNewCommentsTask = schedules.task({
       const archived = await archiveThings(sql, things, "reddit_api");
       // Stubs before projection: `projectComments` drops any comment whose post
       // is missing, and nothing ever revisits the ones it drops.
-      stubs = await ensurePostStubs(sql, things);
+      stubs = await ensurePostStubs(sql, linkedPostIds(things));
       await projectComments(sql, archived);
     }
 

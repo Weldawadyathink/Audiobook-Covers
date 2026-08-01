@@ -20,7 +20,7 @@ import { createRequire } from "node:module";
 import { decode as decodeJpeg } from "jpeg-js";
 import { convertIndexedToRgb, decode as decodePng } from "fast-png";
 import decodeWebp, { init as initWebpDecode } from "@jsquash/webp/decode";
-import { sniffFormat, type ImageFormat } from "@/image/codec";
+import { sniffFormat, type ImageFormat } from "@/image/sniff";
 
 export type { ImageFormat };
 

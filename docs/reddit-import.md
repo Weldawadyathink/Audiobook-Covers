@@ -43,6 +43,13 @@ somebody runs the refresh sweep.
 needs a cron after the two pollers, or new posts will be ingested nightly and
 never turned into images.
 
+What it no longer has to write is the image side of that arrow. `ingest-image`
+(`src/trigger/image/ingest.ts`, documented in `docs/manual-upload.md`) takes a URL
+and produces a finished `image` row — duplicate check, derivatives, embedding,
+book match — so the archiver's remaining job is to walk the queue, run
+`extractUrls()`, call that task once per fetchable URL, and stamp `archived_at`.
+It was built for the manual uploader and deliberately made caller-agnostic.
+
 ## Settled decisions
 
 **Ingest and library are separate, with no foreign keys between them.**

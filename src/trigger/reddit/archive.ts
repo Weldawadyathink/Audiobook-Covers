@@ -70,6 +70,40 @@ export async function archiveThings(
 }
 
 /**
+ * Give a set of post ids a `reddit_post` row, whether or not anything has been
+ * fetched for them. Returns how many rows were new.
+ *
+ * A bare stub is exactly what `reddit-enumerate-post-ids` writes, so the row
+ * lands in the hydration queue with `hydrated_at IS NULL` and fills itself in on
+ * the next sweep. Two callers need this and both would otherwise be inventing
+ * their own INSERT into a table only this module is supposed to write:
+ *
+ *   - the comments poller, because `/r/<sub>/comments` is a firehose that returns
+ *     replies to submissions this pipeline may never have enumerated, and
+ *     `projectComments` silently and permanently skips any comment whose post is
+ *     missing so the foreign key stays satisfiable;
+ *   - the manual uploader, where an admin can type the id of a post the ingest
+ *     side has not reached, and `image.reddit_post_id` would otherwise point at
+ *     nothing the cover page can join to.
+ */
+export async function ensurePostStubs(
+  sql: Sql,
+  postIds: readonly string[],
+): Promise<number> {
+  const unique = [...new Set(postIds)];
+  if (unique.length === 0) return 0;
+
+  const inserted = (await sql`
+    INSERT INTO ${sql(schemaName)}.reddit_post (id)
+    SELECT * FROM unnest(${textArray(unique)}::text[])
+    ON CONFLICT (id) DO NOTHING
+    RETURNING id
+  `) as unknown as { id: string }[];
+
+  return inserted.length;
+}
+
+/**
  * Rebuild `reddit_post` from the archive.
  *
  * `ids` are bare base36 post ids, scoping the work to things just archived.

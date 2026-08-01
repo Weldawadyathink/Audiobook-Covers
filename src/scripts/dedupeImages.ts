@@ -20,8 +20,8 @@ import {
   decodeImage,
   downscaleToSquare,
   type ImageFormat,
-} from "./imagePixels";
-import { DCT_SIZE, perceptualHash } from "./perceptualHash";
+} from "../image/imagePixels";
+import { DCT_SIZE, perceptualHash } from "../image/perceptualHash";
 
 const IMAGE_URL_PREFIX = "https://images.audiobookcovers.com";
 

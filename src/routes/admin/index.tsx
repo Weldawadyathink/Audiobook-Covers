@@ -7,6 +7,7 @@ import {
   Images,
   LogOut,
   MessageSquareWarning,
+  Upload,
   Users,
 } from "lucide-react";
 
@@ -16,6 +17,12 @@ export const Route = createFileRoute("/admin/")({
 });
 
 const tools = [
+  {
+    to: "/admin/upload",
+    label: "Upload covers",
+    description: "Import covers by hand through the automated pipeline.",
+    icon: Upload,
+  },
   {
     to: "/admin/feedback",
     label: "Feedback queue",

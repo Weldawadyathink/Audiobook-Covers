@@ -54,6 +54,7 @@ Everything lives in one PlanetScale Postgres database, split into a `dev` and a 
 - **Embedding models**: `src/searchModels/`
 - **Rerankers**: `src/server/rerankers/`
 - **Background jobs**: `src/trigger/` (Trigger.dev v4; the OpenLibrary ETL lives in `src/trigger/openlibrary/` and is documented in `docs/openlibrary-etl.md`; the Reddit import lives in `src/trigger/reddit/` and is documented in `docs/reddit-import.md`)
+- **Adding an image**: `src/trigger/image/ingest.ts` (`ingest-image`) is the only thing that creates an `image` row — bytes or a URL in, a displayable cover out. `/admin/upload` is its front end and the Reddit archiver is expected to be its second caller. Documented in `docs/manual-upload.md`.
 
 ## Environment
 
