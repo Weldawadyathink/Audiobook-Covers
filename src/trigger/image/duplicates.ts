@@ -4,8 +4,8 @@
  * Runs before anything is inserted. That ordering is the whole point: an image
  * row is an S3 key, a public URL and a search result, and the cheapest moment to
  * decide a cover is a duplicate is before any of those exist. The alternative —
- * insert first and let `/admin/similar` catch it later — means the site can serve
- * two copies of the same cover in the meantime.
+ * insert first and reconcile later — means the site can serve two copies of the
+ * same cover in the meantime.
  *
  * The hash is computed with the same `decodeImage` + `downscaleToSquare` +
  * `perceptualHash` path that `src/scripts/dedupeImages.ts` used to fill in
@@ -144,8 +144,9 @@ function pixels(item: { width: number | null; height: number | null }) {
  * case for a manual upload — somebody found the original artwork behind a
  * Reddit-compressed repost — so it goes through unattended, and the copies it
  * beats are marked unsearchable rather than deleted. Nothing is destroyed by an
- * automatic decision here; `searchable = false` is reversible from
- * `/admin/similar` and the image keeps its URL.
+ * automatic decision here: the image keeps its id, its URL and its objects,
+ * `image.superseded_by` records which copy replaced it, and the Searchable
+ * toggle on `/images/<id>` puts it back.
  *
  * Everything else stops for review: an equal or lower resolution match (where
  * "which one is better" is not a question pixel count can answer), a match whose

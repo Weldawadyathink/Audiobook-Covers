@@ -42,12 +42,12 @@ export function imagesBucket(): R2Bucket {
  * Point the SDK at this stage's Trigger.dev project.
  *
  * Called before every trigger and every token mint rather than once at module
- * scope: reading `env.TRIGGER_SECRET_KEY` throws when it is missing (see
+ * scope: reading `env.TRIGGER_API_KEY` throws when it is missing (see
  * `src/env.ts`), and a throw at module scope would take down every route in the
  * bundle instead of just the upload pane.
  */
 export function configureTrigger() {
-  configure({ secretKey: env.TRIGGER_SECRET_KEY });
+  configure({ secretKey: env.TRIGGER_API_KEY });
 }
 
 export interface StagedFile {

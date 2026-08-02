@@ -35,6 +35,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { jpegCoverUrl } from "@/image/urls";
 import { MAX_IMAGE_BYTES } from "@/image/staging";
+import { parseRedditCommentId, parseRedditPostId } from "@/reddit/ids";
 import { lookupOpenLibraryWork } from "@/server/feedback";
 import {
   discardStagedUpload,
@@ -345,12 +346,22 @@ function RouteComponent() {
           </Field>
           <Field
             label="Reddit post id"
-            hint="Base36, no t3_ prefix. Stubbed for hydration if it is new."
+            hint="An id, a t3_ fullname or any link to the post. Stubbed for hydration if it is new."
           >
             <Input
               value={form.redditPostId ?? ""}
               onChange={(event) =>
-                setForm({ ...form, redditPostId: event.target.value.trim() })
+                setForm({ ...form, redditPostId: event.target.value })
+              }
+              onBlur={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  redditPostId: normalise(
+                    event.target.value,
+                    parseRedditPostId,
+                    "post",
+                  ),
+                }))
               }
               placeholder="1abc2de"
               className="rounded-xl"
@@ -358,12 +369,22 @@ function RouteComponent() {
           </Field>
           <Field
             label="Reddit comment id"
-            hint="Set when the link was a reply."
+            hint="Set when the link was a reply. A permalink to the comment works."
           >
             <Input
               value={form.redditCommentId ?? ""}
               onChange={(event) =>
-                setForm({ ...form, redditCommentId: event.target.value.trim() })
+                setForm({ ...form, redditCommentId: event.target.value })
+              }
+              onBlur={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  redditCommentId: normalise(
+                    event.target.value,
+                    parseRedditCommentId,
+                    "comment",
+                  ),
+                }))
               }
               placeholder="k1lm2no"
               className="rounded-xl"
@@ -527,6 +548,31 @@ function RouteComponent() {
       )}
     </div>
   );
+}
+
+/**
+ * Trim a pasted Reddit reference down to the bare id, on blur.
+ *
+ * The value that could not be parsed is left in the field rather than cleared:
+ * the admin is one keystroke from fixing a paste and zero keystrokes from
+ * retyping one that has been thrown away. The server normalises again anyway, so
+ * this is ergonomics, not validation.
+ */
+function normalise(
+  value: string,
+  parse: (input: string) => string | null,
+  what: string,
+): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  const id = parse(trimmed);
+  if (!id) {
+    toast(`That does not look like a Reddit ${what}`, {
+      description: `Paste an id, a fullname or a link. Got "${trimmed}".`,
+    });
+    return trimmed;
+  }
+  return id;
 }
 
 function Field({
@@ -856,10 +902,22 @@ function IngestedSummary({
       )}
 
       {output.superseded.length > 0 && (
-        <p className="text-xs text-amber-200">
-          Hidden from search in favour of this copy:{" "}
-          {output.superseded.join(", ")}. They keep their URLs and can be
-          restored from Similar pairs.
+        <p className="flex flex-wrap items-center gap-x-1 text-xs text-amber-200">
+          <span>Hidden from search in favour of this copy:</span>
+          {output.superseded.map((id) => (
+            <Link
+              key={id}
+              to="/images/$id"
+              params={{ id }}
+              className="font-mono underline underline-offset-2 hover:text-white"
+            >
+              {id}
+            </Link>
+          ))}
+          <span className="text-slate-500">
+            They keep their URLs, and each page has a Searchable toggle to put
+            one back.
+          </span>
         </p>
       )}
 

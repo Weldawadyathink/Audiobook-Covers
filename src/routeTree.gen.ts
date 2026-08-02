@@ -23,7 +23,6 @@ import { Route as ApiSearchRouteImport } from './routes/api/search'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminUploadRouteImport } from './routes/admin/upload'
 import { Route as AdminTestRouteImport } from './routes/admin/test'
-import { Route as AdminSimilarRouteImport } from './routes/admin/similar'
 import { Route as AdminLogoutRouteImport } from './routes/admin/logout'
 import { Route as AdminFeedbackRouteImport } from './routes/admin/feedback'
 import { Route as AdminDatabase_infoRouteImport } from './routes/admin/database_info'
@@ -101,11 +100,6 @@ const AdminTestRoute = AdminTestRouteImport.update({
   path: '/test',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminSimilarRoute = AdminSimilarRouteImport.update({
-  id: '/similar',
-  path: '/similar',
-  getParentRoute: () => AdminRoute,
-} as any)
 const AdminLogoutRoute = AdminLogoutRouteImport.update({
   id: '/logout',
   path: '/logout',
@@ -151,7 +145,6 @@ export interface FileRoutesByFullPath {
   '/admin/database_info': typeof AdminDatabase_infoRoute
   '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/logout': typeof AdminLogoutRoute
-  '/admin/similar': typeof AdminSimilarRoute
   '/admin/test': typeof AdminTestRoute
   '/admin/upload': typeof AdminUploadRoute
   '/admin/users': typeof AdminUsersRoute
@@ -173,7 +166,6 @@ export interface FileRoutesByTo {
   '/admin/database_info': typeof AdminDatabase_infoRoute
   '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/logout': typeof AdminLogoutRoute
-  '/admin/similar': typeof AdminSimilarRoute
   '/admin/test': typeof AdminTestRoute
   '/admin/upload': typeof AdminUploadRoute
   '/admin/users': typeof AdminUsersRoute
@@ -197,7 +189,6 @@ export interface FileRoutesById {
   '/admin/database_info': typeof AdminDatabase_infoRoute
   '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/logout': typeof AdminLogoutRoute
-  '/admin/similar': typeof AdminSimilarRoute
   '/admin/test': typeof AdminTestRoute
   '/admin/upload': typeof AdminUploadRoute
   '/admin/users': typeof AdminUsersRoute
@@ -222,7 +213,6 @@ export interface FileRouteTypes {
     | '/admin/database_info'
     | '/admin/feedback'
     | '/admin/logout'
-    | '/admin/similar'
     | '/admin/test'
     | '/admin/upload'
     | '/admin/users'
@@ -244,7 +234,6 @@ export interface FileRouteTypes {
     | '/admin/database_info'
     | '/admin/feedback'
     | '/admin/logout'
-    | '/admin/similar'
     | '/admin/test'
     | '/admin/upload'
     | '/admin/users'
@@ -267,7 +256,6 @@ export interface FileRouteTypes {
     | '/admin/database_info'
     | '/admin/feedback'
     | '/admin/logout'
-    | '/admin/similar'
     | '/admin/test'
     | '/admin/upload'
     | '/admin/users'
@@ -393,13 +381,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminTestRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/admin/similar': {
-      id: '/admin/similar'
-      path: '/similar'
-      fullPath: '/admin/similar'
-      preLoaderRoute: typeof AdminSimilarRouteImport
-      parentRoute: typeof AdminRoute
-    }
     '/admin/logout': {
       id: '/admin/logout'
       path: '/logout'
@@ -449,7 +430,6 @@ interface AdminRouteChildren {
   AdminDatabase_infoRoute: typeof AdminDatabase_infoRoute
   AdminFeedbackRoute: typeof AdminFeedbackRoute
   AdminLogoutRoute: typeof AdminLogoutRoute
-  AdminSimilarRoute: typeof AdminSimilarRoute
   AdminTestRoute: typeof AdminTestRoute
   AdminUploadRoute: typeof AdminUploadRoute
   AdminUsersRoute: typeof AdminUsersRoute
@@ -460,7 +440,6 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminDatabase_infoRoute: AdminDatabase_infoRoute,
   AdminFeedbackRoute: AdminFeedbackRoute,
   AdminLogoutRoute: AdminLogoutRoute,
-  AdminSimilarRoute: AdminSimilarRoute,
   AdminTestRoute: AdminTestRoute,
   AdminUploadRoute: AdminUploadRoute,
   AdminUsersRoute: AdminUsersRoute,

@@ -29,6 +29,11 @@
  * happens last, after the new image is known to be displayable: hiding the copy it
  * replaces any earlier would leave a failed run with both versions invisible.
  *
+ * A run that throws unwinds itself: the bytes move to `failed/`, everything it
+ * wrote under a prefix the site serves from is deleted, and the row is purged —
+ * see `quarantine`. A half-ingested image is worse than none, because it is a
+ * pixel-perfect duplicate of whatever the admin is about to upload again.
+ *
  * Progress is published to run metadata as it goes, one entry per stage, which is
  * what the upload pane subscribes to. A stage that is genuinely not applicable is
  * recorded as skipped with a reason rather than left pending, so a finished run
@@ -39,8 +44,12 @@ import { z } from "zod/v4";
 import { createPostgresWriteDb, textArray } from "@/db.node";
 import { schemaName } from "@/db/schema";
 import { generateImageId } from "@/ids";
-import { contentTypeForFormat, extensionForFormat } from "@/image/sniff";
-import { isStagingKey, MAX_IMAGE_BYTES } from "@/image/staging";
+import {
+  contentTypeForFormat,
+  extensionForFormat,
+  type ImageFormat,
+} from "@/image/sniff";
+import { isStagingKey, MAX_IMAGE_BYTES, STAGING_PREFIX } from "@/image/staging";
 import { defaultModelName } from "@/searchModels/models";
 import { S3Client } from "@/trigger/s3";
 import { triggerAndWait } from "@/trigger/utils";
@@ -178,12 +187,18 @@ export const ingestImageTask = schemaTask({
     const steps = createSteps();
     const s3 = new S3Client("default");
     const { sql } = createPostgresWriteDb({ application_name: "ingest-image" });
+    // Everything the failure path needs to undo a partial run. Filled in as the
+    // run goes, read only by `quarantine`.
+    const progress: Progress = { derivatives: [] };
 
     try {
       steps.start("hash");
       const bytes = await loadBytes(s3, payload.bytes);
       const upload = await hashUpload(bytes);
       const extension = extensionForFormat(upload.format);
+      progress.bytes = bytes;
+      progress.format = upload.format;
+      progress.extension = extension;
       steps.done(
         "hash",
         `${upload.format} ${upload.width}x${upload.height}, ${upload.bytes} bytes`,
@@ -223,6 +238,7 @@ export const ingestImageTask = schemaTask({
 
       steps.start("row");
       const id = await claimRow(sql, payload, upload, extension);
+      progress.id = id;
       steps.done("row", id);
 
       steps.start("original");
@@ -230,6 +246,7 @@ export const ingestImageTask = schemaTask({
       await s3.createObject(key, bytes, contentTypeForFormat(upload.format), {
         cacheControl: ORIGINAL_CACHE_CONTROL,
       });
+      progress.originalKey = key;
       if (payload.bytes.kind === "staged") {
         // Only after the copy has landed. A staged object deleted before this
         // point would leave a re-run with no bytes to read.
@@ -255,6 +272,9 @@ export const ingestImageTask = schemaTask({
         task: generateImageSizesTask,
         payload: { id, force: false },
       });
+      if ("written" in derivatives) {
+        progress.derivatives = derivatives.written;
+      }
       steps.done(
         "derivatives",
         "written" in derivatives
@@ -273,9 +293,13 @@ export const ingestImageTask = schemaTask({
 
       if (supersede.length > 0) {
         steps.start("supersede");
+        // `superseded_by` is the only durable record of this decision. Without
+        // it the hidden row looks exactly like one an admin hid by hand, and
+        // the copy that replaced it is findable only in this run's output.
         await sql`
           UPDATE ${sql(schemaName)}.image
-          SET searchable = false
+          SET searchable = false,
+              superseded_by = ${id}
           WHERE id = ANY(${textArray(supersede)}::text[])
         `;
         steps.done(
@@ -295,11 +319,105 @@ export const ingestImageTask = schemaTask({
         superseded: supersede,
         openlibrary,
       };
+    } catch (error) {
+      await quarantine(s3, sql, payload, progress);
+      throw error;
     } finally {
       await sql.end();
     }
   },
 });
+
+/** What a partially finished run has left lying around. */
+interface Progress {
+  bytes?: Buffer;
+  format?: ImageFormat;
+  extension?: string;
+  id?: string;
+  originalKey?: string;
+  /** Keys `generate-image-sizes` reported writing, if it got that far. */
+  derivatives: string[];
+}
+
+/**
+ * Where the bytes of a failed ingest go.
+ *
+ * Nothing reads this prefix. It exists so a failure is diagnosable — the file
+ * that broke the decoder is the one thing about a failed run that cannot be
+ * reconstructed from the logs — and so an admin retrying an upload is not
+ * silently retrying against debris.
+ */
+const FAILED_PREFIX = "failed";
+
+/**
+ * Undo a partial run, then let the error carry on.
+ *
+ * The row is claimed before the derivatives exist, which is what makes an id
+ * collision resolvable (see `generateImageId`) and what leaves an orphan behind
+ * when anything downstream fails: a row with a `phash64` and no objects. Left in
+ * place, that orphan is a perfect-distance, equal-resolution duplicate of the
+ * very file the admin is about to re-upload, so the retry stops for a review
+ * against the wreckage of its own previous attempt — with a broken thumbnail,
+ * because the derivatives it would be compared against were never written.
+ *
+ * Retries are `maxAttempts: 1` project-wide, so there is no later attempt this
+ * would be pulling the ground out from under.
+ *
+ * Deliberately swallows its own errors. This runs on the way to re-throwing the
+ * real failure, and a cleanup that fails must not replace the diagnosis with a
+ * complaint about tidying up. What it cannot cover is a run that dies without
+ * unwinding — an out-of-memory kill or a `maxDuration` abort — which still
+ * leaves an orphan behind.
+ */
+async function quarantine(
+  s3: S3Client,
+  sql: ReturnType<typeof createPostgresWriteDb>["sql"],
+  payload: z.infer<typeof IngestImagePayload>,
+  progress: Progress,
+) {
+  try {
+    if (progress.bytes && progress.format && progress.extension) {
+      // Named after the id when there was one, so a failure can be traced back
+      // to its run; after the staged key otherwise, which is equally unique.
+      const name =
+        progress.id ??
+        (payload.bytes.kind === "staged"
+          ? payload.bytes.key.slice(STAGING_PREFIX.length + 1)
+          : crypto.randomUUID());
+      const key = `${FAILED_PREFIX}/${name}.${progress.extension}`;
+      await s3.createObject(
+        key,
+        progress.bytes,
+        contentTypeForFormat(progress.format),
+        { cacheControl: "no-store" },
+      );
+      logger.info(`kept the bytes of a failed ingest at ${key}`);
+    }
+
+    // Everything the run published under a prefix the site serves from.
+    const live = [...progress.derivatives];
+    if (progress.originalKey) live.push(progress.originalKey);
+    if (live.length > 0) await s3.safeDeleteObject(live);
+
+    // Only reachable if the run failed before copying it out; a successful copy
+    // deletes it already.
+    if (payload.bytes.kind === "staged") {
+      await s3.safeDeleteObject(payload.bytes.key);
+    }
+
+    if (progress.id) {
+      await sql`
+        DELETE FROM ${sql(schemaName)}.image WHERE id = ${progress.id}
+      `;
+      logger.info(`purged the orphaned row ${progress.id}`);
+    }
+  } catch (error) {
+    logger.error("could not clean up after a failed ingest", {
+      id: progress.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
 
 /**
  * One week, matching the derivatives.

@@ -26,9 +26,11 @@ ingest-image                 one run per file
    ├─ derivatives   generate-image-sizes  (9 objects, blurhash, true format)
    ├─ embedding     rebuild-embedding     (jina-clip-v2)
    ├─ classify      extract-olid          (skipped if the match was typed in)
-   └─ supersede     searchable = false on the copies this one replaces
+   └─ supersede     searchable = false + superseded_by on the copies it replaces
    ▼
 image                        a cover the site can display
+
+   on a throw: bytes → failed/<id>.<ext>, live objects deleted, row purged
 ```
 
 The future Reddit archiver is expected to call the same task with
@@ -64,9 +66,18 @@ cover that is about to be published anyway.
 
 **Duplicates are decided before the row exists.** An `image` row is an S3 key, a
 public URL and a search result all at once, so the cheapest moment to discover a
-cover is already held is before any of those exist. Inserting first and letting
-`/admin/similar` catch it later means the site can serve two copies in the
-meantime.
+cover is already held is before any of those exist. Inserting first and
+reconciling later means the site can serve two copies in the meantime.
+
+**A failed run leaves nothing behind.** The row is claimed before the derivatives
+exist — that ordering is what makes an id collision resolvable — so anything that
+fails downstream would otherwise strand a row carrying a `phash64` and no
+objects. That orphan is a perfect-distance, equal-resolution duplicate of exactly
+the file the admin is about to upload again, so the retry would stop for a review
+against the wreckage of its own last attempt, with a broken thumbnail. Instead
+the run unwinds itself: bytes to `failed/`, live objects deleted, row purged.
+Retries are `maxAttempts: 1` project-wide, so there is no later attempt this
+pulls the ground out from under.
 
 **A higher-resolution upload wins unattended; anything else stops and asks.**
 Strictly more pixels than every match is the overwhelmingly common manual import —
@@ -79,7 +90,15 @@ outcome nobody wants to happen quietly.
 
 **Superseding hides, never deletes.** `searchable = false` keeps the old row, its
 id, its URL and its object; the cover simply stops appearing in search. Nothing an
-automatic decision does here is destructive, and `/admin/similar` can put it back.
+automatic decision does here is destructive, and the Searchable toggle on
+`/images/<id>` puts it back.
+
+**The hidden row records what replaced it.** `image.superseded_by` is set at the
+same moment, and is the only durable trace of the decision — without it a hidden
+row is indistinguishable from one an admin hid by hand, and the copy that won is
+findable only in a task's run output. It sits on the loser rather than as a list
+on the winner because that is the direction the question gets asked in, and
+because one nullable column beats a `text[]` this repo cannot parse back cleanly.
 
 **The hash uses `imagePixels`, not `codec`.** Both decode an image, and
 `codec.decodeToRgba` is already being decoded for the derivatives — but the
@@ -101,6 +120,13 @@ to learn from paying four LLM calls to guess an answer somebody already knows.
 **Metadata is shared across a submission, not per file.** A Drive folder or a
 gallery post carries a dozen covers from one source. Typing the same URL twelve
 times is how the fourth one ends up subtly wrong.
+
+**Reddit ids are parsed, not typed.** `image.reddit_post_id` holds a bare base36
+id, and almost nothing an admin has to hand is in that shape — a browser gives a
+permalink, the API gives a `t3_` fullname, and only the database gives the bare
+id. `src/reddit/ids.ts` takes any of them. The pane normalises the field on blur
+so the admin can see what was understood, and the server normalises again on the
+way in so a paste followed straight by the keyboard still works.
 
 **A Reddit post id is enough provenance.** Given only a post id, `image.source`
 becomes `https://reddit.com/<id>` — the legacy shape `shapeImageData` already
@@ -126,6 +152,14 @@ Trigger.dev task holding real S3 credentials. A Miniflare-local bucket would tak
 every staged upload and put it somewhere the pipeline cannot see, so the uploader
 would appear to work and every run would fail with "nothing staged at". Hence
 `"remote": true` on the development binding in `wrangler.jsonc`.
+
+**Nothing prunes `failed/`, and the cleanup is not total.** The prefix is written
+by `quarantine` and read by nobody; a lifecycle rule is the right answer if it
+ever adds up. The cleanup itself only runs when the task _throws_ — a run killed
+without unwinding (out of memory, a `maxDuration` abort) still strands its row,
+and a `generate-image-sizes` run that dies partway through its own uploads leaks
+whatever objects it had already written, since only the keys it reports back are
+known here.
 
 **A staged file survives a review it is never given.** The run returns without
 deleting anything, because the retry needs those bytes. Discarding deletes them and
@@ -165,9 +199,15 @@ it on demand in dev.
 
 ## Environment
 
-`TRIGGER_SECRET_KEY` (`tr_dev_…` / `tr_prod_…`) must be available to the **Worker**,
+`TRIGGER_API_KEY` (`tr_dev_…` / `tr_prod_…`) must be available to the **Worker**,
 not just to the tasks: the server function triggers the run and mints the scoped
-public token the browser subscribes with. Add it to 1Password alongside the rest,
-and as a secret on both Workers. Everything else this path needs — the S3
-credentials, `JINA_API_KEY`, `OPENROUTER_API_KEY` — is already synced to
-Trigger.dev by `trigger.config.ts`.
+public token the browser subscribes with. It is already in 1Password; what is new
+is that it now has to be a secret on both Workers, and that `src/env.ts` knows
+about it. Everything else this path needs — the S3 credentials, `JINA_API_KEY`,
+`OPENROUTER_API_KEY` — is already synced to Trigger.dev by `trigger.config.ts`.
+
+The name matters. `TRIGGER_SECRET_KEY` is what the SDK reads for its own
+authentication _inside_ a run, and `syncEnvVars` pushes every variable in
+`src/env.ts` to the Trigger.dev environment on deploy — so a variable by that
+name would overwrite the platform's own credential with whatever stage happened
+to be in the deploying machine's `.env`. `TRIGGER_API_KEY` collides with nothing.

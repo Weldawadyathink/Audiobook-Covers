@@ -4,7 +4,6 @@ import { getFeedbackCounts } from "@/server/feedback";
 import {
   Database,
   FlaskConical,
-  Images,
   LogOut,
   MessageSquareWarning,
   Upload,
@@ -34,12 +33,6 @@ const tools = [
     label: "Accounts",
     description: "Approve or revoke admin access.",
     icon: Users,
-  },
-  {
-    to: "/admin/similar",
-    label: "Similar pairs",
-    description: "Find and remove near-duplicate uploads.",
-    icon: Images,
   },
   {
     to: "/admin/database_info",

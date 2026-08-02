@@ -19,6 +19,7 @@ import { image, openlibrary_work } from "@/db/schema";
 import { imageIdSchema } from "@/ids";
 import { contentTypeForFormat } from "@/image/sniff";
 import { isStagingKey, stagingKey } from "@/image/staging";
+import { parseRedditCommentId, parseRedditPostId } from "@/reddit/ids";
 import { captureAnalyticsEvent } from "@/server/analyticsCore";
 import { requireAdmin } from "@/server/session";
 import {
@@ -51,11 +52,32 @@ const workIdSchema = z
   .trim()
   .regex(/^OL\d+W$/, "not an OpenLibrary work id");
 
-const redditIdSchema = z
-  .string()
-  .trim()
-  .regex(/^[0-9a-z]+$/, "not a Reddit base36 id")
-  .max(16);
+/**
+ * Accepts whatever the admin had on the clipboard.
+ *
+ * The pane normalises on blur, so most submissions arrive already bare; this is
+ * what catches the ones that do not — a paste followed straight by the keyboard,
+ * or a value set programmatically. Normalising in both places costs one function
+ * call and means neither has to trust the other.
+ */
+const redditIdSchema = (
+  parse: (input: string) => string | null,
+  what: string,
+) =>
+  z
+    .string()
+    .trim()
+    .transform((value, ctx) => {
+      const id = parse(value);
+      if (!id) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Could not find a Reddit ${what} id in "${value}".`,
+        });
+        return z.NEVER;
+      }
+      return id;
+    });
 
 /**
  * The metadata shared by every file in one submission.
@@ -68,8 +90,10 @@ const redditIdSchema = z
 const uploadMetadataSchema = z.object({
   source: optionalText(2000),
   upstreamUrl: optionalText(2000),
-  redditPostId: blankToUndefined(redditIdSchema),
-  redditCommentId: blankToUndefined(redditIdSchema),
+  redditPostId: blankToUndefined(redditIdSchema(parseRedditPostId, "post")),
+  redditCommentId: blankToUndefined(
+    redditIdSchema(parseRedditCommentId, "comment"),
+  ),
   searchable: z.boolean().default(true),
   openlibraryWorkId: blankToUndefined(workIdSchema),
   classify: z.boolean().default(true),

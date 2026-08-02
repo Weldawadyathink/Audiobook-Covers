@@ -295,6 +295,26 @@ export const image = schema.table(
     reddit_comment_id: text("reddit_comment_id"),
     extension: text("extension"),
     searchable: boolean("searchable").default(true),
+    /**
+     * The image that replaced this one, if a better copy of the same cover was
+     * ingested later.
+     *
+     * Set by `ingest-image` at the moment it hides a row, and the only record
+     * anywhere of *why* a given cover stopped being searchable. Without it,
+     * `searchable = false` is indistinguishable from a manual hide and the
+     * winner is unfindable — the decision lived only in a task's run output.
+     *
+     * Recorded on the loser rather than as a list on the winner, because that
+     * is the direction the question gets asked in ("why is this hidden, and
+     * what should I look at instead"), it stays one nullable column instead of
+     * a `text[]` this repo cannot parse back cleanly (see `textArray` in
+     * `src/db.ts`), and the reverse lookup is still a plain equality scan.
+     *
+     * Not a foreign key, for the same reason nothing else here is: the row it
+     * points at can be deleted, and an enforced reference would either cascade
+     * into the catalogue or block the delete.
+     */
+    superseded_by: text("superseded_by"),
     blurhash: text("blurhash"),
     deleted: boolean("deleted").notNull().default(false),
     openlibrary_work_id: text("openlibrary_work_id"),

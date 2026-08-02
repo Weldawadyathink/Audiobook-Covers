@@ -59,8 +59,15 @@ const envSchema = z.object({
    * `ingest-image` from a server function and mints a scoped public token so the
    * browser can subscribe to the run. Inside a Trigger.dev run the SDK is already
    * authenticated and never reads this.
+   *
+   * Deliberately *not* named `TRIGGER_SECRET_KEY`, which is the variable the SDK
+   * reads for its own authentication inside a run. Everything in this schema is
+   * synced to the Trigger.dev environment by `syncEnvVars` in
+   * `trigger.config.ts`, so a variable by that name would overwrite the
+   * platform's own credential on every deploy — with whatever stage happened to
+   * be in the deploying machine's `.env`.
    */
-  TRIGGER_SECRET_KEY: z.string(),
+  TRIGGER_API_KEY: z.string(),
   REDDIT_CLIENT_ID: z.string(),
   REDDIT_CLIENT_SECRET: z.string(),
   /**
