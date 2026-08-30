@@ -1,15 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { getRandom } from "@/server/imageSearcher";
+import { getRandom } from "@/server/imageSearcherAI";
 import ImageCard from "@/components/ImageCard";
 import { cn } from "@/lib/utils";
-import { getIsAuthenticated } from "@/server/auth";
 
 export const Route = createFileRoute("/random")({
   component: RouteComponent,
   loader: async () => {
     return {
       images: await getRandom(),
-      auth: await getIsAuthenticated(),
     };
   },
 });
@@ -21,7 +19,7 @@ function isLargeImage(index: number) {
 }
 
 function RouteComponent() {
-  const { images, auth } = Route.useLoaderData();
+  const { images } = Route.useLoaderData();
   return (
     <>
       <div className="grid md:grid-cols-4 justify-center gap-6 sm:grid-cols-2 mx-6 my-6">
@@ -29,10 +27,9 @@ function RouteComponent() {
           <ImageCard
             key={image.id}
             imageData={image}
-            showDataset={auth.isAuthenticated}
             className={cn(
               "",
-              isLargeImage(index) && "col-span-2 row-span-2 scale-95"
+              isLargeImage(index) && "col-span-2 row-span-2 scale-95",
             )}
           />
         ))}

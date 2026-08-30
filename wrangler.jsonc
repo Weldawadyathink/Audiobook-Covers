@@ -2,17 +2,21 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "compatibility_date": "2026-01-31",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "@tanstack/react-start/server-entry",
+  "main": "src/server.ts",
   "account_id": "57d01014eca6e2153041393f3114dc60",
   "observability": {
     "enabled": true,
   },
   "upload_source_maps": true,
-  "keep_vars": false,
+  // Runtime secrets are managed in the Cloudflare dashboard. CI only receives
+  // the API token it needs to deploy, so replacing dashboard configuration on
+  // each deploy would remove the credentials used by search and analytics.
+  "keep_vars": true,
   "workers_dev": true,
   "env": {
     "development": {
       "name": "audiobookcovers-dev",
+      "keep_vars": true,
       "hyperdrive": [
         {
           "binding": "HYPERDRIVE",
@@ -20,9 +24,25 @@
           "localConnectionString": "postgres://postgres:postgres@localhost:5432/postgres",
         },
       ],
+      // Staging area for manual uploads: /admin/upload writes the bytes here and
+      // the `ingest-image` task reads them back through the S3 API. One bucket
+      // for both stages, because an image id is unique across the catalogue and
+      // the bucket is what images.audiobookcovers.com serves.
+      //
+      // `remote` so a locally run dev server writes to the real bucket. The other
+      // half of this handoff is a Trigger.dev task holding real S3 credentials, so
+      // a Miniflare-local bucket would take every staged upload and put it
+      // somewhere the pipeline cannot read — the uploader would appear to work and
+      // every run would fail with "nothing staged at".
+      "r2_buckets": [
+        {
+          "binding": "IMAGES_BUCKET",
+          "bucket_name": "audiobookcovers",
+          "remote": true,
+        },
+      ],
       "vars": {
         "APP_STAGE": "development",
-        "GOOGLE_VERTEX_LOCATION": "us-east1",
       },
       "routes": [
         {
@@ -33,6 +53,7 @@
     },
     "production": {
       "name": "audiobookcovers",
+      "keep_vars": true,
       "hyperdrive": [
         {
           "binding": "HYPERDRIVE",
@@ -40,9 +61,15 @@
           "localConnectionString": "postgres://postgres:postgres@localhost:5432/postgres",
         },
       ],
+      // See the note on the development binding.
+      "r2_buckets": [
+        {
+          "binding": "IMAGES_BUCKET",
+          "bucket_name": "audiobookcovers",
+        },
+      ],
       "vars": {
         "APP_STAGE": "production",
-        "GOOGLE_VERTEX_LOCATION": "us-east1",
       },
       "routes": [
         {

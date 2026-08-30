@@ -1,31 +1,88 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { Panel } from "@/components/Panel";
+import { getFeedbackCounts } from "@/server/feedback";
+import {
+  Database,
+  FlaskConical,
+  LogOut,
+  MessageSquareWarning,
+  Upload,
+  Users,
+} from "lucide-react";
 
 export const Route = createFileRoute("/admin/")({
   component: RouteComponent,
+  loader: async () => ({ counts: await getFeedbackCounts() }),
 });
 
+const tools = [
+  {
+    to: "/admin/upload",
+    label: "Upload covers",
+    description: "Import covers by hand through the automated pipeline.",
+    icon: Upload,
+  },
+  {
+    to: "/admin/feedback",
+    label: "Feedback queue",
+    description: "Triage reports about wrong or confirmed book matches.",
+    icon: MessageSquareWarning,
+  },
+  {
+    to: "/admin/users",
+    label: "Accounts",
+    description: "Approve or revoke admin access.",
+    icon: Users,
+  },
+  {
+    to: "/admin/database_info",
+    label: "Database info",
+    description: "Table sizes and row counts.",
+    icon: Database,
+  },
+  {
+    to: "/admin/test",
+    label: "Test",
+    description: "Scratch page.",
+    icon: FlaskConical,
+  },
+] as const;
+
 function RouteComponent() {
+  const { counts } = Route.useLoaderData();
+
   return (
-    <div className="p-4">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-        <Link to="/admin/logout" className="text-red-600 hover:text-red-700">
-          Logout
+    <div className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6">
+      <div className="mb-8 flex items-center justify-between gap-4">
+        <h1 className="text-3xl font-bold tracking-tight text-white">Admin</h1>
+        <Link
+          to="/admin/logout"
+          className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/5 px-4 py-2 text-sm text-slate-300 transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white"
+        >
+          <LogOut className="size-4" />
+          Sign out
         </Link>
       </div>
-      <div className="flex flex-col gap-2">
-        <Link to="/admin/test" className="text-blue-400 hover:text-blue-300">
-          Test
-        </Link>
-        <Link to="/admin/similar" className="text-blue-400 hover:text-blue-300">
-          Similar Pairs
-        </Link>
-        <Link
-          to="/admin/database_info"
-          className="text-blue-400 hover:text-blue-300"
-        >
-          Database Info
-        </Link>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        {tools.map((tool) => (
+          <Link key={tool.to} to={tool.to} className="group">
+            <Panel className="h-full p-5 transition-colors group-hover:border-white/25">
+              <div className="flex items-center gap-2">
+                <tool.icon className="size-4 text-cyan-200" />
+                <span className="font-semibold text-white">{tool.label}</span>
+                {tool.to === "/admin/feedback" && counts.OPEN > 0 && (
+                  <span className="ml-auto rounded-full bg-cyan-200 px-2 py-0.5 text-xs font-bold text-slate-950">
+                    {counts.OPEN}
+                  </span>
+                )}
+              </div>
+              <p className="mt-1.5 text-sm text-slate-400">
+                {tool.description}
+              </p>
+            </Panel>
+          </Link>
+        ))}
       </div>
     </div>
   );

@@ -2,16 +2,62 @@ import { getBlurhashUrl } from "@/server/blurhash";
 import { decode as decodePng } from "fast-png";
 import { extractColors } from "extract-colors";
 import { z } from "zod/v4";
+import { imageIdSchema } from "@/ids";
+import { IMAGE_URL_PREFIX } from "@/image/urls";
+
+function parsePostgresTextArray(value: unknown): unknown {
+  if (value == null || Array.isArray(value)) return value;
+  if (typeof value !== "string") return value;
+  if (value === "{}") return [];
+
+  let items: string[];
+  try {
+    items = JSON.parse(
+      `[${value.slice(1, -1).replaceAll("\\\\", "\\").replaceAll('\\"', '"')}]`,
+    );
+  } catch {
+    items = value.slice(1, -1).split(",");
+  }
+
+  return items.map((item) => item.replace(/^"|"$/g, "")).filter(Boolean);
+}
+
+const nullableStringArray = z.preprocess(
+  parsePostgresTextArray,
+  z.array(z.string()).nullish(),
+);
 
 export const DBImageDataValidator = z.object({
-  id: z.uuid(),
+  id: imageIdSchema,
   source: z.string(),
   extension: z.string(),
   blurhash: z.string(),
   searchable: z.boolean().optional(),
-  distance: z.number().optional(),
-  from_old_database: z.boolean().optional(),
+  score: z.number().nullish(),
+  openlibrary_work_id: z.string().nullish(),
+  openlibrary_work_id_confidence: z
+    .enum(["UNCERTAIN", "LIKELY", "CONFIRMED", "HUMAN", "NO_MATCH"])
+    .nullish(),
+  openlibrary_title: z.string().nullish(),
+  openlibrary_subtitle: z.string().nullish(),
+  openlibrary_author_names: nullableStringArray,
+  openlibrary_first_publish_year: z.number().int().nullish(),
 });
+
+interface DBImageData {
+  id: string;
+  source: string | null;
+  extension: string | null;
+  blurhash: string | null;
+  searchable?: boolean | null;
+  score?: number | null;
+  openlibrary_work_id?: string | null;
+  openlibrary_work_id_confidence?: string | null;
+  openlibrary_title?: string | null;
+  openlibrary_subtitle?: string | null;
+  openlibrary_author_names?: string[] | null;
+  openlibrary_first_publish_year?: number | null;
+}
 
 export interface ImageData {
   id: string;
@@ -29,12 +75,20 @@ export interface ImageData {
     640: string;
     1280: string;
   };
-  distance?: number;
-  from_old_database?: boolean;
+  score?: number;
   primaryColor: Awaited<ReturnType<typeof extractColors>>[number];
+  openlibrary?: {
+    workId: string;
+    confidence: "UNCERTAIN" | "LIKELY" | "CONFIRMED" | "HUMAN";
+    title: string | null;
+    subtitle: string | null;
+    authorNames: string[];
+    firstPublishYear: number | null;
+    url: string;
+  };
 }
 
-const imageUrlPrefix = "https://images.audiobookcovers.com";
+const imageUrlPrefix = IMAGE_URL_PREFIX;
 
 const DEFAULT_PRIMARY_COLOR: ImageData["primaryColor"] = {
   hex: "#808080",
@@ -77,11 +131,11 @@ async function getPrimaryImageColor(
 }
 
 export async function shapeImageData(
-  image: Readonly<z.infer<typeof DBImageDataValidator>>,
+  image: Readonly<DBImageData>,
 ): Promise<ImageData> {
   const blurhashUrl = image.blurhash ? getBlurhashUrl(image.blurhash) : "";
   const primaryColor = await getPrimaryImageColor(blurhashUrl);
-  return {
+  const base: Omit<ImageData, "openlibrary"> = {
     id: image.id,
     blurhashUrl,
     source:
@@ -101,16 +155,37 @@ export async function shapeImageData(
       1280: `${imageUrlPrefix}/webp/1280/${image.id}.webp`,
     },
     primaryColor,
-    ...(image.searchable !== undefined ? { searchable: image.searchable } : {}),
-    ...(image.distance !== undefined ? { distance: image.distance } : {}),
-    ...(image.from_old_database !== undefined
-      ? { from_old_database: image.from_old_database }
-      : {}),
+    ...(image.searchable != null ? { searchable: image.searchable } : {}),
+    ...(image.score != null ? { score: image.score } : {}),
   };
+  switch (image.openlibrary_work_id_confidence) {
+    case "UNCERTAIN":
+    case "LIKELY":
+    case "CONFIRMED":
+    case "HUMAN":
+      if (!image.openlibrary_work_id) return base;
+
+      return {
+        ...base,
+        openlibrary: {
+          workId: image.openlibrary_work_id,
+          confidence: image.openlibrary_work_id_confidence,
+          title: image.openlibrary_title ?? null,
+          subtitle: image.openlibrary_subtitle ?? null,
+          authorNames: image.openlibrary_author_names ?? [],
+          firstPublishYear: image.openlibrary_first_publish_year ?? null,
+          url: `https://openlibrary.org/works/${image.openlibrary_work_id}`,
+        },
+      };
+    case "NO_MATCH":
+    case undefined:
+    default:
+      return base;
+  }
 }
 
 export function shapeImageDataArray(
-  data: Readonly<Array<z.infer<typeof DBImageDataValidator>>>,
+  data: Readonly<Array<DBImageData>>,
 ): Promise<ImageData[]> {
   return Promise.all(data.map(shapeImageData));
 }

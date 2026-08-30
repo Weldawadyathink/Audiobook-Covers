@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(task build:*)",
+      "Bash(grep:*)",
+      "Bash(git stash:*)",
+      "WebSearch",
+      "WebFetch(domain:tanstack.com)",
+      "Bash(task extract_isbn -- --image-id e2125369-fa5d-4ca5-bb45-663e5f474088)",
+      "Bash(curl -s \"https://www.googleapis.com/books/v1/volumes?q=The+Horse+and+His+Boy&maxResults=1\")",
+      "Bash(npx tsc:*)",
+      "Bash(task extract_isbn -- --image-id 6388969c-dab7-4a7b-aef2-65ad12cd7892 --model google/gemini-2.5-flash-lite)",
+      "Bash(find:*)",
+      "WebFetch(domain:trigger.dev)",
+      "WebFetch(domain:duckdb.org)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(for f:*)",
+      "Bash(do echo:*)",
+      "Read(//Users/Spenser/Programming/Audiobook-Covers/**)",
+      "Bash(done)",
+      "Bash(node *)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:planetscale.com)",
+      "Bash(git *)",
+      "WebFetch(domain:docs.cloud.google.com)",
+      "Bash(rg '\\(^|/\\)\\(gcs-lifecycle\\\\.json|database\\\\.sql|.*schema.*\\\\.sql\\)$|infra/')",
+      "Bash(pnpm list *)",
+      "Bash(pnpm exec *)",
+      "mcp__planetscale__planetscale_list_organizations"
+    ]
+  }
+}

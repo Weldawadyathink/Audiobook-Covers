@@ -1,4 +1,4 @@
-import { vectorSearchByString } from "@/server/imageSearcher";
+import { vectorSearchByString } from "@/server/imageSearcherAI";
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/cover/bytext")({

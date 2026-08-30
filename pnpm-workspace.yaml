@@ -1,16 +1,20 @@
+allowBuilds:
+  "@depot/cli": true
+  core-js: true
+  esbuild: true
+  protobufjs: true
+  sharp: true
+  workerd: true
+
 nodeLinker: hoisted
 
 onlyBuiltDependencies:
-  - '@parcel/watcher'
-  - '@playwright/browser-chromium'
-  - '@tailwindcss/oxide'
-  - argon2
-  - aws-sdk
+  - "@parcel/watcher"
+  - "@tailwindcss/oxide"
+  - "@duckdb/node-api"
   - core-js
   - esbuild
   - protobufjs
-  - sharp
-  - unix-dgram
   - workerd
 
 packageImportMethod: clone-or-copy

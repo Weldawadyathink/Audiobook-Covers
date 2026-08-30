@@ -1,4 +1,4 @@
-name: Cloudflare Deploy
+name: Deploy production
 on:
   push:
     branches:
@@ -7,31 +7,28 @@ jobs:
   deploy:
     name: Deploy production website
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     concurrency: cloudflare-deploy
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
+      - uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
+      - run: task build
+      - run: task lint
       - uses: 1password/install-cli-action@v1
       - uses: 1password/load-secrets-action@v3
         id: load_secrets
         env:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
           CLOUDFLARE_API_TOKEN: op://xdpqq36uuedlgindu4gaiwdify/jxjrrnqlbka5p5i23bbktexyky/password
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: just
-      - run: |
-          curl -sSfLO https://github.com/pgschema/pgschema/releases/download/v1.7.1/pgschema_1.7.1_amd64.deb
-          sudo dpkg -i pgschema_1.7.1_amd64.deb || sudo apt-get install -f -y
-      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
-      - run: just prod_db_migrate_force
-        env:
-          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-      - run: just deploy-prod
+      - run: task deploy:prod
         env:
           CLOUDFLARE_API_TOKEN: ${{ steps.load_secrets.outputs.CLOUDFLARE_API_TOKEN }}

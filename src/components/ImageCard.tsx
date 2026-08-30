@@ -6,8 +6,9 @@ export default function ImageCard(props: {
   imageData: ImageData;
   className?: string;
   class?: string;
-  showDistance?: boolean;
-  showDataset?: boolean;
+  showScore?: boolean;
+  /** Caption the cover with its matched book on hover/focus. */
+  showBook?: boolean;
 }) {
   const image = props.imageData;
   const [isLoaded, setIsLoaded] = useState(false);
@@ -26,6 +27,11 @@ export default function ImageCard(props: {
     }%, 0.5)`,
   };
 
+  const book = props.showBook ? image.openlibrary : undefined;
+  const bookTitle =
+    book && [book.title, book.subtitle].filter(Boolean).join(": ");
+  const bookAuthors = book?.authorNames.filter(Boolean).join(", ");
+
   return (
     <a
       href={`/images/${image.id}`}
@@ -33,21 +39,16 @@ export default function ImageCard(props: {
       className={cn(
         props.className,
         props.class,
-        "relative aspect-square cursor-pointer rounded-3xl overflow-hidden duration-500 ease-in-out hover:z-10",
+        "group relative aspect-square cursor-pointer overflow-hidden rounded-3xl outline-none transition-transform duration-500 ease-in-out hover:z-10 hover:scale-[1.02] focus-visible:z-10 focus-visible:scale-[1.02] focus-visible:ring-2 focus-visible:ring-cyan-200/70",
       )}
     >
-      {"distance" in image && props.showDistance && (
-        <span className="absolute top-2 right-2 z-10 bg-black bg-opacity-50 text-white text-xs font-semibold px-2 py-1 rounded-full">
-          {image.distance!.toFixed(3)}
-        </span>
-      )}
-      {"from_old_database" in image && props.showDataset && (
-        <span className="absolute bottom-2 right-2 z-10 bg-black bg-opacity-50 text-white text-xs font-semibold px-2 py-1 rounded-full">
-          {image.from_old_database ? "Old dataset" : "New dataset"}
+      {"score" in image && props.showScore && (
+        <span className="absolute top-2 right-2 z-10 rounded-full bg-slate-950/70 px-2 py-1 text-xs font-semibold text-white backdrop-blur">
+          {image.score!.toFixed(3)}
         </span>
       )}
       <img
-        className="w-full h-full absolute inset-0"
+        className="absolute inset-0 h-full w-full"
         src={image.blurhashUrl}
         alt="Blurred loading image"
         aria-hidden="true"
@@ -72,13 +73,25 @@ export default function ImageCard(props: {
           alt="audiobook cover image"
           loading="lazy"
           className={cn(
-            "w-full h-full absolute inset-0 duration-500 ease-in-out",
+            "absolute inset-0 h-full w-full duration-500 ease-in-out",
             isLoaded ? "opacity-100" : "opacity-0",
           )}
           onLoad={() => setIsLoaded(true)}
           src={image.jpeg["320"]}
         />
       </picture>
+      {bookTitle && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 translate-y-2 bg-linear-to-t from-slate-950/95 via-slate-950/70 to-transparent px-4 pt-10 pb-4 opacity-0 transition duration-300 group-hover:translate-y-0 group-hover:opacity-100 group-focus-visible:translate-y-0 group-focus-visible:opacity-100">
+          <p className="line-clamp-2 text-sm font-semibold leading-snug text-white">
+            {bookTitle}
+          </p>
+          {bookAuthors && (
+            <p className="mt-0.5 line-clamp-1 text-xs text-slate-300">
+              {bookAuthors}
+            </p>
+          )}
+        </div>
+      )}
     </a>
   );
 }

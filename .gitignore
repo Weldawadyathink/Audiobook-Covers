@@ -1,8 +1,13 @@
 node_modules
+.pnpm-store
 .DS_Store
 .cache
 .env
 dist
 .wrangler
+search-test-results.csv
 
-openlibrary-data/
+.trigger
+openlibrary-data
+
+worker-configuration.d.ts

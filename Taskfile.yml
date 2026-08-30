@@ -1,0 +1,117 @@
+version: "3"
+
+tasks:
+  env:
+    desc: Output 1Password environment variables to .env
+    cmds:
+      - op environment read k36durot2n5dnzc6d56ziqibqm > .env
+
+  dev:
+    desc: Start the dev server and Trigger.dev local runner concurrently
+    env:
+      APP_STAGE: local
+      CLOUDFLARE_INCLUDE_PROCESS_ENV: "true"
+    cmds:
+      - pnpm exec concurrently --raw --kill-others "pnpm exec vite dev" "pnpm exec trigger dev"
+
+  build:
+    desc: Build the app and check for type errors
+    env:
+      CLOUDFLARE_INCLUDE_PROCESS_ENV: "true"
+    cmds:
+      - pnpm exec wrangler types
+      - pnpm exec tsc --noEmit
+      - pnpm exec vite build
+
+  lint:
+    desc: Run ESLint over the project
+    cmds:
+      - pnpm exec eslint .
+
+  lint:fix:
+    desc: Run ESLint and apply every fix it can make automatically
+    cmds:
+      - pnpm exec eslint . --fix
+
+  format:
+    desc: Format the project with Prettier
+    cmds:
+      - pnpm exec prettier --write .
+
+  format:check:
+    desc: Fail if anything is not formatted, without rewriting it
+    cmds:
+      - pnpm exec prettier --check .
+
+  trigger:dev:
+    desc: Start the Trigger.dev local dev runner
+    env:
+      APP_STAGE: local
+    cmds:
+      - pnpm exec trigger dev
+
+  trigger:deploy:
+    desc: Deploy Trigger.dev tasks to production
+    cmds:
+      - pnpm exec trigger deploy
+
+  deploy:dev:
+    desc: Build and deploy to Cloudflare (development env)
+    env:
+      CLOUDFLARE_ENV: development
+    cmds:
+      - pnpm exec vite build
+      - pnpm exec wrangler deploy
+
+  deploy:prod:
+    desc: Build and deploy to Cloudflare (production)
+    env:
+      CLOUDFLARE_ENV: production
+    cmds:
+      - pnpm exec vite build
+      - pnpm exec wrangler deploy
+
+  db:push:dev:
+    desc: Baseline or initialize the database with Drizzle Kit after human review
+    env:
+      APP_STAGE: development
+    cmds:
+      - pnpm exec drizzle-kit push --config=drizzle.config.ts --strict
+
+  db:push:prod:
+    desc: Baseline or initialize the database with Drizzle Kit after human review
+    env:
+      APP_STAGE: production
+    cmds:
+      - pnpm exec drizzle-kit push --config=drizzle.config.ts --strict
+
+  dedupe:hash:
+    desc: >-
+      Download every original missing a perceptual hash and fill in phash64,
+      width, height and bytes. Resumable; safe to re-run.
+    env:
+      APP_STAGE: '{{.APP_STAGE | default "development"}}'
+    cmds:
+      - pnpm tsx src/scripts/dedupeImages.ts hash {{.CLI_ARGS}}
+
+  dedupe:report:
+    desc: >-
+      Print the duplicate clusters and which image each one is worth keeping.
+      Read only. Override the Hamming threshold with `-- --threshold=N`
+      (default 4).
+    env:
+      APP_STAGE: '{{.APP_STAGE | default "development"}}'
+    cmds:
+      - pnpm tsx src/scripts/dedupeImages.ts report {{.CLI_ARGS}}
+
+  db:populate:
+    desc: >-
+      Truncate the dev schema and repopulate it from prod. Copies every table in
+      full except openlibrary_work, which keeps only the works referenced by
+      dev.image plus a random sample (default 1%, override with
+      OPENLIBRARY_SAMPLE_PERCENT).
+    env:
+      APP_STAGE: development
+      OPENLIBRARY_SAMPLE_PERCENT: '{{.OPENLIBRARY_SAMPLE_PERCENT | default "1"}}'
+    cmds:
+      - pnpm tsx src/scripts/populateDevDatabase.ts
