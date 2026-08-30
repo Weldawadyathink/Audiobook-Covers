@@ -16,16 +16,24 @@ import { env as cloudflareEnv } from "cloudflare:workers";
 let parsed: Env | undefined;
 
 function getEnv(): Env {
+  // Wrangler can only generate types for bindings declared in wrangler.jsonc.
+  // These URL fallbacks are dashboard-managed secrets, so they exist at runtime
+  // without appearing on the generated Cloudflare.Env type in a clean CI build.
+  const runtimeEnv = cloudflareEnv as typeof cloudflareEnv & {
+    DATABASE_READ_URL?: string;
+    DATABASE_WRITE_URL?: string;
+  };
+
   parsed ??= parseEnv({
     ...process.env,
-    ...cloudflareEnv,
+    ...runtimeEnv,
     DATABASE_READ_URL:
-      cloudflareEnv.HYPERDRIVE?.connectionString ||
-      cloudflareEnv.DATABASE_READ_URL ||
+      runtimeEnv.HYPERDRIVE?.connectionString ||
+      runtimeEnv.DATABASE_READ_URL ||
       process.env.DATABASE_READ_URL,
     DATABASE_WRITE_URL:
-      cloudflareEnv.HYPERDRIVE?.connectionString ||
-      cloudflareEnv.DATABASE_WRITE_URL ||
+      runtimeEnv.HYPERDRIVE?.connectionString ||
+      runtimeEnv.DATABASE_WRITE_URL ||
       process.env.DATABASE_WRITE_URL,
   });
   return parsed;
