@@ -8,11 +8,15 @@
     "enabled": true,
   },
   "upload_source_maps": true,
-  "keep_vars": false,
+  // Runtime secrets are managed in the Cloudflare dashboard. CI only receives
+  // the API token it needs to deploy, so replacing dashboard configuration on
+  // each deploy would remove the credentials used by search and analytics.
+  "keep_vars": true,
   "workers_dev": true,
   "env": {
     "development": {
       "name": "audiobookcovers-dev",
+      "keep_vars": true,
       "hyperdrive": [
         {
           "binding": "HYPERDRIVE",
@@ -49,6 +53,7 @@
     },
     "production": {
       "name": "audiobookcovers",
+      "keep_vars": true,
       "hyperdrive": [
         {
           "binding": "HYPERDRIVE",

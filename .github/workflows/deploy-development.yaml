@@ -1,4 +1,4 @@
-name: Cloudflare Deploy
+name: Deploy development
 on:
   push:
     branches:
@@ -7,15 +7,22 @@ jobs:
   deploy:
     name: Deploy development website
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     concurrency: cloudflare-deploy
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
+      - uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
+      - run: task build
+      - run: task lint
       - uses: 1password/install-cli-action@v1
       - uses: 1password/load-secrets-action@v3
         id: load_secrets
